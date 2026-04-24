@@ -1,6 +1,6 @@
 import {
   Divider, Grid, H2, H3,
-  Pill, Row, Stack, Stat, Text,
+  Pill, Row, Stack, Stat, Table, Text,
   useHostTheme, Callout, ThemeProvider,
 } from './canvas-shim';
 import { useState } from 'react';
