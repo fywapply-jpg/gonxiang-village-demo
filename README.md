@@ -4,7 +4,7 @@
 
 一个模拟微信小程序 UI 的 Web 端交互 Demo，用于产品设计作品集展示。
 
-**Live Demo**: https://\<your-github-username\>.github.io/gonxiang-village-demo/
+**Live Demo**: https://\<fywapply-jpg\>.github.io/gonxiang-village-demo/
 
 ## 功能模块
 
