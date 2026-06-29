@@ -3,6 +3,9 @@
   "installCommand": "echo skip-install",
   "buildCommand": "echo skip-build",
   "outputDirectory": "v2demo",
+  "redirects": [
+    { "source": "/", "destination": "/demo.html", "permanent": false }
+  ],
   "headers": [
     {
       "source": "/(.*)",
