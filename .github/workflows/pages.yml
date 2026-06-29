@@ -1,0 +1,49 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # 把 v2demo 改造成「项目子路径 /gonxiang-village-demo/」可用，
+      # 并让手机外壳页(demo.html)成为默认首页。源 v2demo 不变，不影响 Vercel。
+      - name: Build site for project subpath
+        run: |
+          set -e
+          rm -rf _site
+          cp -R v2demo _site
+          mv _site/index.html _site/app.html
+          sed -i 's#href="/css/#href="/gonxiang-village-demo/css/#g; s#src="/js/#src="/gonxiang-village-demo/js/#g' _site/app.html
+          sed -i 's#__webpack_require__.p="/"#__webpack_require__.p="/gonxiang-village-demo/"#g' _site/js/app.js
+          sed -i 's#src="index.html"#src="app.html"#g' _site/demo.html
+          cp _site/demo.html _site/index.html
+          touch _site/.nojekyll
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
