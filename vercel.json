@@ -1,0 +1,14 @@
+{
+  "framework": null,
+  "installCommand": "echo skip-install",
+  "buildCommand": "echo skip-build",
+  "outputDirectory": "v2demo",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    }
+  ]
+}
