@@ -29,11 +29,11 @@ jobs:
         run: |
           set -e
           rm -rf _site
-          cp -R v3demo _site
+          cp -R v2demo _site
           mv _site/index.html _site/app.html
           sed -i 's#href="/css/#href="/gonxiang-village-demo/css/#g; s#src="/js/#src="/gonxiang-village-demo/js/#g' _site/app.html
           sed -i 's#__webpack_require__.p="/"#__webpack_require__.p="/gonxiang-village-demo/"#g' _site/js/app.js
-          sed -i 's#src="index.html"#src="app.html"#g' _site/demo.html
+          sed -i 's#src="/index.html"#src="app.html"#g; s#src="index.html"#src="app.html"#g' _site/demo.html
           cp _site/demo.html _site/index.html
           touch _site/.nojekyll
 
