@@ -1,23 +1,115 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <link rel="stylesheet" href="/gonxiang-village-demo/shuzhi/assets/uni.7d64623f.css">
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>数智供销 · 电脑演示版</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(1200px 600px at 16% -10%, rgba(124,58,237,.28), transparent 60%),
+      radial-gradient(900px 500px at 100% 110%, rgba(22,136,76,.20), transparent 55%),
+      linear-gradient(135deg, #1a1030 0%, #241640 50%, #120b22 100%);
+    color: #ece7fb;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    gap: 56px; flex-wrap: wrap; padding: 40px 32px;
+  }
 
-    <meta charset="UTF-8" />
-    <script>
-      var coverSupport = 'CSS' in window && typeof CSS.supports === 'function' && (CSS.supports('top: env(a)') ||
-        CSS.supports('top: constant(a)'))
-      document.write(
-        '<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0' +
-        (coverSupport ? ', viewport-fit=cover' : '') + '" />')
-    </script>
-    <title>数智供销</title>
-    <!--preload-links-->
-    <!--app-context-->
-    <script type="module" crossorigin src="/gonxiang-village-demo/shuzhi/assets/index-BKgojDjM.js"></script>
-    <link rel="stylesheet" crossorigin href="/gonxiang-village-demo/shuzhi/assets/index-BY9HbVmk.css">
-  </head>
-  <body>
-    <div id="app"><!--app-html--></div>
-  </body>
+  /* 手机外壳 */
+  .device { position: relative; flex-shrink: 0; }
+  .phone {
+    position: relative;
+    width: 390px; height: 844px; max-height: 92vh;
+    background: linear-gradient(145deg, #2a2a2e, #0c0c0e);
+    border-radius: 52px; padding: 14px;
+    box-shadow: 0 40px 90px rgba(0,0,0,.55), 0 0 0 2px rgba(255,255,255,.04) inset, 0 0 0 9px #1b1b1f;
+  }
+  .phone .notch { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); width: 158px; height: 30px; background: #0c0c0e; border-radius: 0 0 22px 22px; z-index: 3; }
+  .phone .speaker { position: absolute; top: 24px; left: 50%; transform: translateX(-50%); width: 52px; height: 5px; background: #2c2c30; border-radius: 4px; z-index: 4; }
+  .phone iframe { width: 100%; height: 100%; border: none; border-radius: 40px; background: #fff; display: block; }
+  .phone .btn-r { position: absolute; right: -3px; top: 200px; width: 3px; height: 92px; background: #2a2a2e; border-radius: 3px; }
+  .phone .btn-l1 { position: absolute; left: -3px; top: 168px; width: 3px; height: 48px; background: #2a2a2e; border-radius: 3px; }
+  .phone .btn-l2 { position: absolute; left: -3px; top: 230px; width: 3px; height: 48px; background: #2a2a2e; border-radius: 3px; }
+
+  /* 右侧品牌讲解 */
+  .side { max-width: 320px; }
+  .side .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .side .brand .mark {
+    width: 48px; height: 48px; border-radius: 13px; flex-shrink: 0;
+    background: linear-gradient(145deg, #7c3aed, #c026d3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 800; color: #fff; box-shadow: 0 6px 18px rgba(124,58,237,.45);
+  }
+  .side .brand .t { font-size: 25px; font-weight: 800; letter-spacing: 2px; }
+  .side .brand .s { font-size: 12px; color: #b3a3e0; margin-top: 3px; }
+  .side .tagline { font-size: 13px; color: #c3b8e6; line-height: 1.9; margin-bottom: 22px; }
+  .side .steps { list-style: none; display: flex; flex-direction: column; gap: 11px; }
+  .side .steps li { display: flex; align-items: flex-start; gap: 12px; font-size: 13.5px; color: #ddd6f2; line-height: 1.5; }
+  .side .steps .n {
+    flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%;
+    background: rgba(124,58,237,.18); color: #c4b0ff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; border: 1px solid rgba(124,58,237,.35);
+  }
+  .side .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+  .side .chip { font-size: 12px; color: #d3c8ee; padding: 6px 12px; border-radius: 20px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.09); }
+  .side .hint { margin-top: 22px; font-size: 12px; color: #9d8fc4; line-height: 1.7; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 13px 15px; }
+
+  /* 窄屏（手机访问）：退化为全屏裸 H5 */
+  @media (max-width: 820px) {
+    body { gap: 0; padding: 0; background: #fff; }
+    .side { display: none; }
+    .phone { width: 100vw; height: 100vh; max-height: none; border-radius: 0; padding: 0; box-shadow: none; background: #fff; }
+    .phone .notch, .phone .speaker, .phone .btn-l1, .phone .btn-l2, .phone .btn-r { display: none; }
+    .phone iframe { border-radius: 0; }
+  }
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="speaker"></div>
+      <div class="btn-l1"></div>
+      <div class="btn-l2"></div>
+      <div class="btn-r"></div>
+      <iframe src="app.html" allow="geolocation"></iframe>
+    </div>
+  </div>
+
+  <div class="side">
+    <div class="brand">
+      <div class="mark">数</div>
+      <div>
+        <div class="t">数智供销</div>
+        <div class="s">B2B 供应链 + 金融服务 · 小程序演示 v1.1</div>
+      </div>
+    </div>
+
+    <div class="tagline">中国供销合作社 · 数字化基础设施。<br>生产—流通—信用 三位一体 + 民生终端 + 跨境，全链条闭环。</div>
+
+    <ol class="steps">
+      <li><span class="n">1</span><span>手机里点「微信一键登录」，选身份进首页</span></li>
+      <li><span class="n">2</span><span>右下金色「切角色」可切 5 类角色，首页随身份变</span></li>
+      <li><span class="n">3</span><span>供货大厅→货源详情看多图轮播+视频；扫码溯源看链上验真</span></li>
+      <li><span class="n">4</span><span>金融→供应链金融闭环，看银企直连 / 主办行竞标 / 保理</span></li>
+      <li><span class="n">5</span><span>「我的 → 设置 → 关于」有一条 9 步推荐演示路线</span></li>
+    </ol>
+
+    <div class="chips">
+      <span class="chip">三位一体架构</span>
+      <span class="chip">供应链金融闭环</span>
+      <span class="chip">跨境五大枢纽</span>
+      <span class="chip">供享村社民生终端</span>
+      <span class="chip">链上溯源验真</span>
+      <span class="chip">商户星级</span>
+    </div>
+
+    <div class="hint">📱 左侧为手机模拟器视图，即真机内真实样子。<br>手机扫码或直接打开本网址，会自动变成全屏裸机版。</div>
+  </div>
+</body>
 </html>
