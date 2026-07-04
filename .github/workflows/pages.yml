@@ -35,6 +35,9 @@ jobs:
           sed -i 's#__webpack_require__.p="/"#__webpack_require__.p="/gonxiang-village-demo/"#g' _site/js/app.js
           sed -i 's#src="/index.html"#src="app.html"#g; s#src="index.html"#src="app.html"#g' _site/demo.html
           cp _site/demo.html _site/index.html
+          # 数智供销 v1.0 演示版挂到 /shuzhi/ 子路径
+          mkdir -p _site/shuzhi
+          cp -R shuzhi-demo/* _site/shuzhi/
           touch _site/.nojekyll
 
       - uses: actions/configure-pages@v5
