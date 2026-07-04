@@ -23,13 +23,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 把 v2demo 改造成「项目子路径 /gonxiang-village-demo/」可用，
-      # 并让手机外壳页(demo.html)成为默认首页。源 v2demo 不变，不影响 Vercel。
+      # 把 v3demo 改造成「项目子路径 /gonxiang-village-demo/」可用，
+      # 并让手机外壳页(demo.html)成为默认首页。源 v3demo 不变，不影响 Vercel。
       - name: Build site for project subpath
         run: |
           set -e
           rm -rf _site
-          cp -R v2demo _site
+          cp -R v3demo _site
           mv _site/index.html _site/app.html
           sed -i 's#href="/css/#href="/gonxiang-village-demo/css/#g; s#src="/js/#src="/gonxiang-village-demo/js/#g' _site/app.html
           sed -i 's#__webpack_require__.p="/"#__webpack_require__.p="/gonxiang-village-demo/"#g' _site/js/app.js
