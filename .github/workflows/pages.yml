@@ -38,14 +38,14 @@ jobs:
           # 数智供销 v1.0 演示版挂到 /shuzhi/ 子路径
           mkdir -p _site/shuzhi
           cp -R shuzhi-demo/* _site/shuzhi/
-          # v3.1 迭代版挂到 /v31/ 子路径（v3 冻结版仍在根路径，两者并存）
-          mkdir -p _site/v31
-          cp -R v3.1demo/. _site/v31/
-          mv _site/v31/index.html _site/v31/app.html
-          sed -i 's#href="/css/#href="/gonxiang-village-demo/v31/css/#g; s#src="/js/#src="/gonxiang-village-demo/v31/js/#g' _site/v31/app.html
-          sed -i 's#__webpack_require__.p="/"#__webpack_require__.p="/gonxiang-village-demo/v31/"#g' _site/v31/js/app.js
-          sed -i 's#src="/index.html"#src="app.html"#g; s#src="index.html"#src="app.html"#g' _site/v31/demo.html
-          cp _site/v31/demo.html _site/v31/index.html
+          # v3.1 迭代版挂到 /v3.1/ 子路径（v3 冻结版仍在根路径，两者并存）
+          mkdir -p _site/v3.1
+          cp -R v3.1demo/. _site/v3.1/
+          mv _site/v3.1/index.html _site/v3.1/app.html
+          sed -i 's#href="/css/#href="/gonxiang-village-demo/v3.1/css/#g; s#src="/js/#src="/gonxiang-village-demo/v3.1/js/#g' _site/v3.1/app.html
+          sed -i 's#__webpack_require__.p="/"#__webpack_require__.p="/gonxiang-village-demo/v3.1/"#g' _site/v3.1/js/app.js
+          sed -i 's#src="/index.html"#src="app.html"#g; s#src="index.html"#src="app.html"#g' _site/v3.1/demo.html
+          cp _site/v3.1/demo.html _site/v3.1/index.html
           touch _site/.nojekyll
 
       - uses: actions/configure-pages@v5
