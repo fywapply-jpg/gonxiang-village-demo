@@ -2,11 +2,41 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>供享村社 · 乡村数字经济平台 Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#1e1e2e" />
+    <meta name="description" content="供享村社数智供销手机演示版，覆盖便民服务、兴农增收、乡村治理、贡献体系与村社运营。" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="供享村社" />
+    <title>供享村社 · 数智供销手机演示版</title>
     <style>
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-      body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif; }
+      html, body, #root { width: 100%; height: 100%; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif;
+        overflow: hidden;
+        overscroll-behavior: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      button, input, textarea, select { font: inherit; }
+      button { touch-action: manipulation; }
+      @media (max-width: 720px) {
+        .phone-shell {
+          width: 100% !important;
+          max-width: none !important;
+          border-right: 0 !important;
+          padding-top: env(safe-area-inset-top);
+          padding-bottom: env(safe-area-inset-bottom);
+        }
+        .desktop-panel { display: none !important; }
+      }
+      @media (min-width: 721px) {
+        .phone-shell {
+          box-shadow: 16px 0 50px rgba(0, 0, 0, 0.18);
+          position: relative;
+          z-index: 1;
+        }
+      }
     </style>
   </head>
   <body>
