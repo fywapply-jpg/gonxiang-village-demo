@@ -38,6 +38,10 @@ jobs:
           # 数智供销 v1.0 演示版挂到 /shuzhi/ 子路径
           mkdir -p _site/shuzhi
           cp -R shuzhi-demo/* _site/shuzhi/
+          # v85 的商品与村社图片使用绝对路径，统一改为 GitHub Pages 项目子路径
+          find _site/shuzhi/assets -type f -name '*.js' -exec sed -i 's#"/static/#"/gonxiang-village-demo/shuzhi/static/#g' {} +
+          mkdir -p _site/shuzhi/static/images/assets
+          cp -R v3.1demo/static/images/assets/. _site/shuzhi/static/images/assets/
           # v3.1 迭代版挂到 /v3.1/ 子路径（v3 冻结版仍在根路径，两者并存）
           mkdir -p _site/v3.1
           cp -R v3.1demo/. _site/v3.1/
