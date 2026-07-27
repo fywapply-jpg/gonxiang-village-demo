@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "build:sites": "npm run build && node scripts/build-sites.mjs",
     "build:v85-sites": "node scripts/build-v85-sites.mjs",
+    "build:v85-singlefile": "node scripts/build-v85-singlefile.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
