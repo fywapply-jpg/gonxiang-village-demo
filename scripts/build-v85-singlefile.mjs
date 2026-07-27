@@ -70,7 +70,7 @@ const bundle = await build({
         if (path === mainEntry) {
           contents = contents.replace(
             'if(n&&n.length>0){document.getElementsByTagName("link");',
-            'if(n&&(n=n.filter(t=>!t.endsWith(".css"))).length>0){document.getElementsByTagName("link");',
+            'if(n&&(n=[]).length>0){document.getElementsByTagName("link");',
           );
         }
         return { contents, loader: 'js' };
