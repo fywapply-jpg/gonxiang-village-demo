@@ -23,18 +23,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 根链接直接发布数智供社 v85。手机访问 index.html 时会自动进入
-      # 全屏 H5，电脑访问则保留手机模拟器外壳。
-      - name: Build v85 site for project subpath
+      # 把 v3demo 改造成「项目子路径 /gonxiang-village-demo/」可用，
+      # 并让手机外壳页(demo.html)成为默认首页。源 v3demo 不变，不影响 Vercel。
+      - name: Build site for project subpath
         run: |
           set -e
           rm -rf _site
-          mkdir -p _site
-          cp -R shuzhi-demo/. _site/
-          # v85 的商品与村社图片使用绝对路径，统一改为 GitHub Pages 项目子路径。
-          find _site/assets -type f -name '*.js' -exec sed -i 's#"/static/#"/gonxiang-village-demo/static/#g' {} +
-          mkdir -p _site/static/images/assets
-          cp -R v3.1demo/static/images/assets/. _site/static/images/assets/
+          cp -R v3demo _site
+          mv _site/index.html _site/app.html
+          sed -i 's#href="/css/#href="/gonxiang-village-demo/css/#g; s#src="/js/#src="/gonxiang-village-demo/js/#g' _site/app.html
+          sed -i 's#__webpack_require__.p="/"#__webpack_require__.p="/gonxiang-village-demo/"#g' _site/js/app.js
+          sed -i 's#src="/index.html"#src="app.html"#g; s#src="index.html"#src="app.html"#g' _site/demo.html
+          cp _site/demo.html _site/index.html
+          # 数智供社 v85 手机演示版独立挂到 /shuzhi/ 子路径
+          mkdir -p _site/shuzhi
+          cp -R shuzhi-demo/* _site/shuzhi/
+          # v85 的商品与村社图片使用绝对路径，统一改为 GitHub Pages 项目子路径
+          find _site/shuzhi/assets -type f -name '*.js' -exec sed -i 's#"/static/#"/gonxiang-village-demo/shuzhi/static/#g' {} +
+          mkdir -p _site/shuzhi/static/images/assets
+          cp -R v3.1demo/static/images/assets/. _site/shuzhi/static/images/assets/
+          # v3.1 迭代版挂到 /v3.1/ 子路径（v3 冻结版仍在根路径，两者并存）
+          mkdir -p _site/v3.1
+          cp -R v3.1demo/. _site/v3.1/
+          mv _site/v3.1/index.html _site/v3.1/app.html
+          sed -i 's#href="/css/#href="/gonxiang-village-demo/v3.1/css/#g; s#src="/js/#src="/gonxiang-village-demo/v3.1/js/#g' _site/v3.1/app.html
+          sed -i 's#__webpack_require__.p="/"#__webpack_require__.p="/gonxiang-village-demo/v3.1/"#g' _site/v3.1/js/app.js
+          sed -i 's#src="/index.html"#src="app.html"#g; s#src="index.html"#src="app.html"#g' _site/v3.1/demo.html
+          cp _site/v3.1/demo.html _site/v3.1/index.html
           touch _site/.nojekyll
 
       - uses: actions/configure-pages@v5
