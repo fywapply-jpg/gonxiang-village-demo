@@ -1,0 +1,83 @@
+/* 平台技术底座 / Web3 架构 —— 深色科技主题 */
+.page { height: 100vh; box-sizing: border-box; }
+.bg {
+  min-height: 100vh; box-sizing: border-box;
+  padding: 44rpx 28rpx 80rpx;
+  background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 52%, #312e81 100%);
+}
+
+/* hero */
+.hero { text-align: center; padding: 16rpx 10rpx 6rpx; }
+.hero-t { font-size: 46rpx; font-weight: 800; color: #fff; letter-spacing: 2rpx; text-shadow: 0 0 24rpx rgba(34,211,238,.4); }
+.hero-s { display: block; font-size: 22rpx; color: #c7d2fe; margin-top: 16rpx; line-height: 1.6; }
+.badges { display: flex; justify-content: center; flex-wrap: wrap; gap: 14rpx; margin-top: 26rpx; }
+.badge { background: rgba(34,211,238,.10); border: 1rpx solid rgba(34,211,238,.45); border-radius: 100rpx; padding: 9rpx 24rpx; }
+.badge-t { font-size: 21rpx; color: #67e8f9; font-weight: 700; }
+
+/* 层间连接符 ▼ */
+.conn { display: block; text-align: center; color: #a78bfa; font-size: 30rpx; margin: 10rpx 0; opacity: .75; }
+
+/* 层卡通用 */
+.layer { background: rgba(255,255,255,.06); border: 1rpx solid rgba(255,255,255,.12); border-radius: 22rpx; padding: 28rpx 26rpx; }
+.layer-h { display: flex; align-items: center; }
+.layer-no { width: 58rpx; height: 58rpx; border-radius: 14rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-right: 18rpx; font-size: 30rpx; font-weight: 800; }
+.layer-hb { flex: 1; }
+.layer-tag { font-size: 19rpx; font-weight: 700; letter-spacing: 1rpx; }
+.layer-t { display: block; font-size: 30rpx; font-weight: 800; color: #fff; margin-top: 2rpx; }
+.layer-d { display: block; font-size: 21rpx; color: #a5b4fc; margin-top: 14rpx; line-height: 1.6; }
+
+/* accent 变体（青 / 紫 / 绿） */
+.ac-cyan   { background: rgba(34,211,238,.16);  color: #22d3ee; border: 1rpx solid rgba(34,211,238,.5); }
+.ac-purple { background: rgba(167,139,250,.16); color: #a78bfa; border: 1rpx solid rgba(167,139,250,.5); }
+.ac-green  { background: rgba(52,211,153,.16);  color: #34d399; border: 1rpx solid rgba(52,211,153,.5); }
+.tx-cyan { color: #22d3ee; } .tx-purple { color: #a78bfa; } .tx-green { color: #34d399; }
+
+/* chips（①④ 通用） */
+.chips { display: flex; flex-wrap: wrap; gap: 14rpx; margin-top: 20rpx; }
+.chip { background: rgba(255,255,255,.07); border: 1rpx solid rgba(255,255,255,.16); border-radius: 100rpx; padding: 10rpx 22rpx; }
+.chip-t { font-size: 21rpx; color: #e0e7ff; }
+
+/* ② 能力小卡 2 列 */
+.caps { display: flex; flex-wrap: wrap; gap: 16rpx; margin-top: 20rpx; }
+.cap { width: calc(50% - 8rpx); box-sizing: border-box; background: rgba(255,255,255,.05); border: 1rpx solid rgba(167,139,250,.28); border-radius: 16rpx; padding: 20rpx 18rpx; }
+.cap-i { font-size: 34rpx; }
+.cap-t { display: block; font-size: 23rpx; font-weight: 800; color: #fff; margin-top: 8rpx; }
+.cap-d { display: block; font-size: 19rpx; color: #a5b4fc; margin-top: 8rpx; line-height: 1.55; }
+
+/* ③ 双链底座 */
+.chains { display: flex; flex-direction: column; gap: 18rpx; margin-top: 20rpx; }
+.chain { background: rgba(255,255,255,.05); border: 1rpx solid rgba(255,255,255,.14); border-left: 6rpx solid #34d399; border-radius: 16rpx; padding: 22rpx; }
+.chain.c-cyan { border-left-color: #22d3ee; }
+.chain-h { display: flex; align-items: center; justify-content: space-between; }
+.chain-n { font-size: 27rpx; font-weight: 800; color: #fff; }
+.chain-badge { border-radius: 100rpx; padding: 5rpx 18rpx; font-size: 19rpx; font-weight: 700; }
+.chain-role { display: block; font-size: 21rpx; color: #cbd5e1; margin-top: 12rpx; }
+.chain-meta { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 14rpx; }
+.meta-i { font-size: 19rpx; color: #94a3b8; background: rgba(255,255,255,.05); border-radius: 8rpx; padding: 6rpx 14rpx; }
+.chain-tags { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 14rpx; }
+.ctag { font-size: 19rpx; border-radius: 100rpx; padding: 6rpx 16rpx; }
+.ctag.t-green { color: #34d399; background: rgba(52,211,153,.12); border: 1rpx solid rgba(52,211,153,.35); }
+.ctag.t-cyan { color: #22d3ee; background: rgba(34,211,238,.12); border: 1rpx solid rgba(34,211,238,.35); }
+.chain-sync { margin-top: 18rpx; background: rgba(167,139,250,.10); border: 1rpx dashed rgba(167,139,250,.45); border-radius: 14rpx; padding: 16rpx 20rpx; }
+.chain-sync-t { font-size: 20rpx; color: #c4b5fd; line-height: 1.6; }
+
+/* 🔗 链上存证实况 */
+.ledger { background: rgba(255,255,255,.06); border: 1rpx solid rgba(255,255,255,.12); border-radius: 22rpx; padding: 26rpx; margin-top: 22rpx; }
+.ledger-h { display: flex; align-items: center; justify-content: space-between; }
+.ledger-t { font-size: 28rpx; font-weight: 800; color: #fff; }
+.live { display: flex; align-items: center; }
+.live-dot { width: 14rpx; height: 14rpx; border-radius: 50%; background: #34d399; margin-right: 8rpx; box-shadow: 0 0 12rpx rgba(52,211,153,.8); }
+.live-t { font-size: 19rpx; color: #34d399; font-weight: 700; }
+.led { background: rgba(0,0,0,.22); border: 1rpx solid rgba(255,255,255,.08); border-radius: 14rpx; padding: 18rpx 20rpx; margin-top: 16rpx; }
+.led-h { display: flex; align-items: center; justify-content: space-between; }
+.led-biz { font-size: 23rpx; font-weight: 700; color: #e2e8f0; }
+.led-chain { font-size: 18rpx; font-weight: 700; border-radius: 100rpx; padding: 5rpx 16rpx; }
+.lc-green { color: #34d399; background: rgba(52,211,153,.14); }
+.lc-cyan { color: #22d3ee; background: rgba(34,211,238,.14); }
+.led-hash { display: block; font-size: 18rpx; color: #67e8f9; margin-top: 12rpx; word-break: break-all; font-family: 'SF Mono', 'Menlo', monospace; line-height: 1.5; }
+.led-f { display: flex; align-items: center; justify-content: space-between; margin-top: 10rpx; }
+.led-time { font-size: 18rpx; color: #94a3b8; }
+.led-view { font-size: 18rpx; color: #a78bfa; }
+
+/* 底部说明 */
+.foot { display: block; font-size: 19rpx; color: #64748b; line-height: 1.7; margin-top: 28rpx; text-align: center; padding: 0 10rpx; }

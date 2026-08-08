@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>关心下一代 · 社会公益（手机演示版）</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { min-height:100vh; background:radial-gradient(circle at 50% 22%, #fef2f2 0%, #f87171 52%, #b91c1c 100%); display:flex; align-items:center; justify-content:center; gap:52px; font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; flex-wrap:wrap; padding:28px 22px; }
+  .phone { width:390px; height:844px; max-height:94vh; background:#111; border-radius:46px; padding:13px; box-shadow:0 26px 70px rgba(0,0,0,.42); position:relative; flex-shrink:0; }
+  .phone .notch { position:absolute; top:13px; left:50%; transform:translateX(-50%); width:150px; height:28px; background:#111; border-radius:0 0 20px 20px; z-index:3; }
+  .phone iframe { width:100%; height:100%; border:none; border-radius:34px; background:#fff; display:block; }
+  .side { max-width:320px; color:#fff; }
+  .logo { font-size:27px; font-weight:800; margin-bottom:8px; }
+  .sub { font-size:14px; color:#fde2e2; margin-bottom:20px; line-height:1.7; }
+  .toggle { display:flex; gap:10px; margin-bottom:18px; }
+  .toggle button { flex:1; padding:13px 8px; border:none; border-radius:100px; font-size:14px; font-weight:800; cursor:pointer; background:rgba(255,255,255,.16); color:#fff; border:1.5px solid rgba(255,255,255,.55); transition:.15s; }
+  .toggle button.on { background:#fff; color:#b91c1c; border-color:#fff; }
+  ol { font-size:13.5px; line-height:2; color:#fff; padding-left:20px; }
+  .hint { margin-top:20px; font-size:12px; color:#7f1d1d; line-height:1.75; background:#fff; border-radius:12px; padding:14px 16px; box-shadow:0 6px 20px rgba(0,0,0,.16); }
+  .hint a { color:#b91c1c; word-break:break-all; }
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="notch"></div>
+    <iframe id="fr" src="app.html#/pkgLife/charity/index?org=foundation" allow="geolocation"></iframe>
+  </div>
+  <div class="side">
+    <div class="logo">🏀 关心下一代 · 社会公益</div>
+    <div class="sub">青少年体育公益数字化专项平台<br>中国关心下一代体育基金会 · 依托供享村社</div>
+    <div class="toggle">
+      <button id="b-fund" class="on" onclick="setView('fund')">🛡 基金会监管视角</button>
+      <button id="b-pub" onclick="setView('pub')">👁 公众参与视角</button>
+    </div>
+    <ol>
+      <li>基金会视角：监管驾驶舱 / 项目 / 资金 / 物资 / 审核 / 公开</li>
+      <li>公众视角：公益机构 / 项目 / 我要捐赠 / 志愿服务 / 我要申领</li>
+      <li>捐赠、报名志愿、申领 都能点着走完整流程</li>
+    </ol>
+    <div class="hint">📱 手机模拟器视图，右侧手机内即真机上的样子。<br>手机 / 转发直接打开：<br><a href="app.html#/pkgLife/charity/index?org=foundation">app.html#/pkgLife/charity/index?org=foundation</a></div>
+  </div>
+  <script>
+    function setView(v){
+      var fr=document.getElementById('fr');
+      document.getElementById('b-fund').className=v==='fund'?'on':'';
+      document.getElementById('b-pub').className=v==='pub'?'on':'';
+      fr.src = v==='fund' ? 'app.html#/pkgLife/charity/index?org=foundation' : 'app.html#/pkgLife/charity/index';
+    }
+  </script>
+</body>
+</html>

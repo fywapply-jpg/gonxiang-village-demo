@@ -1,0 +1,137 @@
+.page { min-height: 100vh; background: #f3f4f6; }
+
+/* 头部 */
+.header { background: linear-gradient(135deg, #065f46, #047857); padding: 48rpx 32rpx 36rpx; }
+.header-title { font-size: 36rpx; font-weight: bold; color: #fff; display: block; margin-bottom: 8rpx; }
+.header-sub { font-size: 24rpx; color: rgba(255,255,255,0.7); display: block; }
+
+/* Tab */
+.tab-scroll { background: #fff; white-space: nowrap; border-bottom: 1rpx solid #f3f4f6; }
+.tab-item:first-child { margin-left: 16rpx; }
+.tab-item:last-child { margin-right: 16rpx; }
+.tab-item { display: inline-block; padding: 28rpx 24rpx; font-size: 26rpx; color: #9ca3af; border-bottom: 4rpx solid transparent; }
+.tab-active { color: #16a34a; border-bottom-color: #16a34a; font-weight: 600; }
+
+.tab-content { padding: 20rpx 24rpx; }
+
+/* 数据总览 */
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; margin-bottom: 20rpx; }
+.stat-card { background: #fff; border-radius: 20rpx; padding: 28rpx 24rpx; text-align: center; }
+.stat-num { font-size: 44rpx; font-weight: bold; color: #16a34a; display: block; margin-bottom: 8rpx; }
+.stat-warn { color: #f59e0b; }
+.stat-blue { color: #3b82f6; }
+.stat-label { font-size: 22rpx; color: #9ca3af; display: block; }
+
+.info-card { background: #fff; border-radius: 20rpx; padding: 28rpx; margin-bottom: 20rpx; }
+.info-title { font-size: 26rpx; font-weight: bold; color: #1f2937; display: block; margin-bottom: 20rpx; }
+.info-row { display: flex; justify-content: space-between; padding: 14rpx 0; border-bottom: 1rpx solid #f9fafb; }
+.info-row:last-child { border-bottom: none; }
+.info-k { font-size: 26rpx; color: #6b7280; }
+.info-v { font-size: 26rpx; color: #1f2937; font-weight: 600; }
+
+.tips-card { background: #fff; border-radius: 20rpx; padding: 28rpx; }
+.tips-title { font-size: 26rpx; font-weight: bold; color: #1f2937; display: block; margin-bottom: 16rpx; }
+.tips-item { display: flex; align-items: center; gap: 16rpx; padding: 14rpx 0; }
+.tips-dot { width: 16rpx; height: 16rpx; border-radius: 50%; flex-shrink: 0; }
+.tips-dot.warn { background: #f59e0b; }
+.tips-dot.danger { background: #ef4444; }
+.tips-text { font-size: 26rpx; color: #374151; }
+.tips-all-done { font-size: 26rpx; color: #16a34a; display: block; text-align: center; padding: 20rpx 0; }
+
+/* 订单管理 */
+.order-card { background: #fff; border-radius: 20rpx; padding: 24rpx; margin-bottom: 16rpx; }
+.order-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16rpx; }
+.order-id { font-size: 22rpx; color: #9ca3af; }
+.order-status { font-size: 24rpx; font-weight: 600; }
+.order-item { display: flex; justify-content: space-between; padding: 8rpx 0; }
+.item-name { font-size: 26rpx; color: #374151; }
+.item-qty { font-size: 24rpx; color: #9ca3af; }
+.order-foot { display: flex; justify-content: space-between; margin-top: 16rpx; padding-top: 16rpx; border-top: 1rpx solid #f3f4f6; }
+.order-addr { font-size: 22rpx; color: #9ca3af; flex: 1; }
+.order-total { font-size: 28rpx; font-weight: bold; color: #ef4444; }
+.order-actions { display: flex; justify-content: flex-end; margin-top: 16rpx; }
+.btn-ship { background: #16a34a; color: #fff; border: none; border-radius: 100rpx; font-size: 26rpx; padding: 0 48rpx; height: 72rpx; line-height: 72rpx; }
+.empty-hint { display: block; text-align: center; font-size: 28rpx; color: #d1d5db; padding: 80rpx 0; }
+
+/* 商品管理 */
+.btn-add-product { background: #16a34a; color: #fff; border: none; border-radius: 16rpx; margin-bottom: 20rpx; font-size: 26rpx; height: 80rpx; }
+.product-card { background: #fff; border-radius: 20rpx; padding: 24rpx; margin-bottom: 16rpx; display: flex; align-items: center; gap: 20rpx; }
+.p-off { opacity: 0.6; }
+.product-info { flex: 1; }
+.product-name { font-size: 26rpx; color: #1f2937; font-weight: 600; display: block; margin-bottom: 12rpx; }
+.product-meta { display: flex; gap: 20rpx; align-items: center; }
+.product-price { font-size: 28rpx; color: #ef4444; font-weight: bold; }
+.product-stock { font-size: 22rpx; color: #9ca3af; }
+.product-sold { font-size: 22rpx; color: #9ca3af; }
+.product-actions { display: flex; flex-direction: column; align-items: center; gap: 12rpx; }
+.toggle { border-radius: 100rpx; padding: 8rpx 20rpx; font-size: 22rpx; }
+.toggle-on { background: #dcfce7; color: #16a34a; }
+.toggle-off { background: #f3f4f6; color: #9ca3af; }
+.toggle-text { font-size: 22rpx; }
+.edit-btn { font-size: 22rpx; color: #6b7280; }
+
+/* 创业申请 */
+.app-card { background: #fff; border-radius: 20rpx; padding: 24rpx; margin-bottom: 16rpx; }
+.app-head { display: flex; align-items: center; gap: 20rpx; margin-bottom: 16rpx; }
+.app-avatar { width: 72rpx; height: 72rpx; background: #dcfce7; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32rpx; font-weight: bold; color: #16a34a; flex-shrink: 0; }
+.app-person { flex: 1; }
+.app-name { font-size: 28rpx; font-weight: 600; color: #1f2937; display: block; margin-bottom: 4rpx; }
+.app-phone { font-size: 22rpx; color: #9ca3af; display: block; }
+.app-badge { padding: 6rpx 16rpx; border-radius: 100rpx; font-size: 22rpx; }
+.badge-pending { background: #fef3c7; color: #d97706; }
+.badge-approved { background: #dcfce7; color: #16a34a; }
+.badge-rejected { background: #fee2e2; color: #ef4444; }
+.app-date { font-size: 22rpx; color: #9ca3af; display: block; margin-bottom: 12rpx; }
+.app-reason { font-size: 26rpx; color: #374151; display: block; line-height: 1.6; background: #f9fafb; border-radius: 12rpx; padding: 16rpx; margin-bottom: 20rpx; }
+.app-actions { display: flex; gap: 16rpx; justify-content: flex-end; }
+.btn-reject { background: #fff; color: #ef4444; border: 2rpx solid #fecaca; border-radius: 100rpx; font-size: 26rpx; flex: 1; height: 72rpx; line-height: 72rpx; }
+.btn-approve { background: #16a34a; color: #fff; border: none; border-radius: 100rpx; font-size: 26rpx; flex: 2; height: 72rpx; line-height: 72rpx; }
+
+/* 发布表单（就业招工 / 村务公开）*/
+.tab-content-scroll { height: calc(100vh - 240rpx); }
+.form-card { background: #fff; border-radius: 20rpx; padding: 28rpx; margin: 20rpx 24rpx; }
+.form-title { font-size: 28rpx; font-weight: bold; color: #1f2937; display: block; margin-bottom: 10rpx; }
+.form-hint { font-size: 22rpx; color: #2563eb; background: #eff6ff; border-radius: 12rpx; padding: 14rpx 16rpx; display: block; line-height: 1.5; margin-bottom: 20rpx; }
+.form-label { font-size: 24rpx; color: #6b7280; display: block; margin: 16rpx 0 8rpx; }
+.form-input { background: #f9fafb; border: 1rpx solid #e5e7eb; border-radius: 12rpx; padding: 0 20rpx; height: 76rpx; font-size: 26rpx; color: #1f2937; }
+.form-picker { background: #f9fafb; border: 1rpx solid #e5e7eb; border-radius: 12rpx; padding: 0 20rpx; height: 76rpx; display: flex; align-items: center; justify-content: space-between; font-size: 26rpx; color: #1f2937; }
+.picker-arrow { color: #9ca3af; font-size: 24rpx; }
+.form-row { display: flex; gap: 20rpx; }
+.form-col { flex: 1; }
+.form-submit { background: #16a34a; color: #fff; border: none; border-radius: 16rpx; font-size: 28rpx; height: 84rpx; line-height: 84rpx; margin-top: 28rpx; }
+
+/* 发布 / 编辑商品 底部弹窗 */
+.ps-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(0,0,0,.5); z-index: 100; display: flex; align-items: flex-end; }
+.ps-sheet { width: 100%; background: #fff; border-radius: 28rpx 28rpx 0 0; box-sizing: border-box; max-height: 82vh; display: flex; flex-direction: column; }
+.ps-head { display: flex; align-items: center; justify-content: space-between; padding: 32rpx 32rpx 20rpx; border-bottom: 1rpx solid #f3f4f6; }
+.ps-title { font-size: 32rpx; font-weight: 800; color: #1f2937; }
+.ps-close { font-size: 30rpx; color: #9ca3af; padding: 0 8rpx; }
+.ps-body { padding: 8rpx 32rpx 32rpx; overflow-y: auto; }
+.ps-cats { display: flex; flex-wrap: wrap; gap: 16rpx; margin-top: 8rpx; }
+.ps-cat { border: 1rpx solid #e5e7eb; border-radius: 100rpx; padding: 12rpx 28rpx; background: #f9fafb; }
+.ps-cat-on { background: #dcfce7; border-color: #16a34a; }
+.ps-cat-t { font-size: 24rpx; color: #6b7280; }
+.ps-cat-on .ps-cat-t { color: #16a34a; font-weight: 600; }
+
+/* 管理列表行 */
+.list-title { font-size: 26rpx; font-weight: bold; color: #1f2937; display: block; margin: 8rpx 24rpx 16rpx; }
+.manage-row { background: #fff; border-radius: 16rpx; padding: 24rpx; margin: 0 24rpx 12rpx; display: flex; align-items: center; gap: 16rpx; }
+.manage-info { flex: 1; }
+.manage-name { font-size: 26rpx; font-weight: 600; color: #1f2937; display: block; margin-bottom: 6rpx; line-height: 1.4; }
+.manage-sub { font-size: 22rpx; color: #9ca3af; display: block; }
+.manage-del { font-size: 22rpx; color: #ef4444; border: 1rpx solid #fecaca; border-radius: 100rpx; padding: 8rpx 24rpx; flex-shrink: 0; }
+
+/* 🗂️ 管理功能 导航网格 */
+.mgmt-card { background: #fff; border-radius: 20rpx; padding: 28rpx; margin-bottom: 20rpx; }
+.mgmt-title { font-size: 26rpx; font-weight: bold; color: #1f2937; display: block; margin-bottom: 20rpx; }
+.mgmt-grid { display: flex; flex-wrap: wrap; }
+.mgmt-item { width: 25%; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; padding: 16rpx 6rpx; border-radius: 16rpx; }
+.mgmt-item:active { background: #f3f4f6; }
+.mgmt-icon { width: 84rpx; height: 84rpx; border-radius: 24rpx; background: #dcfce7; display: flex; align-items: center; justify-content: center; font-size: 42rpx; margin-bottom: 12rpx; }
+.mgmt-label { font-size: 22rpx; color: #374151; text-align: center; line-height: 1.3; }
+
+/* 六级角色与权限设置 */
+.role-setting-head { display: flex; align-items: center; justify-content: space-between; padding: 22rpx; border-radius: 18rpx; color: #fff; background: linear-gradient(135deg,#064e3b,#0f766e); }.role-setting-title { display: block; font-size: 29rpx; font-weight: 900; }.role-setting-sub { display: block; margin-top: 5rpx; color: #d1fae5; font-size: 20rpx; }.role-mode { padding: 7rpx 12rpx; border-radius: 100rpx; background: rgba(255,255,255,.16); font-size: 18rpx; }
+.role-level-scroll { margin: 15rpx 0; white-space: nowrap; }.role-levels { display: flex; gap: 9rpx; }.role-levels > view { min-width: 94rpx; padding: 13rpx 7rpx; border-radius: 13rpx; background: #fff; text-align: center; color: #64748b; }.role-levels text:first-child { display: block; font-size: 28rpx; }.role-levels text:last-child { display: block; margin-top: 5rpx; font-size: 18rpx; }.role-levels > view.on { color: #065f46; background: #d1fae5; box-shadow: inset 0 0 0 2rpx #34d399; }
+.selected-role-card { padding: 24rpx; border-radius: 19rpx; background: #fff; }.selected-role-top { display: flex; align-items: center; gap: 15rpx; }.selected-role-icon { width: 66rpx; height: 66rpx; border-radius: 17rpx; background: #ecfdf5; line-height: 66rpx; text-align: center; font-size: 34rpx; }.selected-role-name { display: block; font-size: 28rpx; font-weight: 900; }.selected-role-level { display: block; margin-top: 4rpx; color: #64748b; font-size: 20rpx; }.selected-role-desc { display: block; margin-top: 17rpx; color: #334155; font-size: 22rpx; line-height: 1.5; }.role-scope { display: flex; justify-content: space-between; margin-top: 15rpx; padding: 13rpx; border-radius: 11rpx; color: #92400e; background: #fffbeb; font-size: 20rpx; }.role-block-title { display: block; margin: 18rpx 0 9rpx; color: #334155; font-size: 21rpx; font-weight: 900; }.admin-role-chips { display: flex; flex-wrap: wrap; gap: 8rpx; }.admin-role-chips > text { padding: 8rpx 13rpx; border-radius: 100rpx; color: #1d4ed8; background: #eff6ff; font-size: 19rpx; }.admin-permission-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8rpx; }.admin-permission-grid > view { display: flex; align-items: center; gap: 8rpx; padding: 11rpx; border-radius: 10rpx; background: #f8fafc; font-size: 19rpx; }.admin-permission-grid > view text:first-child { color: #10b981; font-weight: 900; }
+.role-actions-card { margin-top: 14rpx; border-radius: 18rpx; background: #fff; overflow: hidden; }.role-actions-card > view { display: flex; align-items: center; gap: 13rpx; min-height: 88rpx; padding: 0 19rpx; border-bottom: 1rpx solid #eef2f7; }.role-actions-card > view:last-child { border-bottom: 0; }.role-actions-card > view > text:first-child { width: 45rpx; font-size: 28rpx; }.role-actions-card > view > view { flex: 1; }.role-actions-card > view > view text:first-child { display: block; font-size: 22rpx; font-weight: 800; }.role-actions-card > view > view text:last-child { display: block; margin-top: 4rpx; color: #94a3b8; font-size: 18rpx; }.role-actions-card > view > text:last-child { color: #94a3b8; font-size: 31rpx; }.role-demo-tip { margin-top: 13rpx; padding: 15rpx; border-radius: 12rpx; color: #9a3412; background: #fff7ed; font-size: 19rpx; line-height: 1.5; }

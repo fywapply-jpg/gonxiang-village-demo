@@ -1,0 +1,17 @@
+.page { height: 100vh; display: flex; flex-direction: column; background: #eef1f4; color: #111827; }
+.head { margin: 20rpx 24rpx 4rpx; padding: 28rpx; background: #fff; border-radius: 18rpx; border-top: 8rpx solid; box-shadow: 0 4rpx 16rpx rgba(15,23,42,.06); }
+.head-title { display: block; font-size: 38rpx; font-weight: 900; }
+.head-summary { display: block; margin-top: 10rpx; color: #64748b; font-size: 23rpx; line-height: 1.55; }
+.body { flex: 1; }
+.group { margin: 20rpx 24rpx 0; }
+.group-head { display: flex; align-items: baseline; justify-content: space-between; padding: 0 4rpx 12rpx; }
+.group-title { font-size: 28rpx; font-weight: 800; }
+.group-slogan { font-size: 20rpx; color: #94a3b8; }
+.rows { overflow: hidden; background: #fff; border-radius: 18rpx; }
+.row { min-height: 86rpx; display: flex; align-items: center; padding: 0 24rpx; border-bottom: 1rpx solid #edf0f3; }
+.row:last-child { border-bottom: 0; }
+.row-icon { width: 58rpx; height: 58rpx; display: flex; align-items: center; justify-content: center; border-radius: 14rpx; margin-right: 18rpx; font-size: 29rpx; }
+.row-name { flex: 1; font-size: 25rpx; color: #263244; }
+.row-arrow { color: #94a3b8; font-size: 34rpx; }
+.tip { margin: 22rpx 24rpx 0; padding: 18rpx 22rpx; color: #64748b; background: #e2e8f0; border-radius: 14rpx; font-size: 20rpx; line-height: 1.5; }
+.space { height: 50rpx; }

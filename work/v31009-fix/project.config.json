@@ -1,0 +1,70 @@
+{
+  "miniprogramRoot": "dist/",
+  "cloudfunctionRoot": "cloudfunctions/",
+  "projectname": "gonxiang-miniapp",
+  "description": "供享村社小程序",
+  "appid": "wxcb4fe0515e5fa25e",
+  "setting": {
+    "urlCheck": false,
+    "es6": false,
+    "enhance": false,
+    "postcss": false,
+    "preloadBackgroundData": false,
+    "minified": false,
+    "newFeature": true,
+    "coverView": true,
+    "nodeModules": false,
+    "autoAudits": false,
+    "showShadowRootInWxmlPanel": true,
+    "scopeDataCheck": false,
+    "uglifyFileName": false,
+    "checkInvalidKey": true,
+    "checkSiteMap": true,
+    "uploadWithSourceMap": true,
+    "compileHotReLoad": false,
+    "useMultiFrameRuntime": true,
+    "useApiHook": true,
+    "useApiHostProcess": true,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    },
+    "enableEngineNative": false,
+    "useIsolateContext": false,
+    "userConfirmedBundleSwitch": false,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "minifyWXSS": true,
+    "disableUseStrict": false,
+    "minifyWXML": false,
+    "showES6CompileOption": false,
+    "useCompilerPlugins": false,
+    "compileWorklet": false,
+    "localPlugins": false,
+    "condition": false,
+    "swc": false,
+    "disableSWC": true
+  },
+  "compileType": "miniprogram",
+  "libVersion": "3.16.1",
+  "srcMiniprogramRoot": "dist/",
+  "condition": {
+    "miniprogram": {
+      "list": [
+        {
+          "name": "基金会专项版",
+          "pathName": "pkgLife/charity/index",
+          "query": "org=foundation",
+          "scene": null
+        }
+      ]
+    }
+  },
+  "simulatorPluginLibVersion": {},
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  },
+  "editorSetting": {}
+}

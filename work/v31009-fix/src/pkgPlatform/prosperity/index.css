@@ -1,0 +1,249 @@
+/* 全民共富分配机制 —— 暖金 / 丰收主题 */
+.page { height: 100vh; box-sizing: border-box; }
+.bg {
+  min-height: 100vh; box-sizing: border-box;
+  padding: 0 0 80rpx;
+  background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%);
+}
+
+/* HERO */
+.hero {
+  text-align: center;
+  padding: 56rpx 32rpx 40rpx;
+  background: linear-gradient(135deg, #b45309 0%, #d97706 55%, #f59e0b 100%);
+  border-bottom-left-radius: 32rpx; border-bottom-right-radius: 32rpx;
+  box-shadow: 0 8rpx 28rpx rgba(180, 83, 9, .28);
+}
+.hero-t { font-size: 46rpx; font-weight: 800; color: #fff; letter-spacing: 2rpx; text-shadow: 0 2rpx 12rpx rgba(120, 53, 15, .35); }
+.hero-s { display: block; font-size: 23rpx; color: #fef3c7; margin-top: 16rpx; line-height: 1.6; letter-spacing: 1rpx; }
+.badges { display: flex; justify-content: center; flex-wrap: wrap; gap: 12rpx; margin-top: 26rpx; }
+.badge { background: rgba(255,255,255,.22); border: 1rpx solid rgba(255,255,255,.55); border-radius: 100rpx; padding: 9rpx 22rpx; }
+.badge-t { font-size: 20rpx; color: #fff; font-weight: 700; }
+
+/* section 通用 */
+.sec { margin: 26rpx 24rpx 0; background: #fff; border: 1rpx solid #fde68a; border-radius: 24rpx; padding: 28rpx 24rpx; box-shadow: 0 4rpx 18rpx rgba(180,83,9,.06); }
+.sec-star { border: 2rpx solid #f59e0b; box-shadow: 0 6rpx 24rpx rgba(217,119,6,.16); }
+.sec-h { display: flex; align-items: center; }
+.sec-no { width: 52rpx; height: 52rpx; border-radius: 14rpx; background: linear-gradient(135deg,#d97706,#f59e0b); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-right: 16rpx; box-shadow: 0 3rpx 10rpx rgba(217,119,6,.35); }
+.sec-no-star { background: linear-gradient(135deg,#b45309,#f59e0b); }
+.sec-no-t { color: #fff; font-size: 30rpx; font-weight: 800; }
+.sec-t { flex: 1; font-size: 32rpx; font-weight: 800; color: #7c2d12; }
+.sec-law { font-size: 19rpx; color: #b45309; background: #fffbeb; border: 1rpx solid #fde68a; border-radius: 100rpx; padding: 5rpx 16rpx; }
+
+.sub-lbl { display: block; font-size: 24rpx; font-weight: 800; color: #b45309; margin: 24rpx 2rpx 14rpx; padding-left: 16rpx; border-left: 6rpx solid #f59e0b; }
+
+/* 通用卡片 */
+.card { background: #fffbeb; border: 1rpx solid #fde68a; border-radius: 18rpx; padding: 24rpx; margin-top: 18rpx; }
+.card-t { font-size: 27rpx; font-weight: 800; color: #7c2d12; }
+.card-d { display: block; font-size: 22rpx; color: #57534e; line-height: 1.7; margin-top: 12rpx; }
+.card-foot { display: block; font-size: 20rpx; color: #a8a29e; line-height: 1.6; margin-top: 12rpx; }
+.em { color: #b45309; font-weight: 800; }
+
+/* ① 成员卡 */
+.mems { display: flex; flex-direction: column; gap: 16rpx; margin-top: 20rpx; }
+.mem { background: #fffbeb; border: 1rpx solid #fde68a; border-left: 6rpx solid #d97706; border-radius: 16rpx; padding: 22rpx; }
+.mem-hl { background: linear-gradient(135deg,#fff7ed,#fef3c7); border: 2rpx solid #f59e0b; border-left: 8rpx solid #b45309; box-shadow: 0 4rpx 16rpx rgba(217,119,6,.14); }
+.mem-h { display: flex; align-items: center; }
+.mem-i { font-size: 40rpx; margin-right: 16rpx; }
+.mem-hb { flex: 1; }
+.mem-t { font-size: 28rpx; font-weight: 800; color: #7c2d12; }
+.mem-tag { display: inline-block; margin-top: 6rpx; font-size: 19rpx; color: #b45309; background: #fff; border: 1rpx solid #fde68a; border-radius: 100rpx; padding: 3rpx 14rpx; }
+.mem-tag-hl { color: #fff; background: #b45309; border-color: #b45309; }
+.mem-d { display: block; font-size: 21rpx; color: #57534e; line-height: 1.7; margin-top: 14rpx; }
+
+/* 村集体持股确权 · 权重条 */
+.wcard { margin-top: 20rpx; background: #fff7ed; border: 1rpx dashed #fdba74; border-radius: 18rpx; padding: 24rpx; }
+.wcard-t { font-size: 26rpx; font-weight: 800; color: #7c2d12; }
+.wcard-s { display: block; font-size: 20rpx; color: #b45309; margin-top: 6rpx; }
+.wrow { margin-top: 18rpx; }
+.wrow-h { display: flex; align-items: center; justify-content: space-between; }
+.wlbl { flex: 1; font-size: 21rpx; color: #57534e; padding-right: 14rpx; line-height: 1.5; }
+.wpct { font-size: 26rpx; font-weight: 800; color: #d97706; flex-shrink: 0; }
+.wtrack { height: 18rpx; background: #fde68a; border-radius: 100rpx; margin-top: 10rpx; overflow: hidden; }
+.wfill { height: 100%; background: linear-gradient(90deg,#f59e0b,#d97706); border-radius: 100rpx; }
+.wfoot { display: block; font-size: 19rpx; color: #a8a29e; line-height: 1.6; margin-top: 18rpx; }
+
+/* ② 贡献值 banner */
+.banner { margin-top: 20rpx; background: linear-gradient(135deg,#b45309,#d97706); border-radius: 18rpx; padding: 24rpx; text-align: center; box-shadow: 0 6rpx 20rpx rgba(180,83,9,.24); }
+.banner-t { font-size: 30rpx; font-weight: 800; color: #fff; }
+.banner-s { display: block; font-size: 20rpx; color: #fef3c7; margin-top: 8rpx; }
+
+/* 四类获取 2×2 */
+.grid2 { display: flex; flex-wrap: wrap; gap: 16rpx; }
+.ecard { width: calc(50% - 8rpx); box-sizing: border-box; background: #fffbeb; border: 1rpx solid #fde68a; border-radius: 16rpx; padding: 20rpx 18rpx; }
+.ecard-i { font-size: 36rpx; }
+.ecard-t { display: block; font-size: 23rpx; font-weight: 800; color: #7c2d12; margin-top: 8rpx; }
+.ecard-d { display: block; font-size: 19rpx; color: #78716c; line-height: 1.6; margin-top: 8rpx; }
+
+/* 五大使用范围 */
+.uses { display: flex; flex-direction: column; gap: 12rpx; }
+.use { display: flex; align-items: flex-start; background: #fffbeb; border: 1rpx solid #fef3c7; border-radius: 14rpx; padding: 18rpx 20rpx; }
+.use-i { font-size: 32rpx; margin-right: 16rpx; }
+.use-b { flex: 1; }
+.use-t { font-size: 24rpx; font-weight: 800; color: #7c2d12; }
+.use-d { display: block; font-size: 20rpx; color: #78716c; line-height: 1.6; margin-top: 4rpx; }
+
+/* ③ 计算器 */
+.calc-intro { display: block; font-size: 22rpx; color: #57534e; line-height: 1.7; margin-top: 18rpx; }
+.calc { margin-top: 20rpx; background: linear-gradient(180deg,#fffdf7,#fff7ed); border: 1rpx solid #fdba74; border-radius: 20rpx; padding: 24rpx; }
+.calc-lbl { display: block; font-size: 22rpx; font-weight: 800; color: #92400e; margin: 20rpx 0 12rpx; }
+.presets { display: flex; gap: 12rpx; }
+.preset { flex: 1; text-align: center; background: #fff; border: 1rpx solid #fde68a; border-radius: 12rpx; padding: 16rpx 0; }
+.preset-t { font-size: 24rpx; font-weight: 700; color: #92400e; }
+.preset-on { background: linear-gradient(135deg,#d97706,#f59e0b); border-color: #d97706; box-shadow: 0 4rpx 12rpx rgba(217,119,6,.3); }
+.preset-on .preset-t { color: #fff; }
+
+/* 瀑布 */
+.wf { margin-top: 22rpx; background: #fff; border: 1rpx solid #fef3c7; border-radius: 14rpx; padding: 20rpx; }
+.wf-row { margin-top: 16rpx; }
+.wf-row:first-child { margin-top: 0; }
+.wf-top { display: flex; align-items: center; justify-content: space-between; }
+.wf-lbl { font-size: 21rpx; color: #57534e; }
+.wf-amt { font-size: 24rpx; font-weight: 700; color: #44403c; }
+.wf-minus { color: #a16207; }
+.wf-track { height: 16rpx; background: #f5f0e6; border-radius: 100rpx; margin-top: 8rpx; overflow: hidden; }
+.wf-fill { height: 100%; border-radius: 100rpx; }
+.wf-recv { background: #d6b48a; }
+.wf-cost { background: #c8a06a; }
+.wf-margin { background: linear-gradient(90deg,#f59e0b,#d97706); }
+.wf-gross { margin-top: 18rpx; padding-top: 16rpx; border-top: 1rpx dashed #fdba74; }
+.wf-lbl-g { font-size: 24rpx; font-weight: 800; color: #7c2d12; }
+.wf-amt-g { font-size: 28rpx; font-weight: 800; color: #b45309; }
+
+/* 四大前置基金条 */
+.fbars { display: flex; flex-direction: column; gap: 16rpx; }
+.fbar { background: #fff; border: 1rpx solid #fde68a; border-radius: 14rpx; padding: 18rpx 20rpx; }
+.fbar-h { display: flex; align-items: center; justify-content: space-between; }
+.fbar-name { font-size: 23rpx; font-weight: 700; color: #44403c; }
+.fbar-pct { font-size: 20rpx; color: #d97706; font-weight: 800; }
+.fbar-amt { font-size: 25rpx; font-weight: 800; color: #b45309; }
+.ftrack { height: 16rpx; background: #f5f0e6; border-radius: 100rpx; margin-top: 10rpx; overflow: hidden; }
+.ffill { height: 100%; background: linear-gradient(90deg,#f59e0b,#d97706); border-radius: 100rpx; }
+.fbar-desc { display: block; font-size: 19rpx; color: #a8a29e; line-height: 1.55; margin-top: 10rpx; }
+
+/* 前置合计 / 平台利润 */
+.calc-sum { display: flex; align-items: center; justify-content: space-between; margin-top: 18rpx; background: #fef3c7; border: 1rpx solid #fcd34d; border-radius: 12rpx; padding: 16rpx 22rpx; }
+.calc-sum-l { font-size: 23rpx; font-weight: 800; color: #92400e; }
+.calc-sum-r { font-size: 23rpx; font-weight: 800; color: #b45309; }
+.calc-profit { margin-top: 16rpx; background: linear-gradient(135deg,#b45309,#d97706); border-radius: 16rpx; padding: 22rpx; box-shadow: 0 6rpx 20rpx rgba(180,83,9,.26); }
+.cp-h { display: flex; align-items: center; justify-content: space-between; }
+.cp-l { font-size: 24rpx; font-weight: 800; color: #fff; }
+.cp-r { font-size: 34rpx; font-weight: 800; color: #fff; }
+.cp-s { display: block; font-size: 19rpx; color: #fef3c7; margin-top: 6rpx; }
+.cp-track { height: 18rpx; background: rgba(255,255,255,.28); border-radius: 100rpx; margin-top: 14rpx; overflow: hidden; }
+.cp-fill { height: 100%; background: #fff; border-radius: 100rpx; }
+.calc-note { display: block; font-size: 19rpx; color: #a8a29e; margin-top: 16rpx; text-align: center; }
+
+/* 生产端 · 点列表 */
+.pt { display: flex; align-items: flex-start; margin-top: 14rpx; }
+.pt-dot { color: #d97706; font-size: 26rpx; font-weight: 800; margin-right: 12rpx; line-height: 1.5; }
+.pt-x { flex: 1; font-size: 21rpx; color: #57534e; line-height: 1.7; }
+.pt-t { font-weight: 800; color: #7c2d12; }
+
+/* ④ 核算顺序 */
+.order { display: flex; flex-wrap: wrap; align-items: center; }
+.order-item { display: flex; align-items: center; }
+.order-chip { display: flex; align-items: center; background: #fffbeb; border: 1rpx solid #fde68a; border-radius: 100rpx; padding: 10rpx 18rpx; margin: 6rpx 0; }
+.order-no { width: 30rpx; height: 30rpx; border-radius: 50%; background: #d97706; color: #fff; font-size: 19rpx; font-weight: 800; text-align: center; line-height: 30rpx; margin-right: 10rpx; }
+.order-t { font-size: 21rpx; font-weight: 700; color: #7c2d12; }
+.order-arr { color: #d97706; font-size: 24rpx; margin: 0 8rpx; }
+
+/* 分红红线 */
+.redline { margin-top: 20rpx; background: #fef2f2; border: 1rpx solid #fca5a5; border-left: 8rpx solid #dc2626; border-radius: 14rpx; padding: 20rpx 22rpx; }
+.redline-t { font-size: 25rpx; font-weight: 800; color: #b91c1c; }
+.redline-d { display: block; font-size: 21rpx; color: #7f1d1d; line-height: 1.7; margin-top: 10rpx; }
+
+/* 四池分红 */
+.pools { display: flex; flex-direction: column; gap: 16rpx; }
+.pool { background: #fffbeb; border: 1rpx solid #fde68a; border-radius: 16rpx; padding: 20rpx 22rpx; }
+.pool-h { display: flex; align-items: baseline; justify-content: space-between; }
+.pool-n { font-size: 25rpx; font-weight: 800; color: #7c2d12; }
+.pool-pct { font-size: 32rpx; font-weight: 800; color: #d97706; }
+.ptrack { height: 18rpx; background: #fde68a; border-radius: 100rpx; margin-top: 12rpx; overflow: hidden; }
+.pfill { height: 100%; background: linear-gradient(90deg,#f59e0b,#b45309); border-radius: 100rpx; }
+.pool-d { display: block; font-size: 20rpx; color: #78716c; line-height: 1.65; margin-top: 12rpx; }
+
+/* 执行流程 stepper */
+.flow { display: flex; flex-direction: column; }
+.flow-item { position: relative; display: flex; align-items: flex-start; padding-bottom: 22rpx; }
+.flow-no { width: 46rpx; height: 46rpx; border-radius: 50%; background: linear-gradient(135deg,#d97706,#f59e0b); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-right: 18rpx; z-index: 2; box-shadow: 0 2rpx 8rpx rgba(217,119,6,.3); }
+.flow-no-t { color: #fff; font-size: 23rpx; font-weight: 800; }
+.flow-b { flex: 1; padding-top: 4rpx; }
+.flow-t { font-size: 24rpx; font-weight: 800; color: #7c2d12; }
+.flow-d { display: block; font-size: 20rpx; color: #78716c; line-height: 1.6; margin-top: 4rpx; }
+.flow-line { position: absolute; left: 22rpx; top: 46rpx; bottom: 0; width: 3rpx; background: #fcd34d; z-index: 1; }
+
+/* ⑥ 模块卡 */
+.mods { display: flex; flex-direction: column; gap: 14rpx; }
+.mod { display: flex; align-items: flex-start; background: #fffbeb; border: 1rpx solid #fde68a; border-radius: 14rpx; padding: 20rpx; }
+.mod-i { font-size: 34rpx; margin-right: 16rpx; }
+.mod-b { flex: 1; }
+.mod-t { font-size: 24rpx; font-weight: 800; color: #7c2d12; }
+.mod-d { display: block; font-size: 20rpx; color: #78716c; line-height: 1.65; margin-top: 6rpx; }
+
+/* 三级公示 */
+.discs { display: flex; gap: 12rpx; }
+.disc { flex: 1; background: #fffbeb; border: 1rpx solid #fde68a; border-radius: 14rpx; padding: 20rpx 14rpx; text-align: center; }
+.disc-i { font-size: 34rpx; }
+.disc-t { display: block; font-size: 22rpx; font-weight: 800; color: #7c2d12; margin-top: 8rpx; }
+.disc-d { display: block; font-size: 18rpx; color: #78716c; line-height: 1.55; margin-top: 8rpx; }
+
+/* ⑦ 三级监督 */
+.sups { display: flex; flex-direction: column; gap: 14rpx; }
+.sup { display: flex; align-items: flex-start; background: #fffbeb; border: 1rpx solid #fde68a; border-radius: 14rpx; padding: 20rpx; }
+.sup-i { font-size: 32rpx; margin-right: 16rpx; }
+.sup-b { flex: 1; }
+.sup-t { font-size: 24rpx; font-weight: 800; color: #7c2d12; }
+.sup-d { display: block; font-size: 20rpx; color: #78716c; line-height: 1.65; margin-top: 6rpx; }
+
+/* kv 行 */
+.kv { display: flex; align-items: flex-start; margin-top: 12rpx; }
+.kv-k { flex-shrink: 0; width: 74rpx; font-size: 21rpx; font-weight: 800; color: #b45309; }
+.kv-v { flex: 1; font-size: 21rpx; color: #57534e; line-height: 1.7; }
+
+/* 底部说明 */
+.foot { display: block; font-size: 19rpx; color: #a8a29e; line-height: 1.7; margin: 30rpx 32rpx 0; text-align: center; }
+
+/* ===== HERO 补充：一体化主线标语 ===== */
+.hero-tag { display: inline-block; font-size: 21rpx; color: #fff7ed; font-weight: 700; margin-top: 16rpx; padding: 8rpx 24rpx; background: rgba(255,255,255,.16); border: 1rpx solid rgba(255,255,255,.5); border-radius: 100rpx; letter-spacing: .5rpx; }
+
+/* ===== [NEW-A] 共富一体化闭环 · 总览 banner（无编号） ===== */
+.loop { margin: 26rpx 24rpx 0; background: linear-gradient(135deg,#fff7ed,#fef3c7); border: 2rpx solid #f59e0b; border-radius: 24rpx; padding: 26rpx 24rpx; box-shadow: 0 6rpx 22rpx rgba(217,119,6,.14); }
+.loop-t { display: block; font-size: 30rpx; font-weight: 800; color: #7c2d12; text-align: center; }
+.loop-nodes { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; margin-top: 20rpx; }
+.loop-item { display: flex; align-items: center; }
+.loop-node { background: #fff; border: 1rpx solid #fcd34d; border-radius: 100rpx; padding: 10rpx 20rpx; margin: 6rpx 0; box-shadow: 0 2rpx 8rpx rgba(217,119,6,.12); }
+.loop-node-t { font-size: 21rpx; font-weight: 800; color: #b45309; }
+.loop-arr { color: #d97706; font-size: 26rpx; font-weight: 800; margin: 0 8rpx; }
+.loop-arr-back { color: #f59e0b; }
+.loop-cap { display: block; font-size: 20rpx; color: #78716c; line-height: 1.7; margin-top: 18rpx; }
+
+/* ===== [NEW-C] section 引言 + 贡献值四闭环 ===== */
+.sec-lead { display: block; font-size: 21rpx; color: #57534e; line-height: 1.7; margin-top: 16rpx; padding: 16rpx 18rpx; background: #fffbeb; border: 1rpx dashed #fdba74; border-radius: 14rpx; }
+.loop4 { display: flex; flex-direction: column; gap: 14rpx; }
+.l4 { background: #fffbeb; border: 1rpx solid #fde68a; border-left: 6rpx solid #d97706; border-radius: 16rpx; padding: 20rpx; }
+.l4-t { display: block; font-size: 24rpx; font-weight: 800; color: #7c2d12; }
+.l4-chips { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 12rpx; }
+.l4-chip { font-size: 18rpx; font-weight: 700; color: #b45309; background: #fff; border: 1rpx solid #fde68a; border-radius: 100rpx; padding: 5rpx 14rpx; }
+.l4-d { display: block; font-size: 20rpx; color: #57534e; line-height: 1.7; margin-top: 12rpx; }
+.l4-foot { display: block; font-size: 19rpx; color: #a8a29e; line-height: 1.6; margin-top: 10rpx; }
+
+/* ===== [NEW-B] ③ 平台增收引擎矩阵 ===== */
+.engs { display: flex; flex-direction: column; gap: 14rpx; margin-top: 20rpx; }
+.eng { background: #fffbeb; border: 1rpx solid #fde68a; border-left: 6rpx solid #d97706; border-radius: 16rpx; padding: 20rpx; }
+.eng-top { display: flex; align-items: center; justify-content: space-between; }
+.eng-name { flex: 1; font-size: 25rpx; font-weight: 800; color: #7c2d12; padding-right: 12rpx; }
+.eng-arrive { flex-shrink: 0; font-size: 18rpx; font-weight: 800; color: #fff; background: linear-gradient(135deg,#d97706,#f59e0b); border-radius: 100rpx; padding: 6rpx 16rpx; }
+.eng-way { display: block; font-size: 21rpx; color: #57534e; line-height: 1.6; margin-top: 10rpx; }
+.eng-meta { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 12rpx; }
+.eng-chip { font-size: 18rpx; font-weight: 700; border-radius: 100rpx; padding: 5rpx 14rpx; }
+.eng-who { color: #92400e; background: #fff7ed; border: 1rpx solid #fde68a; }
+.eng-link { color: #b45309; background: #fef3c7; border: 1rpx solid #fcd34d; }
+.eng-foot { display: block; font-size: 20rpx; color: #a8a29e; line-height: 1.65; margin-top: 16rpx; }
+
+/* ===== [NEW-D] ⑦ 共富分配六项规范红线 ===== */
+.rls { display: flex; flex-direction: column; gap: 12rpx; margin-top: 20rpx; }
+.rl { display: flex; align-items: center; background: #fffbeb; border: 1rpx solid #fde68a; border-left: 6rpx solid #d97706; border-radius: 14rpx; padding: 18rpx 20rpx; }
+.rl-no { width: 40rpx; height: 40rpx; border-radius: 50%; background: linear-gradient(135deg,#b45309,#f59e0b); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-right: 16rpx; box-shadow: 0 2rpx 8rpx rgba(180,83,9,.28); }
+.rl-no-t { color: #fff; font-size: 21rpx; font-weight: 800; }
+.rl-t { flex: 1; font-size: 22rpx; font-weight: 700; color: #7c2d12; line-height: 1.5; }

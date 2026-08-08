@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>供享村社 · 共富专题（利益共同体 / 共富分配 / 支付结算 / 盈亏测算）</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{min-height:100vh;background:radial-gradient(circle at 50% 16%,#fff7ed 0%,#f59e0b 46%,#9a3412 100%);display:flex;align-items:center;justify-content:center;gap:48px;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;flex-wrap:wrap;padding:28px 20px;}
+  .phone{width:390px;height:844px;max-height:94vh;background:#111;border-radius:46px;padding:13px;box-shadow:0 26px 70px rgba(0,0,0,.45);flex-shrink:0;display:flex;flex-direction:column;}
+  .statusbar{height:40px;background:#fff7ed;border-radius:33px 33px 0 0;flex-shrink:0;position:relative;}
+  .statusbar .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:150px;height:26px;background:#111;border-radius:0 0 18px 18px;}
+  .phone iframe{width:100%;flex:1;border:none;border-radius:0 0 34px 34px;background:#fff7ed;display:block;}
+  .side{width:340px;max-width:93vw;color:#fff;}
+  .logo{font-size:26px;font-weight:900;}
+  .sub{font-size:13.5px;color:#ffedd5;margin:8px 0 18px;line-height:1.7;}
+  .jump{display:flex;flex-direction:column;gap:11px;}
+  .jump button{display:flex;align-items:flex-start;gap:12px;padding:15px 16px;border-radius:15px;cursor:pointer;background:rgba(255,255,255,.15);color:#fff;border:1.6px solid rgba(255,255,255,.45);text-align:left;transition:.15s;width:100%;}
+  .jump button:hover{background:rgba(255,255,255,.26);}
+  .jump button.on{background:#fff;color:#9a3412;border-color:#fff;}
+  .jump button .em{font-size:24px;line-height:1;margin-top:1px;}
+  .jump button .tt{font-size:16px;font-weight:800;display:block;}
+  .jump button .dd{font-size:12px;font-weight:600;opacity:.82;display:block;margin-top:2px;line-height:1.5;}
+  .jump button .nw{font-size:10px;font-weight:800;background:#dc2626;color:#fff;padding:2px 8px;border-radius:100px;margin-left:6px;vertical-align:2px;}
+  .hint{margin-top:16px;font-size:12.5px;color:#7c2d12;line-height:1.75;background:rgba(255,255,255,.95);border-radius:13px;padding:14px 16px;box-shadow:0 6px 20px rgba(0,0,0,.16);}
+  .hint b{color:#9a3412;}
+  .hint a{color:#9a3412;word-break:break-all;}
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="statusbar"><div class="notch"></div></div>
+    <iframe id="fr" src="app.html#/pkgPlatform/interest-community/index" allow="geolocation"></iframe>
+  </div>
+  <div class="side">
+    <div class="logo">🤝 共富专题</div>
+    <div class="sub">党建引领 · 助农惠民 · 全民共富<br>给领导 / 评审看的四页，点着切换 →</div>
+    <div class="jump">
+      <button class="on" onclick="go(this,'/pkgPlatform/interest-community/index')">
+        <span class="em">🤝</span><span><span class="tt">利益共同体<span class="nw">党建引领</span></span><span class="dd">9 方拧成一股绳 · 每方"出啥力、得啥好"</span></span>
+      </button>
+      <button onclick="go(this,'/pkgPlatform/prosperity/index')">
+        <span class="em">💰</span><span><span class="tt">共富分配机制</span><span class="dd">八大增收引擎 · 即时分账 · 年度分红</span></span>
+      </button>
+      <button onclick="go(this,'/pkgPlatform/settlement/index')">
+        <span class="em">💳</span><span><span class="tt">支付结算系统</span><span class="dd">银行存管 · 智能分账 · T+1 清分</span></span>
+      </button>
+      <button onclick="go(this,'/pkgPlatform/breakeven/index')">
+        <span class="em">📊</span><span><span class="tt">盈亏平衡测算<span class="nw">可拖动</span></span><span class="dd">拖滑块看每月盈亏 + 打平要几个村</span></span>
+      </button>
+    </div>
+    <div class="hint">📱 右侧手机内即真机样子。<b>推荐讲解顺序：利益共同体 → 共富分配 → 支付结算 → 盈亏测算（当场拖给他们看）。</b><br>转发直接打开：<a href="app.html#/pkgPlatform/interest-community/index">app.html#/pkgPlatform/interest-community/index</a></div>
+  </div>
+  <script>
+    function go(btn,url){
+      var fr=document.getElementById('fr');
+      try{
+        if(fr.contentWindow && String(fr.contentWindow.location.href).indexOf('app.html')>=0){ fr.contentWindow.location.hash=url; }
+        else { fr.src='app.html#'+url; }
+      }catch(e){ fr.src='app.html#'+url; }
+      var bs=document.querySelectorAll('.jump button'); for(var k=0;k<bs.length;k++) bs[k].classList.remove('on');
+      btn.classList.add('on');
+    }
+  </script>
+</body>
+</html>

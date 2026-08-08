@@ -1,0 +1,82 @@
+.ma-page { display: flex; flex-direction: column; height: 100vh; background: #f4f6f5; }
+
+/* ── 资产总览 Hero ── */
+.ma-hero { background: linear-gradient(135deg, #15803d 0%, #16a34a 55%, #22c55e 100%); padding: 40rpx 32rpx 34rpx; }
+.ma-hero-top { display: flex; align-items: center; justify-content: space-between; }
+.ma-eyebrow { font-size: 25rpx; color: #dcfce7; font-weight: 600; }
+.ma-level { background: rgba(255,255,255,0.22); border: 1rpx solid rgba(255,255,255,0.5); border-radius: 999rpx; padding: 6rpx 22rpx; }
+.ma-level-t { font-size: 23rpx; color: #fff; }
+.ma-hero-main { display: flex; align-items: baseline; margin-top: 18rpx; }
+.ma-total { font-size: 82rpx; font-weight: 800; color: #fff; line-height: 1; }
+.ma-unit { font-size: 27rpx; color: #eafff0; margin-left: 14rpx; }
+.ma-yuan { display: block; font-size: 24rpx; color: #eafff0; margin-top: 12rpx; }
+.ma-hero-meta { display: flex; align-items: center; flex-wrap: wrap; margin-top: 20rpx; }
+.ma-meta { font-size: 23rpx; color: #f0fff5; }
+.ma-dot { font-size: 23rpx; color: #bbf7d0; margin: 0 12rpx; }
+
+/* ── 滚动区 ── */
+.ma-body { flex: 1; overflow: hidden; }
+.ma-wrap { padding: 24rpx; }
+
+/* ── 统计宫格 ── */
+.ma-tiles { display: flex; flex-wrap: wrap; gap: 16rpx; }
+.ma-tile { flex: 1 1 0; min-width: 0; background: #fff; border-radius: 18rpx; padding: 26rpx 8rpx; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.04); }
+.ma-tiles-2 .ma-tile { flex-basis: 48%; }
+.ma-tiles-3 .ma-tile { flex-basis: 30%; }
+.ma-tile-lg { padding: 34rpx 8rpx; }
+.ma-tile-num { font-size: 40rpx; font-weight: 800; line-height: 1.1; }
+.ma-tile-label { font-size: 21rpx; color: #9ca3af; margin-top: 10rpx; text-align: center; }
+
+/* ── 分区标题 ── */
+.ma-sec { display: flex; align-items: baseline; justify-content: space-between; margin: 30rpx 4rpx 16rpx; }
+.ma-sec-title { font-size: 30rpx; font-weight: 800; color: #1f2937; }
+.ma-sec-sub { font-size: 23rpx; color: #16a34a; }
+
+.ma-note { display: block; font-size: 21rpx; color: #9ca3af; line-height: 1.6; margin: 14rpx 6rpx 0; }
+
+/* ── 通用白卡 ── */
+.ma-card { background: #fff; border-radius: 20rpx; padding: 24rpx; box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.04); }
+
+/* ── 贡献构成条 ── */
+.ma-dim { margin-bottom: 22rpx; }
+.ma-dim:last-child { margin-bottom: 0; }
+.ma-dim-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12rpx; }
+.ma-dim-name { font-size: 26rpx; color: #374151; font-weight: 600; }
+.ma-dim-score { font-size: 25rpx; font-weight: 800; }
+.ma-bar { height: 16rpx; background: #f1f3f2; border-radius: 999rpx; overflow: hidden; }
+.ma-bar-fill { height: 100%; border-radius: 999rpx; min-width: 6rpx; }
+
+/* ── 经营卡（店主 / 村民） ── */
+.ma-biz { border-radius: 20rpx; padding: 26rpx; margin-top: 16rpx; box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.04); }
+.ma-biz-shop { background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 1rpx solid #bfdbfe; }
+.ma-biz-agri { background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 1rpx solid #bbf7d0; }
+.ma-biz-head { display: flex; align-items: center; justify-content: space-between; }
+.ma-biz-title { font-size: 28rpx; font-weight: 800; color: #1f2937; }
+.ma-biz-tag { font-size: 19rpx; color: #92400e; background: #fef3c7; border-radius: 999rpx; padding: 4rpx 14rpx; }
+.ma-biz-grid { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 20rpx; }
+.ma-biz-cell { flex-basis: 22%; flex-grow: 1; background: rgba(255,255,255,0.7); border-radius: 14rpx; padding: 18rpx 6rpx; display: flex; flex-direction: column; align-items: center; }
+.ma-biz-num { font-size: 30rpx; font-weight: 800; color: #1d4ed8; }
+.ma-biz-lbl { font-size: 20rpx; color: #6b7280; margin-top: 6rpx; }
+.ma-biz-desc { display: block; font-size: 23rpx; color: #15803d; line-height: 1.7; margin-top: 14rpx; }
+.ma-biz-btn { margin-top: 20rpx; background: #2563eb; border-radius: 999rpx; padding: 18rpx 0; text-align: center; }
+.ma-biz-btn-green { background: #16a34a; }
+.ma-biz-btn-t { font-size: 25rpx; color: #fff; font-weight: 700; }
+.ma-biz-foot { display: block; font-size: 20rpx; color: #94a3b8; margin-top: 14rpx; }
+
+/* ── 权益 chips ── */
+.ma-chips { display: flex; flex-wrap: wrap; gap: 14rpx; }
+.ma-chip { font-size: 23rpx; color: #15803d; background: #ecfdf5; border: 1rpx solid #bbf7d0; border-radius: 999rpx; padding: 12rpx 24rpx; }
+.ma-chip-hot { color: #b45309; background: #fffbeb; border-color: #fde68a; }
+
+/* ── 近期动态 ── */
+.ma-recs { padding: 4rpx 24rpx; }
+.ma-rec { display: flex; align-items: center; justify-content: space-between; padding: 22rpx 0; border-bottom: 1rpx solid #f3f4f6; }
+.ma-rec:last-child { border-bottom: none; }
+.ma-rec-left { flex: 1; padding-right: 16rpx; }
+.ma-rec-title { font-size: 26rpx; color: #1f2937; }
+.ma-rec-meta { display: block; font-size: 21rpx; color: #9ca3af; margin-top: 8rpx; }
+.ma-rec-val { font-size: 30rpx; font-weight: 800; }
+.ma-empty { display: block; font-size: 23rpx; color: #9ca3af; text-align: center; padding: 30rpx 0; }
+
+.ma-foot { display: block; font-size: 20rpx; color: #b0b6bd; line-height: 1.6; text-align: center; margin-top: 30rpx; padding: 0 20rpx; }
+.ma-tabbar-ph { height: 40rpx; }

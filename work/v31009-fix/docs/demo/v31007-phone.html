@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>供享村社 · v3.1007 手机演示版</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{min-height:100vh;background:radial-gradient(circle at 50% 18%,#f0fdf4 0%,#4ade80 52%,#15803d 100%);display:flex;align-items:center;justify-content:center;gap:50px;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;flex-wrap:wrap;padding:28px 22px;}
+  .phone{width:390px;height:844px;max-height:94vh;background:#111;border-radius:46px;padding:13px;box-shadow:0 26px 70px rgba(0,0,0,.4);position:relative;flex-shrink:0;display:flex;flex-direction:column;}
+  .phone .statusbar{height:40px;background:#eef0f2;border-radius:33px 33px 0 0;flex-shrink:0;position:relative;}
+  .phone .notch{position:absolute;top:13px;left:50%;transform:translateX(-50%);width:150px;height:28px;background:#111;border-radius:0 0 20px 20px;z-index:3;}
+  .phone iframe{width:100%;flex:1;border:none;border-radius:0 0 34px 34px;background:#eef0f2;display:block;}
+  .side{width:340px;max-width:92vw;color:#fff;}
+  .brand-banner{width:100%;border-radius:13px;display:block;margin-bottom:12px;box-shadow:0 8px 22px rgba(0,0,0,.22);}
+  .logo{font-size:29px;font-weight:900;letter-spacing:1px;}
+  .sub{font-size:14px;color:#dcfce7;margin:8px 0 20px;line-height:1.6;}
+  .jump{display:flex;flex-direction:column;gap:9px;margin-bottom:14px;}
+  .jump button{display:flex;align-items:center;gap:11px;padding:13px 16px;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;background:rgba(255,255,255,.16);color:#fff;border:1.6px solid rgba(255,255,255,.5);text-align:left;transition:.15s;width:100%;}
+  .jump button:hover{background:rgba(255,255,255,.26);}
+  .jump button.on{background:#fff;color:#15803d;border-color:#fff;}
+  .jump button .em{font-size:19px;line-height:1;}
+  .jump button .nw{margin-left:auto;font-size:10px;font-weight:800;background:#dc2626;color:#fff;padding:2px 8px;border-radius:100px;}
+  .jump button.on .nw{background:#dc2626;color:#fff;}
+  .full{display:block;text-align:center;margin-bottom:16px;padding:12px;background:rgba(255,255,255,.94);color:#15803d;border-radius:13px;font-weight:800;font-size:14.5px;text-decoration:none;box-shadow:0 6px 18px rgba(0,0,0,.14);}
+  .hint{font-size:12.5px;color:#14532d;line-height:1.75;background:rgba(255,255,255,.92);border-radius:13px;padding:14px 16px;box-shadow:0 6px 18px rgba(0,0,0,.12);}
+  .hint b{color:#15803d;}
+  .hint a{color:#15803d;word-break:break-all;}
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="statusbar"></div>
+    <iframe id="fr" src="app.html#/pages/index/index" allow="geolocation"></iframe>
+  </div>
+  <div class="side">
+    <img class="brand-banner" src="village-banner.jpg" alt="供享村社 · 中国供销合作社">
+    <div class="logo">🌾 供享村社</div>
+    <div class="sub">v3.1007 手机演示版<br>城乡数字供销共富平台</div>
+    <div class="jump">
+      <button class="on" onclick="go(this,'/pages/index/index')"><span class="em">🏠</span> 应用首页</button>
+      <button onclick="go(this,'/pkgPlatform/prosperity/index')"><span class="em">💰</span> 共富分配机制 <span class="nw">新</span></button>
+      <button onclick="go(this,'/pkgLife/charity/index')"><span class="em">🏀</span> 社会公益·关心下一代</button>
+      <button onclick="go(this,'/pkgPlatform/web3/index')"><span class="em">⛓</span> 区块链技术底座 <span class="nw">新</span></button>
+      <button onclick="go(this,'/pkgPlatform/promotion/index')"><span class="em">📣</span> 推广分销</button>
+      <button onclick="go(this,'/pages/admin/index')"><span class="em">🗂️</span> 管理中心</button>
+    </div>
+    <a class="full" href="v31007.html">📋 打开全功能总览（83 项功能）›</a>
+    <div class="hint">📱 手机模拟器视图，右侧手机内即真机上的样子。<br><b>管理类功能已统一到「管理中心」</b>，需在应用内右上角切换到村委 / 平台身份查看。<br>手机 / 转发直接打开：<a href="app.html#/pages/index/index">app.html</a></div>
+  </div>
+  <script>
+    function go(btn, url){
+      var fr=document.getElementById('fr');
+      try{
+        if(fr.contentWindow && String(fr.contentWindow.location.href).indexOf('app.html')>=0){ fr.contentWindow.location.hash=url; }
+        else { fr.src='app.html#'+url; }
+      }catch(e){ fr.src='app.html#'+url; }
+      var bs=document.querySelectorAll('.jump button'); for(var k=0;k<bs.length;k++) bs[k].classList.remove('on');
+      btn.classList.add('on');
+    }
+  </script>
+</body>
+</html>

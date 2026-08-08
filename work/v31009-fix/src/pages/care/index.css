@@ -1,0 +1,30 @@
+.page { display: flex; flex-direction: column; height: 100vh; background: #f5f5f5; }
+.hero { background: linear-gradient(135deg,#9333ea,#7e22ce); padding: 32rpx; }
+.hero-title { font-size: 36rpx; font-weight: 800; color: #fff; }
+.hero-sub { display: block; font-size: 23rpx; color: #f3e8ff; margin-top: 8rpx; }
+.sos { background: #dc2626; margin: 20rpx 24rpx 0; border-radius: 16rpx; padding: 24rpx; text-align: center; box-shadow: 0 6rpx 20rpx rgba(220,38,38,0.3); }
+.sos.done { background: #16a34a; }
+.sos-t { font-size: 30rpx; color: #fff; font-weight: 700; }
+.tabs { display: flex; background: #fff; margin-top: 20rpx; }
+.tab { flex: 1; text-align: center; padding: 20rpx 0; font-size: 24rpx; color: #6b7280; border-bottom: 4rpx solid transparent; }
+.tab.on { color: #9333ea; font-weight: 700; border-bottom-color: #9333ea; }
+.body { flex: 1; overflow: hidden; }
+.wrap { padding: 20rpx 24rpx; }
+.row { display: flex; align-items: center; background: #fff; border-radius: 16rpx; padding: 22rpx; margin-bottom: 14rpx; }
+.row-emoji { font-size: 48rpx; margin-right: 18rpx; }
+.row-info { flex: 1; }
+.row-name { font-size: 27rpx; font-weight: 600; color: #1f2937; }
+.row-detail { display: block; font-size: 22rpx; color: #9ca3af; margin-top: 6rpx; }
+.row-price { display: block; font-size: 24rpx; color: #dc2626; font-weight: 600; margin-top: 6rpx; }
+.row-btn { background: #9333ea; border-radius: 999rpx; padding: 12rpx 28rpx; }
+.row-btn-t { font-size: 25rpx; color: #fff; }
+.roster-tip { background: #faf5ff; border-radius: 14rpx; padding: 18rpx 22rpx; margin-bottom: 14rpx; }
+.roster-tip-t { font-size: 22rpx; color: #7e22ce; }
+.prow { display: flex; align-items: center; background: #fff; border-radius: 16rpx; padding: 22rpx; margin-bottom: 12rpx; }
+.prow-info { flex: 1; }
+.prow-name { font-size: 27rpx; font-weight: 600; color: #1f2937; }
+.prow-note { display: block; font-size: 22rpx; color: #9ca3af; margin-top: 6rpx; }
+.prow-btn { background: #9333ea; border-radius: 999rpx; padding: 12rpx 26rpx; }
+.prow-btn-t { font-size: 24rpx; color: #fff; }
+.prow-done { background: #f0fdf4; border-radius: 999rpx; padding: 10rpx 22rpx; }
+.prow-done-t { font-size: 22rpx; color: #16a34a; }

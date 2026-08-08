@@ -1,0 +1,108 @@
+/* 利益共同体 —— 暖珊瑚 / 赤陶「同心·共同体」主题（党建引领） */
+.page { height: 100vh; box-sizing: border-box; }
+.bg {
+  min-height: 100vh; box-sizing: border-box;
+  padding: 0 0 80rpx;
+  background: linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%);
+}
+
+/* HERO */
+.hero {
+  text-align: center;
+  padding: 56rpx 32rpx 40rpx;
+  background: linear-gradient(135deg, #9a3412 0%, #c2410c 55%, #f97316 100%);
+  border-bottom-left-radius: 32rpx; border-bottom-right-radius: 32rpx;
+  box-shadow: 0 8rpx 28rpx rgba(154, 52, 18, .30);
+}
+.hero-t { font-size: 46rpx; font-weight: 800; color: #fff; letter-spacing: 2rpx; text-shadow: 0 2rpx 12rpx rgba(124, 45, 18, .40); }
+.hero-s { display: block; font-size: 24rpx; color: #ffedd5; margin-top: 16rpx; line-height: 1.6; letter-spacing: 2rpx; font-weight: 700; }
+.hero-lead { display: block; font-size: 21rpx; color: #fff7ed; margin-top: 18rpx; line-height: 1.75; text-align: left; padding: 16rpx 20rpx; background: rgba(255,255,255,.14); border: 1rpx solid rgba(255,255,255,.42); border-radius: 16rpx; }
+.badges { display: flex; justify-content: center; flex-wrap: wrap; gap: 12rpx; margin-top: 24rpx; }
+.badge { background: rgba(255,255,255,.22); border: 1rpx solid rgba(255,255,255,.55); border-radius: 100rpx; padding: 9rpx 22rpx; }
+.badge-t { font-size: 20rpx; color: #fff; font-weight: 700; }
+
+/* section 通用 */
+.sec { margin: 26rpx 24rpx 0; background: #fff; border: 1rpx solid #fed7aa; border-radius: 24rpx; padding: 28rpx 24rpx; box-shadow: 0 4rpx 18rpx rgba(194, 65, 12, .06); }
+.sec-star { border: 2rpx solid #ea580c; box-shadow: 0 6rpx 24rpx rgba(234, 88, 12, .16); }
+.sec-party { border: 2rpx solid #c1121f; box-shadow: 0 6rpx 24rpx rgba(193, 18, 31, .14); }
+.sec-h { display: flex; align-items: center; }
+.sec-no { width: 52rpx; height: 52rpx; border-radius: 14rpx; background: linear-gradient(135deg,#c2410c,#f97316); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-right: 16rpx; box-shadow: 0 3rpx 10rpx rgba(194, 65, 12, .35); }
+.sec-no-star { background: linear-gradient(135deg,#9a3412,#f97316); }
+.sec-no-party { background: linear-gradient(135deg,#8e0e18,#c1121f); box-shadow: 0 3rpx 10rpx rgba(193, 18, 31, .35); }
+.sec-no-t { color: #fff; font-size: 30rpx; font-weight: 800; }
+.sec-t { flex: 1; font-size: 32rpx; font-weight: 800; color: #7c2d12; }
+.sec-key { font-size: 19rpx; color: #fff; background: linear-gradient(135deg,#c2410c,#ea580c); border-radius: 100rpx; padding: 6rpx 18rpx; font-weight: 800; box-shadow: 0 2rpx 8rpx rgba(194,65,12,.3); }
+.sec-key-party { background: linear-gradient(135deg,#8e0e18,#c1121f); box-shadow: 0 2rpx 8rpx rgba(193,18,31,.3); }
+.sec-lead { display: block; font-size: 21rpx; color: #57534e; line-height: 1.7; margin-top: 16rpx; padding: 16rpx 18rpx; background: #fff7ed; border: 1rpx dashed #fdba74; border-radius: 14rpx; }
+.em { color: #c2410c; font-weight: 800; }
+
+/* 党建卡（① 引领 / ④ 落地） */
+.pcards { display: flex; flex-wrap: wrap; gap: 14rpx; margin-top: 18rpx; }
+.pcard { flex: 1 1 44%; min-width: 44%; box-sizing: border-box; background: #fff5f5; border: 1rpx solid #f5c6c6; border-left: 6rpx solid #c1121f; border-radius: 14rpx; padding: 18rpx 16rpx; }
+.pcard-i { font-size: 34rpx; }
+.pcard-t { display: block; font-size: 25rpx; font-weight: 800; color: #7c2d12; margin-top: 8rpx; }
+.pcard-d { display: block; font-size: 19rpx; color: #78716c; line-height: 1.55; margin-top: 8rpx; }
+
+/* 成员卡 */
+.mems { display: flex; flex-direction: column; gap: 14rpx; margin-top: 18rpx; }
+.mem { display: flex; align-items: flex-start; background: #fff7ed; border: 1rpx solid #fed7aa; border-left: 6rpx solid #ea580c; border-radius: 16rpx; padding: 22rpx; }
+.mem-i { font-size: 42rpx; margin-right: 18rpx; }
+.mem-b { flex: 1; }
+.mem-h { display: flex; align-items: center; }
+.mem-t { flex: 1; font-size: 28rpx; font-weight: 800; color: #7c2d12; }
+.mem-tag { flex-shrink: 0; font-size: 19rpx; color: #c2410c; background: #fff; border: 1rpx solid #fed7aa; border-radius: 100rpx; padding: 4rpx 16rpx; font-weight: 700; }
+.mem-d { display: block; font-size: 21rpx; color: #78716c; line-height: 1.65; margin-top: 10rpx; }
+
+/* 角色「份」卡（核心 · 出力 → 得好） */
+.roles { display: flex; flex-direction: column; gap: 18rpx; margin-top: 6rpx; }
+.role { background: #fffdfb; border: 1rpx solid #fed7aa; border-left: 8rpx solid #ea580c; border-radius: 18rpx; padding: 24rpx; box-shadow: 0 3rpx 14rpx rgba(194, 65, 12, .07); }
+.role-nong { border-left-color: #d97706; }
+.role-shop { border-left-color: #ea580c; }
+.role-ind { border-left-color: #f97316; }
+.role-coll { border-left-color: #c2410c; }
+.role-coop { border-left-color: #b45309; }
+.role-bank { border-left-color: #a16207; }
+.role-ent { border-left-color: #9a3412; }
+.role-gov { border-left-color: #7c2d12; }
+.role-plat { border-left-color: #78350f; }
+.role-h { display: flex; align-items: center; }
+.role-i { font-size: 46rpx; margin-right: 16rpx; }
+.role-hb { flex: 1; }
+.role-t { font-size: 32rpx; font-weight: 800; color: #7c2d12; }
+.role-tag { display: inline-block; margin-top: 6rpx; font-size: 19rpx; border-radius: 100rpx; padding: 4rpx 16rpx; font-weight: 700; color: #c2410c; background: #fff7ed; border: 1rpx solid #fed7aa; }
+.role-gg { margin-top: 16rpx; }
+.role-row { display: flex; align-items: flex-start; margin-top: 12rpx; }
+.role-row:first-child { margin-top: 0; }
+.role-lbl { flex-shrink: 0; font-size: 18rpx; font-weight: 800; color: #fff; border-radius: 8rpx; padding: 4rpx 12rpx; margin-right: 14rpx; margin-top: 2rpx; }
+.role-lbl-give { background: #a8a29e; }
+.role-lbl-get { background: #c2410c; }
+.role-rowt { flex: 1; font-size: 22rpx; color: #57534e; line-height: 1.65; }
+
+/* 三根利益纽带 */
+.bonds { display: flex; flex-direction: column; gap: 14rpx; margin-top: 18rpx; }
+.bond { display: flex; align-items: flex-start; background: #fff7ed; border: 1rpx solid #fed7aa; border-radius: 16rpx; padding: 22rpx; }
+.bond-i { font-size: 40rpx; margin-right: 18rpx; }
+.bond-b { flex: 1; }
+.bond-t { font-size: 26rpx; font-weight: 800; color: #7c2d12; }
+.bond-d { display: block; font-size: 21rpx; color: #78716c; line-height: 1.65; margin-top: 8rpx; }
+
+/* 共赢闭环 */
+.cycle { margin-top: 18rpx; background: linear-gradient(135deg,#fff7ed,#ffedd5); border: 2rpx solid #ea580c; border-radius: 20rpx; padding: 26rpx 22rpx; box-shadow: 0 6rpx 22rpx rgba(234, 88, 12, .14); }
+.cycle-nodes { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; }
+.cycle-item { display: flex; align-items: center; }
+.cycle-node { background: #fff; border: 1rpx solid #fdba74; border-radius: 100rpx; padding: 12rpx 22rpx; margin: 6rpx 0; box-shadow: 0 2rpx 8rpx rgba(234, 88, 12, .12); }
+.cycle-node-t { font-size: 21rpx; font-weight: 800; color: #c2410c; }
+.cycle-arr { color: #ea580c; font-size: 26rpx; font-weight: 800; margin: 0 8rpx; }
+.cycle-arr-back { color: #f97316; }
+.cycle-cap { display: block; font-size: 21rpx; color: #9a3412; font-weight: 700; line-height: 1.7; margin-top: 18rpx; text-align: center; }
+
+/* 一荣俱荣的底线 */
+.rls { display: flex; flex-direction: column; gap: 12rpx; margin-top: 16rpx; }
+.rl { display: flex; align-items: center; background: #fff7ed; border: 1rpx solid #fed7aa; border-left: 6rpx solid #ea580c; border-radius: 14rpx; padding: 18rpx 20rpx; }
+.rl-i { width: 40rpx; height: 40rpx; border-radius: 50%; background: linear-gradient(135deg,#c2410c,#f97316); color: #fff; font-size: 24rpx; font-weight: 800; text-align: center; line-height: 40rpx; flex-shrink: 0; margin-right: 16rpx; box-shadow: 0 2rpx 8rpx rgba(194, 65, 12, .28); }
+.rl-t { flex: 1; font-size: 22rpx; font-weight: 700; color: #7c2d12; line-height: 1.5; }
+.chips { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 16rpx; }
+.chip { font-size: 20rpx; font-weight: 800; color: #c1121f; background: #fff5f5; border: 1rpx solid #f0a8ab; border-radius: 100rpx; padding: 8rpx 20rpx; }
+
+/* 底部说明 */
+.foot { display: block; font-size: 19rpx; color: #a8a29e; line-height: 1.7; margin: 30rpx 32rpx 0; text-align: center; }

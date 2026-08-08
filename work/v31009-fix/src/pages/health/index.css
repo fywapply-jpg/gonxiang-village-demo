@@ -1,0 +1,24 @@
+.page { display: flex; flex-direction: column; height: 100vh; background: #f5f5f5; }
+.hero { background: linear-gradient(135deg,#0d9488,#14b8a6); padding: 40rpx 32rpx; }
+.hero-title { font-size: 38rpx; font-weight: 800; color: #fff; }
+.hero-sub { display: block; font-size: 24rpx; color: #d1fae5; margin-top: 8rpx; }
+.body { flex: 1; overflow: hidden; }
+.quick-card { display: flex; background: #fff; margin: 24rpx; border-radius: 20rpx; padding: 28rpx 12rpx; }
+.quick { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 10rpx; }
+.quick-icon { width: 88rpx; height: 88rpx; border-radius: 24rpx; background: #f0fdfa; display: flex; align-items: center; justify-content: center; }
+.quick-name { font-size: 23rpx; color: #374151; }
+.tip { margin: 0 24rpx 8rpx; background: #fef2f2; border-radius: 16rpx; padding: 18rpx 24rpx; }
+.tip-t { font-size: 23rpx; color: #be123c; }
+.sec { display: block; font-size: 30rpx; font-weight: 700; color: #1f2937; margin: 20rpx 28rpx 16rpx; }
+.list { margin: 0 24rpx; }
+.doc { display: flex; align-items: center; background: #fff; border-radius: 20rpx; padding: 24rpx; margin-bottom: 16rpx; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04); }
+.doc-avatar { width: 88rpx; height: 88rpx; border-radius: 50%; background: #f0fdfa; display: flex; align-items: center; justify-content: center; margin-right: 20rpx; }
+.doc-info { flex: 1; }
+.doc-top { display: flex; align-items: baseline; }
+.doc-name { font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.doc-dept { font-size: 22rpx; color: #0d9488; margin-left: 14rpx; }
+.doc-good { display: block; font-size: 23rpx; color: #9ca3af; margin-top: 6rpx; }
+.doc-slots { display: block; font-size: 22rpx; color: #f59e0b; margin-top: 4rpx; }
+.book-btn { background: #0d9488; border-radius: 999rpx; padding: 12rpx 28rpx; margin-left: 16rpx; }
+.book-btn.disabled { background: #d1d5db; }
+.book-t { font-size: 26rpx; color: #fff; }

@@ -1,0 +1,30 @@
+.page { display: flex; flex-direction: column; height: 100vh; background: #f5f5f5; }
+.hero { background: linear-gradient(135deg,#9333ea,#7e22ce); padding: 32rpx; }
+.hero-title { font-size: 36rpx; font-weight: 800; color: #fff; }
+.hero-sub { display: block; font-size: 23rpx; color: #f3e8ff; margin-top: 8rpx; }
+.chips { white-space: nowrap; background: #fff; padding: 16rpx 0; border-bottom: 1rpx solid #f3f4f6; }
+.chip { display: inline-block; padding: 10rpx 26rpx; margin-left: 16rpx; border-radius: 999rpx; background: #f3f4f6; font-size: 24rpx; color: #6b7280; }
+.chip:last-child { margin-right: 16rpx; }
+.chip.on { background: #9333ea; color: #fff; }
+.body { flex: 1; overflow: hidden; }
+.grid { display: flex; flex-wrap: wrap; justify-content: space-between; padding: 16rpx 24rpx; }
+.card { width: 48.5%; background: #fff; border-radius: 18rpx; overflow: hidden; margin-bottom: 16rpx; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04); }
+.card-img { height: 170rpx; background: linear-gradient(135deg,#faf5ff,#f3e8ff); display: flex; align-items: center; justify-content: center; position: relative; }
+.card-level { position: absolute; top: 12rpx; left: 12rpx; background: rgba(147,51,234,0.9); border-radius: 6rpx; padding: 2rpx 12rpx; }
+.card-level-t { font-size: 19rpx; color: #fff; }
+.card-info { padding: 16rpx; }
+.card-name { font-size: 27rpx; font-weight: 600; color: #1f2937; }
+.card-inh { display: block; font-size: 21rpx; color: #9ca3af; margin-top: 8rpx; }
+.overlay { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100; display: flex; align-items: flex-end; }
+.sheet { width: 100%; background: #fff; border-radius: 28rpx 28rpx 0 0; padding: 32rpx; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; }
+.sheet-title { font-size: 32rpx; font-weight: 800; color: #1f2937; }
+.sheet-close { font-size: 34rpx; color: #9ca3af; }
+.badge { margin: 14rpx 0; }
+.badge-t { font-size: 22rpx; color: #9333ea; background: #faf5ff; border-radius: 999rpx; padding: 6rpx 18rpx; }
+.sheet-desc { display: block; font-size: 25rpx; color: #4b5563; line-height: 1.7; margin: 8rpx 0 16rpx; }
+.video { background: linear-gradient(135deg,#faf5ff,#f3e8ff); border-radius: 16rpx; padding: 36rpx; text-align: center; margin-bottom: 16rpx; }
+.video-cover { font-size: 72rpx; }
+.video-name { display: block; font-size: 24rpx; color: #7e22ce; font-weight: 600; margin-top: 12rpx; }
+.sheet-btn { background: #9333ea; border-radius: 999rpx; padding: 24rpx; text-align: center; }
+.sheet-btn-t { font-size: 28rpx; color: #fff; font-weight: 700; }

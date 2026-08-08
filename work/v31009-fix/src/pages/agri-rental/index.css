@@ -1,0 +1,74 @@
+.page { display: flex; flex-direction: column; height: 100vh; background: #f5f5f5; position: relative; }
+.hero { background: linear-gradient(135deg,#16a34a,#15803d); padding: 32rpx; }
+.hero-title { font-size: 36rpx; font-weight: 800; color: #fff; }
+.hero-sub { display: block; font-size: 23rpx; color: #dcfce7; margin-top: 8rpx; }
+
+.pin-sec { background: #fff; padding: 16rpx 0 10rpx; border-top: 1rpx solid #f3f4f6; }
+.pin-head { display: flex; align-items: center; justify-content: space-between; padding: 0 24rpx 12rpx; }
+.pin-title { font-size: 26rpx; font-weight: 800; color: #15803d; }
+.pin-launch { font-size: 24rpx; color: #16a34a; font-weight: 700; }
+.pin-scroll { white-space: nowrap; padding: 0 16rpx; }
+.pin-card { display: inline-block; width: 300rpx; background: #f0fdf4; border: 1rpx solid #bbf7d0; border-radius: 14rpx; padding: 18rpx; margin: 0 8rpx; vertical-align: top; }
+.pin-job { font-size: 26rpx; font-weight: 700; color: #14532d; display: block; }
+.pin-area { font-size: 21rpx; color: #6b7280; margin: 6rpx 0 10rpx; display: block; }
+.pin-bar { height: 10rpx; background: #dcfce7; border-radius: 100rpx; overflow: hidden; }
+.pin-fill { height: 100%; background: #16a34a; }
+.pin-meta { font-size: 20rpx; color: #15803d; margin-top: 8rpx; display: block; }
+
+.bar { background: #fff; }
+.cat-scroll { white-space: nowrap; padding: 16rpx 0; }
+.cat { display: inline-block; padding: 10rpx 28rpx; margin-left: 16rpx; border-radius: 999rpx; background: #f3f4f6; font-size: 25rpx; color: #6b7280; }
+.cat:last-child { margin-right: 16rpx; }
+.cat.on { background: #16a34a; color: #fff; }
+.sort-row { display: flex; gap: 36rpx; padding: 16rpx 28rpx; background: #fff; border-top: 1rpx solid #f3f4f6; }
+.sort { font-size: 25rpx; color: #9ca3af; }
+.sort.on { color: #16a34a; font-weight: 700; }
+
+.body { flex: 1; overflow: hidden; }
+.waterfall { display: flex; padding: 16rpx; gap: 16rpx; }
+.wf-col { flex: 1; display: flex; flex-direction: column; gap: 16rpx; }
+.m-card { background: #fff; border-radius: 18rpx; overflow: hidden; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.05); }
+.m-img { background: linear-gradient(135deg,#f0fdf4,#dcfce7); display: flex; align-items: center; justify-content: center; position: relative; }
+.m-emoji { font-size: 92rpx; }
+.m-level { position: absolute; top: 12rpx; left: 12rpx; border-radius: 8rpx; padding: 2rpx 14rpx; }
+.m-level-t { font-size: 20rpx; color: #fff; }
+.m-combine { position: absolute; top: 12rpx; right: 12rpx; background: rgba(234,88,12,0.92); border-radius: 8rpx; padding: 2rpx 12rpx; }
+.m-combine-t { font-size: 19rpx; color: #fff; }
+.m-info { padding: 16rpx; }
+.m-name { font-size: 26rpx; font-weight: 600; color: #1f2937; line-height: 1.35; }
+.m-tags { display: flex; flex-wrap: wrap; gap: 8rpx; margin-top: 10rpx; }
+.m-cond { font-size: 19rpx; color: #16a34a; background: #f0fdf4; border-radius: 6rpx; padding: 2rpx 10rpx; }
+.m-scene { font-size: 19rpx; color: #6b7280; background: #f3f4f6; border-radius: 6rpx; padding: 2rpx 10rpx; }
+.m-foot { display: flex; align-items: baseline; justify-content: space-between; margin-top: 12rpx; }
+.m-price { font-size: 30rpx; font-weight: 800; color: #dc2626; }
+.m-unit { font-size: 18rpx; color: #9ca3af; font-weight: 400; }
+.m-dist { font-size: 21rpx; color: #2563eb; }
+.m-owner { display: block; font-size: 20rpx; color: #9ca3af; margin-top: 8rpx; }
+
+.fab { position: absolute; right: 32rpx; bottom: 40rpx; background: #16a34a; border-radius: 999rpx; padding: 22rpx 40rpx; box-shadow: 0 8rpx 24rpx rgba(22,163,74,0.4); }
+.fab-t { font-size: 28rpx; color: #fff; font-weight: 600; }
+
+/* 农机/农资 双 tab */
+.mode-tabs { display: flex; background: #fff; padding: 12rpx 24rpx; gap: 16rpx; border-bottom: 1rpx solid #f3f4f6; }
+.mtab { flex: 1; text-align: center; padding: 14rpx 0; border-radius: 12rpx; background: #f3f4f6; font-size: 26rpx; color: #6b7280; }
+.mtab.on { background: #16a34a; color: #fff; font-weight: 700; }
+.seg { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+/* 农资商城 */
+.agri-tip { background: #f0fdf4; padding: 16rpx 24rpx; }
+.agri-tip-t { font-size: 22rpx; color: #15803d; }
+.agri-wrap { padding: 16rpx 24rpx; }
+.agri { display: flex; background: #fff; border-radius: 16rpx; padding: 18rpx; margin-bottom: 14rpx; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04); }
+.agri-img { width: 110rpx; height: 110rpx; border-radius: 14rpx; background: #f0fdf4; display: flex; align-items: center; justify-content: center; margin-right: 18rpx; }
+.agri-info { flex: 1; }
+.agri-top { display: flex; align-items: center; }
+.agri-name { font-size: 27rpx; font-weight: 700; color: #1f2937; }
+.agri-verify { background: #ecfdf5; border-radius: 6rpx; padding: 2rpx 10rpx; margin-left: 10rpx; }
+.agri-verify-t { font-size: 18rpx; color: #16a34a; }
+.agri-spec { display: block; font-size: 22rpx; color: #9ca3af; margin-top: 6rpx; }
+.agri-group { display: inline-block; background: #fef2f2; border-radius: 6rpx; padding: 2rpx 10rpx; margin-top: 6rpx; }
+.agri-group-t { font-size: 19rpx; color: #dc2626; }
+.agri-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 8rpx; }
+.agri-price { font-size: 30rpx; font-weight: 800; color: #dc2626; }
+.agri-unit { font-size: 19rpx; color: #9ca3af; font-weight: 400; }
+.agri-btn { background: #16a34a; border-radius: 999rpx; padding: 10rpx 30rpx; }
+.agri-btn-t { font-size: 25rpx; color: #fff; }

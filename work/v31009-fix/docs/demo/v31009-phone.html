@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>供享村社 · v3.1009 手机演示完整版</title>
+<script>
+  try {
+    if (localStorage.getItem('gx_demo_release') !== 'v3.1009-home-order-20260731') {
+      localStorage.removeItem('gx_token');
+      localStorage.removeItem('gx_user');
+      sessionStorage.clear();
+      localStorage.setItem('gx_demo_release', 'v3.1009-home-order-20260731');
+    }
+  } catch (e) {}
+</script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{min-height:100vh;background:radial-gradient(circle at 50% 14%,#f0fdf4 0%,#4ade80 48%,#14532d 100%);display:flex;align-items:center;justify-content:center;gap:46px;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;flex-wrap:wrap;padding:26px 20px;}
+  .phone{width:390px;height:844px;max-height:94vh;background:#111;border-radius:46px;padding:13px;box-shadow:0 26px 70px rgba(0,0,0,.45);flex-shrink:0;display:flex;flex-direction:column;}
+  .statusbar{height:40px;background:#eef0f2;border-radius:33px 33px 0 0;flex-shrink:0;position:relative;}
+  .statusbar .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:150px;height:26px;background:#111;border-radius:0 0 18px 18px;}
+  .phone iframe{width:100%;flex:1;border:none;border-radius:0 0 34px 34px;background:#eef0f2;display:block;}
+  .side{width:352px;max-width:93vw;color:#fff;max-height:94vh;overflow-y:auto;}
+  .side::-webkit-scrollbar{width:0;}
+  .logo{font-size:27px;font-weight:900;letter-spacing:.5px;}
+  .ver{display:inline-block;font-size:11px;font-weight:800;background:#fff;color:#15803d;border-radius:100px;padding:2px 10px;margin-left:6px;vertical-align:3px;}
+  .sub{font-size:13px;color:#dcfce7;margin:8px 0 14px;line-height:1.7;}
+  .grp{font-size:11.5px;font-weight:800;color:#bbf7d0;letter-spacing:1px;margin:14px 0 7px;text-transform:uppercase;}
+  .jump{display:flex;flex-direction:column;gap:7px;}
+  .jump button{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;background:rgba(255,255,255,.15);color:#fff;border:1.4px solid rgba(255,255,255,.42);text-align:left;transition:.14s;width:100%;}
+  .jump button:hover{background:rgba(255,255,255,.28);}
+  .jump button.on{background:#fff;color:#14532d;border-color:#fff;}
+  .jump button .em{font-size:17px;line-height:1;}
+  .jump button .nw{margin-left:auto;font-size:9.5px;font-weight:800;background:#dc2626;color:#fff;padding:2px 7px;border-radius:100px;}
+  .full{display:block;text-align:center;margin:14px 0 12px;padding:11px;background:rgba(255,255,255,.94);color:#15803d;border-radius:12px;font-weight:800;font-size:14px;text-decoration:none;box-shadow:0 6px 18px rgba(0,0,0,.16);}
+  .hint{font-size:12px;color:#14532d;line-height:1.7;background:rgba(255,255,255,.94);border-radius:12px;padding:12px 14px;box-shadow:0 6px 18px rgba(0,0,0,.14);}
+  .hint b{color:#15803d;}
+  .hint a{color:#15803d;word-break:break-all;}
+  @media(max-width:800px){
+    body{display:block;padding:10px 8px 24px;background:linear-gradient(180deg,#166534 0,#22c55e 58%,#dcfce7 100%);}
+    .phone{width:min(390px,calc(100vw - 16px));height:calc(100vh - 20px);max-height:844px;margin:0 auto;border-radius:38px;padding:10px;}
+    .statusbar{height:36px;}
+    .statusbar .notch{width:138px;height:24px;}
+    .side{width:min(390px,calc(100vw - 16px));max-height:none;margin:22px auto 0;color:#14532d;}
+    .sub,.grp{color:#166534;}
+    .jump button{background:rgba(255,255,255,.86);color:#14532d;border-color:rgba(22,101,52,.18);}
+    .jump button.on{background:#14532d;color:#fff;}
+  }
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="statusbar"><div class="notch"></div></div>
+    <iframe id="fr" src="m.html?role=platform_admin&amp;demo=full&amp;v=v3.1009-home-order-20260731#/pages/index/index" allow="geolocation"></iframe>
+  </div>
+  <div class="side">
+    <div class="logo">🌾 供享村社<span class="ver">v3.1009 · 完整版</span></div>
+    <div class="sub">党建引领 · 助农惠民 · 全民共富<br>城乡数字供销共富平台 · 演示版</div>
+
+    <div class="grp">🆕 v3.1009 核心成果</div>
+    <div class="jump">
+      <button onclick="go(this,'/pages/orders/index')"><span class="em">🧾</span> 支付·订单·退款闭环 <span class="nw">已贯通</span></button>
+      <button onclick="go(this,'/pkgPlatform/ai-store/index')"><span class="em">🏪</span> AI 智能小卖部 <span class="nw">能聊·出货</span></button>
+      <button onclick="go(this,'/pkgPlatform/interest-community/index')"><span class="em">🤝</span> 利益共同体 <span class="nw">党建引领</span></button>
+      <button onclick="go(this,'/pkgPlatform/breakeven/index')"><span class="em">📊</span> 盈亏平衡测算 <span class="nw">可拖动</span></button>
+      <button onclick="go(this,'/pkgPlatform/settlement/index')"><span class="em">💳</span> 支付结算系统</button>
+      <button onclick="go(this,'/pkgPlatform/my-assets/index')"><span class="em">💼</span> 我的资产·经营</button>
+    </div>
+
+    <div class="grp">💡 机制与底座</div>
+    <div class="jump">
+      <button onclick="go(this,'/pkgPlatform/prosperity/index')"><span class="em">💰</span> 共富分配机制</button>
+      <button onclick="go(this,'/pkgPlatform/web3/index')"><span class="em">⛓</span> 区块链技术底座</button>
+      <button onclick="go(this,'/pkgPlatform/promotion/index')"><span class="em">📣</span> 推广分销</button>
+    </div>
+
+    <div class="grp">🏠 主要板块</div>
+    <div class="jump">
+      <button class="on" onclick="go(this,'/pages/index/index')"><span class="em">🏠</span> 应用首页</button>
+      <button onclick="go(this,'/pkgLife/charity/index')"><span class="em">🏀</span> 社会公益·关心下一代</button>
+      <button onclick="go(this,'/pages/contribution/index')"><span class="em">⭐</span> 社会贡献值</button>
+      <button onclick="go(this,'/pkgParty/party/index')"><span class="em">🚩</span> 党建联建</button>
+      <button onclick="go(this,'/pages/admin/index')"><span class="em">🗂️</span> 管理中心</button>
+    </div>
+
+    <a class="full" href="gongfu-phone.html">🤝 打开「共富专题」四页联看 ›</a>
+    <div class="hint">📱 手机框内就是实际 H5 操作界面，点下方按钮直接切页。<br><b>本链接默认使用“全功能演示身份”</b>，党建、管理、结算等页面均可浏览；真实上线仍按角色授权。<br><b>推荐给领导看的顺序：</b>利益共同体 → 共富分配 → 支付结算 → <b>盈亏测算（当场拖）</b>。<br>v3.1009 完整版已包含：首页服务优先、真实商品陈列、手机滚动、党建高清地图和红旗详情。支付仍为模拟通道，不产生真实扣款。<br>不需要手机框时：<a href="m.html?role=platform_admin&amp;demo=full&amp;v=v3.1009-home-order-20260731#/pages/index/index">直接打开应用</a></div>
+  </div>
+  <script>
+    function go(btn,url){
+      var fr=document.getElementById('fr');
+      try{
+        if(fr.contentWindow && /(?:app|m)\.html/.test(String(fr.contentWindow.location.href))){ fr.contentWindow.location.hash=url; }
+        else { fr.src='m.html?role=platform_admin&demo=full&v=v3.1009-home-order-20260731#'+url; }
+      }catch(e){ fr.src='m.html?role=platform_admin&demo=full&v=v3.1009-home-order-20260731#'+url; }
+      var bs=document.querySelectorAll('.jump button'); for(var k=0;k<bs.length;k++) bs[k].classList.remove('on');
+      btn.classList.add('on');
+    }
+  </script>
+</body>
+</html>

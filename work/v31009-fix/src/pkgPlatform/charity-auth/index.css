@@ -1,0 +1,28 @@
+.page { display: flex; flex-direction: column; min-height: 100vh; background: #f5f5f5; }
+.hero { background: linear-gradient(135deg,#b91c1c,#dc2626); padding: 34rpx 32rpx; }
+.hero-t { font-size: 38rpx; font-weight: 800; color: #fff; }
+.hero-s { display: block; font-size: 21rpx; color: #fecaca; margin-top: 8rpx; line-height: 1.5; }
+.body { flex: 1; padding: 24rpx; }
+.orgcard { display: flex; align-items: center; justify-content: space-between; background: #fff; border-radius: 18rpx; padding: 26rpx; margin-bottom: 20rpx; }
+.org-n { font-size: 30rpx; font-weight: 800; color: #1f2937; }
+.org-s { display: block; font-size: 21rpx; color: #9ca3af; margin-top: 6rpx; }
+.badge { background: #f3f4f6; border-radius: 100rpx; padding: 8rpx 22rpx; }
+.badge-on { background: #dc2626; }
+.badge-t { font-size: 22rpx; color: #9ca3af; font-weight: 700; }
+.badge-on .badge-t { color: #fff; }
+.quick { display: flex; gap: 16rpx; margin-bottom: 24rpx; }
+.q-btn { flex: 1; background: #dc2626; border-radius: 100rpx; padding: 18rpx; text-align: center; }
+.q-off { background: #fff; border: 1rpx solid #e5e7eb; }
+.q-t { color: #fff; font-size: 25rpx; font-weight: 700; }
+.q-t2 { color: #6b7280; font-size: 25rpx; font-weight: 700; }
+.lbl { display: block; font-size: 24rpx; color: #6b7280; font-weight: 700; margin: 6rpx 4rpx 14rpx; }
+.perm { display: flex; align-items: center; justify-content: space-between; background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 14rpx; }
+.perm-n { font-size: 27rpx; font-weight: 700; color: #1f2937; }
+.perm-d { display: block; font-size: 21rpx; color: #9ca3af; margin-top: 6rpx; }
+.sw { width: 84rpx; height: 48rpx; border-radius: 100rpx; background: #e5e7eb; position: relative; flex-shrink: 0; transition: background .2s; }
+.sw-on { background: #dc2626; }
+.sw-dot { position: absolute; top: 4rpx; left: 4rpx; width: 40rpx; height: 40rpx; border-radius: 50%; background: #fff; transition: left .2s; }
+.sw-on .sw-dot { left: 40rpx; }
+.save { background: #dc2626; border-radius: 100rpx; padding: 24rpx; text-align: center; margin-top: 26rpx; }
+.save-t { color: #fff; font-size: 28rpx; font-weight: 800; }
+.tip { display: block; font-size: 20rpx; color: #9ca3af; line-height: 1.7; margin-top: 20rpx; }

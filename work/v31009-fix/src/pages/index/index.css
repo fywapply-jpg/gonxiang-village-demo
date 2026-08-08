@@ -1,0 +1,198 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #e2e5ea;
+}
+.top-shell { flex-shrink: 0; padding: calc(env(safe-area-inset-top) + 10rpx) 20rpx 18rpx; background: linear-gradient(135deg,#067647,#16a34a); color: #fff; }
+.home-tabs { display: flex; align-items: flex-end; gap: 34rpx; height: 58rpx; padding: 0 8rpx; }
+.home-tab { position: relative; padding-bottom: 12rpx; color: rgba(255,255,255,.78); font-size: 27rpx; font-weight: 650; }
+.home-tab.active { color: #fff; font-size: 34rpx; font-weight: 900; }
+.home-tab.active::after { content: ''; position: absolute; left: 50%; bottom: 3rpx; width: 28rpx; height: 6rpx; transform: translateX(-50%); border-radius: 100rpx; background: #fff; }
+.search-line { display: flex; align-items: center; gap: 12rpx; margin-top: 12rpx; }
+.location-chip { flex-shrink: 0; padding: 13rpx 15rpx; border-radius: 100rpx; background: rgba(255,255,255,.16); font-size: 21rpx; font-weight: 700; }
+.message-entry { width: 58rpx; height: 58rpx; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 30rpx; }
+
+/* 门头牌做成圆角卡片：四周更宽的浅灰烘托 + 更深阴影(更浮)，立体层次；顶部安全区(听筒)同为浅灰 */
+.banner-wrap {
+  background: #e2e5ea;
+  padding: 14rpx 16rpx 12rpx;
+  box-sizing: border-box;
+}
+.village-banner {
+  width: 100%;
+  display: block;
+  border-radius: 22rpx;
+  box-shadow: 0 18rpx 40rpx rgba(0, 40, 14, 0.34), 0 6rpx 14rpx rgba(0, 40, 14, 0.18);
+  overflow: hidden;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  margin: 0;
+  border-radius: 100rpx;
+  padding: 16rpx 24rpx;
+  gap: 12rpx;
+  box-shadow: none;
+}
+
+.search-icon { font-size: 28rpx; }
+
+.search-input {
+  flex: 1;
+  font-size: 28rpx;
+  color: #374151;
+}
+
+.scroll-body { flex: 1; }
+
+.banner {
+  margin: 0 24rpx 24rpx;
+  border-radius: 20rpx;
+  height: 240rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20rpx;
+}
+
+.banner-text { font-size: 36rpx; font-weight: bold; }
+
+.banner-dots { display: flex; gap: 10rpx; }
+.dot { width: 12rpx; height: 12rpx; border-radius: 50%; background: rgba(0,0,0,0.2); }
+.dot.active { background: currentColor; width: 24rpx; border-radius: 100rpx; }
+
+.service-grid { display: flex; flex-wrap: wrap; background: #fff; margin: 0 24rpx 20rpx; border-radius: 20rpx; padding: 28rpx 12rpx; }
+.service-item { width: 25%; display: flex; flex-direction: column; align-items: center; gap: 12rpx; margin: 12rpx 0; }
+.service-icon { width: 88rpx; height: 88rpx; border-radius: 24rpx; display: flex; align-items: center; justify-content: center; }
+.service-label { font-size: 22rpx; color: #374151; }
+
+.category-scroll { margin-bottom: 20rpx; white-space: nowrap; }
+.cat-item:first-child { margin-left: 24rpx; }
+.cat-item:last-child { margin-right: 24rpx; }
+
+.cat-item {
+  display: inline-block;
+  padding: 14rpx 28rpx;
+  border-radius: 100rpx;
+  background: #ffffff;
+  font-size: 26rpx;
+  color: #6b7280;
+  margin-right: 12rpx;
+}
+.cat-item.active {
+  background: #16a34a;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24rpx;
+  margin-bottom: 16rpx;
+}
+.section-label { font-size: 30rpx; font-weight: bold; color: #111827; }
+.section-sub { font-size: 24rpx; color: #9ca3af; }
+.shelf-subtitle { display: block; font-size: 21rpx; color: #9ca3af; margin-top: 5rpx; }
+.section-more { font-size: 24rpx; color: #15803d; font-weight: 600; padding: 12rpx 0; }
+
+.trade-assurance {
+  display: flex;
+  margin: 0 24rpx 18rpx;
+  padding: 16rpx 10rpx;
+  background: #f0fdf4;
+  border: 1rpx solid #bbf7d0;
+  border-radius: 16rpx;
+}
+.assurance-item { width: 33.33%; display: flex; align-items: center; justify-content: center; gap: 6rpx; font-size: 21rpx; color: #166534; }
+.assurance-icon { font-size: 24rpx; }
+
+.product-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+  padding: 0 24rpx;
+}
+
+.product-card {
+  background: #ffffff;
+  border-radius: 20rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06);
+}
+
+.product-img {
+  height: 240rpx;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.product-photo { width: 100%; height: 100%; display: block; }
+.product-tag {
+  position: absolute;
+  top: 12rpx;
+  left: 12rpx;
+  background: rgba(255,255,255,0.92);
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,.08);
+  border-radius: 100rpx;
+  padding: 4rpx 12rpx;
+}
+.tag-text { font-size: 20rpx; color: #16a34a; }
+
+.product-info { padding: 16rpx; }
+.product-name { font-size: 26rpx; font-weight: 700; color: #111827; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 68rpx; margin-bottom: 6rpx; line-height: 1.3; }
+.product-origin { font-size: 20rpx; color: #6b7280; display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; margin-bottom: 7rpx; }
+.product-spec { display: block; font-size: 20rpx; color: #9ca3af; margin-bottom: 12rpx; }
+.product-bottom { display: flex; align-items: baseline; justify-content: space-between; }
+.product-price { font-size: 32rpx; font-weight: bold; color: #ef4444; }
+.price-from { font-size: 18rpx; color: #ef4444; }
+.product-sales { font-size: 20rpx; color: #9ca3af; }
+.platform-services-title { margin: 34rpx 24rpx 16rpx; }
+.frequent-head { margin: 30rpx 24rpx 14rpx; }
+.frequent-grid { display: grid; grid-template-columns: repeat(5,1fr); margin: 0 16rpx 24rpx; padding: 22rpx 5rpx 12rpx; background: #fff; border-radius: 20rpx; box-shadow: 0 4rpx 16rpx rgba(15,23,42,.06); }
+.frequent-item { min-height: 116rpx; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 9rpx; padding: 8rpx 3rpx; }
+.frequent-icon { width: 62rpx; height: 62rpx; display: flex; align-items: center; justify-content: center; border-radius: 18rpx; font-size: 31rpx; }
+.frequent-name { max-width: 100%; font-size: 18rpx; color: #374151; text-align: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.center-list { display: grid; grid-template-columns: 1fr 1fr; gap: 14rpx; margin: 0 24rpx 24rpx; }
+.center-card { min-width: 0; padding: 20rpx 18rpx; border-radius: 18rpx; background: #fff; box-shadow: 0 4rpx 14rpx rgba(15,23,42,.06); }
+.center-main { display: flex; align-items: center; min-height: 70rpx; }
+.center-symbol { width: 62rpx; height: 62rpx; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 17rpx; margin-right: 12rpx; font-size: 32rpx; }
+.center-info { flex: 1; display: flex; flex-direction: column; }
+.center-name { font-size: 28rpx; font-weight: 850; color: #172033; }
+.center-summary,.center-arrow { display: none; }
+.center-quick { display: flex; flex-direction: column; gap: 8rpx; margin-top: 14rpx; }
+.quick-link { min-height: 54rpx; display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 9rpx; padding: 7rpx 10rpx; border-radius: 12rpx; background: #f7f8fa; }
+.quick-link-icon { width: 40rpx; height: 40rpx; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 12rpx; font-size: 23rpx; }
+.quick-link-name { min-width: 0; font-size: 19rpx; color: #3f4b5e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+
+/* ── 六大板块门户 ─────────────────────────────────────────────────────────── */
+.party-banner { position: relative; overflow: hidden; display: flex; align-items: center; background: linear-gradient(135deg,#c81e1e,#e23b3b); margin: 0 24rpx 20rpx; border-radius: 20rpx; padding: 40rpx 32rpx; }
+.party-banner-flag { width: 100rpx; height: 66rpx; border-radius: 6rpx; margin-right: 22rpx; box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.28); flex-shrink: 0; }
+.party-banner-emblem { position: absolute; top: 14rpx; right: 18rpx; width: 62rpx; height: 62rpx; opacity: 0.95; }
+.party-banner-text { display: flex; flex-direction: column; flex: 1; padding-right: 72rpx; }
+.party-banner-title { font-size: 44rpx; font-weight: 800; color: #fff; }
+.party-banner-sub { font-size: 28rpx; color: #ffe4e4; margin-top: 8rpx; letter-spacing: 1rpx; }
+
+.exchange-entry { display: flex; align-items: center; margin: 0 24rpx 20rpx; padding: 24rpx 26rpx; border-radius: 20rpx; background: linear-gradient(135deg,#fef2f2,#fee2e2); border: 1rpx solid #fecaca; }
+.ee-emoji { font-size: 48rpx; margin-right: 20rpx; }
+.ee-text { flex: 1; display: flex; flex-direction: column; }
+.ee-title { font-size: 30rpx; font-weight: 800; color: #c81e1e; }
+.ee-sub { font-size: 22rpx; color: #b45309; margin-top: 6rpx; }
+.ee-arrow { font-size: 44rpx; color: #c81e1e; font-weight: 300; }
+
+.contrib-card { display: flex; align-items: center; justify-content: space-between; margin: 0 24rpx 24rpx; border-radius: 20rpx; padding: 18rpx 28rpx; background: linear-gradient(135deg,#fff7ed,#ffedd5); border: 1rpx solid #fed7aa; }
+.contrib-left { display: flex; flex-direction: column; flex: 1; }
+.contrib-label { font-size: 24rpx; color: #9a3412; }
+.contrib-num { font-size: 44rpx; font-weight: 800; color: #c81e1e; line-height: 1.15; }
+.contrib-hint { font-size: 22rpx; color: #b45309; margin-top: 4rpx; }
+.contrib-right { display: flex; align-items: center; }
+.contrib-enter { font-size: 28rpx; font-weight: 700; color: #c81e1e; }
+
+.tabbar-placeholder { height: 120rpx; }

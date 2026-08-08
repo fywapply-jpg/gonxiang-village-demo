@@ -1,0 +1,89 @@
+.page { height: 100vh; display: flex; flex-direction: column; background: #f3f4f6; }
+
+/* Tab */
+.tab-bar { display: flex; background: #fff; border-bottom: 1rpx solid #f3f4f6; }
+.tab { flex: 1; text-align: center; padding: 28rpx 0; font-size: 26rpx; color: #9ca3af; border-bottom: 4rpx solid transparent; }
+.tab.active { color: #b91c1c; font-weight: 600; border-bottom-color: #b91c1c; }
+
+.body { flex: 1; }
+.wrap { padding: 24rpx; }
+.sec-title { font-size: 28rpx; font-weight: bold; color: #1f2937; display: block; margin-bottom: 16rpx; }
+
+/* 党费概览 */
+.dues-overview { background: linear-gradient(135deg, #b91c1c, #7f1d1d); border-radius: 20rpx; padding: 36rpx; text-align: center; margin-bottom: 20rpx; }
+.do-label { font-size: 24rpx; color: rgba(255,255,255,0.8); display: block; margin-bottom: 12rpx; }
+.do-amount { font-size: 64rpx; font-weight: bold; color: #fff; display: block; margin-bottom: 12rpx; }
+.do-remind { font-size: 24rpx; color: #fde68a; display: block; }
+.do-remind.ok { color: #bbf7d0; }
+
+/* 标准 */
+.std-card { background: #fff; border-radius: 20rpx; padding: 24rpx; margin-bottom: 24rpx; }
+.std-title { font-size: 26rpx; font-weight: bold; color: #1f2937; display: block; margin-bottom: 10rpx; }
+.std-text { font-size: 24rpx; color: #6b7280; line-height: 1.6; }
+
+/* 缴纳记录 */
+.dues-row { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 12rpx; display: flex; align-items: center; justify-content: space-between; }
+.dues-info { display: flex; align-items: baseline; gap: 20rpx; }
+.dues-month { font-size: 28rpx; color: #1f2937; font-weight: 600; }
+.dues-amt { font-size: 26rpx; color: #b91c1c; font-weight: bold; }
+.dues-paid { background: #f3f4f6; border-radius: 100rpx; padding: 8rpx 24rpx; }
+.dues-paid-text { font-size: 22rpx; color: #9ca3af; }
+.dues-pay-btn { background: #b91c1c; border-radius: 100rpx; padding: 12rpx 32rpx; }
+.dues-pay-text { font-size: 24rpx; color: #fff; }
+
+/* 三会一课概览 */
+.meeting-overview { display: flex; background: #fff; border-radius: 20rpx; padding: 28rpx 0; margin-bottom: 24rpx; }
+.mo-item { flex: 1; text-align: center; border-right: 1rpx solid #f3f4f6; }
+.mo-item:last-child { border-right: none; }
+.mo-num { font-size: 40rpx; font-weight: bold; color: #b91c1c; display: block; margin-bottom: 4rpx; }
+.mo-label { font-size: 22rpx; color: #9ca3af; display: block; }
+
+/* 会议卡片 */
+.meeting-card { background: #fff; border-radius: 20rpx; padding: 24rpx; margin-bottom: 16rpx; }
+.meeting-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14rpx; }
+.meeting-type { padding: 4rpx 16rpx; border-radius: 8rpx; }
+.meeting-type-text { font-size: 20rpx; }
+.m-red { background: #fef2f2; } .m-red .meeting-type-text { color: #b91c1c; }
+.m-orange { background: #fff7ed; } .m-orange .meeting-type-text { color: #ea580c; }
+.m-blue { background: #eff6ff; } .m-blue .meeting-type-text { color: #2563eb; }
+.m-purple { background: #f5f3ff; } .m-purple .meeting-type-text { color: #7c3aed; }
+.m-green { background: #f0fdf4; } .m-green .meeting-type-text { color: #16a34a; }
+.meeting-st { font-size: 22rpx; }
+.meeting-st.done { color: #16a34a; }
+.meeting-st.upcoming { color: #d97706; }
+.meeting-title { font-size: 28rpx; font-weight: 600; color: #1f2937; display: block; margin-bottom: 14rpx; line-height: 1.4; }
+.meeting-foot { display: flex; align-items: center; justify-content: space-between; }
+.meeting-date { font-size: 22rpx; color: #6b7280; }
+.meeting-attend { font-size: 22rpx; color: #9ca3af; }
+.meeting-sign-btn { background: #b91c1c; border-radius: 100rpx; padding: 14rpx 0; margin-top: 16rpx; text-align: center; }
+.meeting-sign-text { font-size: 26rpx; color: #fff; font-weight: 600; }
+.meeting-signed { background: #f3f4f6; border-radius: 100rpx; padding: 14rpx 0; margin-top: 16rpx; text-align: center; }
+.meeting-signed-text { font-size: 26rpx; color: #16a34a; }
+
+/* 党支部收费管理端 */
+.manage-overview { background: linear-gradient(135deg,#b91c1c,#7f1d1d); border-radius: 20rpx; padding: 32rpx; margin-bottom: 20rpx; }
+.mng-label { font-size: 24rpx; color: rgba(255,255,255,0.85); display: block; }
+.mng-amount-row { display: flex; align-items: baseline; margin-top: 10rpx; }
+.mng-received { font-size: 56rpx; font-weight: 800; color: #fff; }
+.mng-should { font-size: 26rpx; color: rgba(255,255,255,0.8); margin-left: 12rpx; }
+.mng-bar { height: 14rpx; background: rgba(255,255,255,0.25); border-radius: 999rpx; overflow: hidden; margin-top: 18rpx; }
+.mng-bar-fill { height: 100%; background: #fff; }
+.mng-sub { display: block; font-size: 22rpx; color: rgba(255,255,255,0.9); margin-top: 14rpx; }
+.member-row { display: flex; align-items: center; justify-content: space-between; background: #fff; border-radius: 16rpx; padding: 22rpx 24rpx; margin-bottom: 12rpx; }
+.member-info { flex: 1; }
+.member-name { font-size: 28rpx; font-weight: 600; color: #1f2937; }
+.member-tag { font-size: 20rpx; color: #16a34a; display: block; margin-top: 4rpx; }
+.member-tag.off { color: #9ca3af; }
+.m-btn { border-radius: 999rpx; padding: 10rpx 28rpx; }
+.m-btn.open { background: #b91c1c; }
+.m-btn.urge { background: #fff; border: 1rpx solid #fca5a5; }
+.m-btn-t { font-size: 24rpx; color: #fff; }
+.m-btn-t-o { font-size: 24rpx; color: #b91c1c; }
+.m-paid { background: #ecfdf5; border-radius: 999rpx; padding: 10rpx 24rpx; }
+.m-paid-t { font-size: 24rpx; color: #16a34a; }
+.flow-card { background: #fff; border-radius: 16rpx; padding: 4rpx 24rpx; }
+.flow-row { display: flex; align-items: center; justify-content: space-between; padding: 20rpx 0; border-bottom: 1rpx solid #f3f4f6; }
+.flow-left { flex: 1; }
+.flow-name { font-size: 27rpx; color: #1f2937; }
+.flow-meta { display: block; font-size: 21rpx; color: #9ca3af; margin-top: 4rpx; }
+.flow-amt { font-size: 28rpx; font-weight: 700; color: #16a34a; }

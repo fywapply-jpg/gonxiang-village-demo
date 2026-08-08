@@ -1,0 +1,79 @@
+/* 盈亏平衡测算 —— 石板灰 + 琥珀（测算/财务感，区别于其他专题页） */
+.page { height: 100vh; background: #f1f5f9; }
+.bg { min-height: 100%; background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%); padding-bottom: 40rpx; }
+
+/* hero */
+.hero { background: linear-gradient(135deg, #1e293b 0%, #334155 55%, #475569 100%); padding: 44rpx 32rpx 38rpx; }
+.hero-t { display: block; font-size: 44rpx; font-weight: 800; color: #fff; letter-spacing: 1rpx; }
+.hero-s { display: block; font-size: 25rpx; color: #cbd5e1; margin-top: 12rpx; line-height: 1.6; }
+.badges { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 22rpx; }
+.badge { background: rgba(217, 119, 6, 0.22); border: 1rpx solid rgba(251, 191, 36, 0.5); border-radius: 100rpx; padding: 7rpx 18rpx; }
+.badge-t { font-size: 21rpx; color: #fde68a; font-weight: 700; }
+
+/* 结论卡 */
+.verdict { margin: -18rpx 24rpx 0; border-radius: 24rpx; padding: 30rpx 28rpx; box-shadow: 0 10rpx 30rpx rgba(15, 23, 42, 0.16); }
+.verdict.good { background: linear-gradient(135deg, #15803d 0%, #16a34a 100%); }
+.verdict.bad { background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%); }
+.verdict-lb { display: block; font-size: 23rpx; color: rgba(255, 255, 255, 0.85); }
+.verdict-num { display: block; font-size: 58rpx; font-weight: 800; color: #fff; margin: 8rpx 0 6rpx; letter-spacing: 1rpx; }
+.verdict-sub { display: block; font-size: 22rpx; color: rgba(255, 255, 255, 0.92); line-height: 1.6; }
+
+/* section */
+.sec { background: #fff; border-radius: 20rpx; margin: 22rpx 24rpx 0; padding: 26rpx 26rpx 28rpx; box-shadow: 0 4rpx 16rpx rgba(15, 23, 42, 0.06); }
+.sec-h { display: flex; align-items: center; gap: 14rpx; }
+.sec-no { width: 40rpx; height: 40rpx; border-radius: 10rpx; background: #d97706; display: flex; align-items: center; justify-content: center; font-size: 24rpx; font-weight: 800; color: #fff; }
+.sec-t { font-size: 31rpx; font-weight: 800; color: #0f172a; }
+.sec-lead { display: block; font-size: 23rpx; color: #64748b; margin-top: 12rpx; line-height: 1.7; }
+
+/* 滑块 */
+.sl { margin-top: 22rpx; }
+.sl-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rpx; }
+.sl-lb { font-size: 25rpx; color: #334155; font-weight: 600; }
+.sl-v { font-size: 27rpx; color: #b45309; font-weight: 800; min-width: 96rpx; text-align: center; }
+.stepper { display: flex; align-items: center; gap: 8rpx; }
+.step-btn { width: 52rpx; height: 52rpx; line-height: 48rpx; text-align: center; border-radius: 50%; background: #fff; border: 2rpx solid #e2e8f0; color: #b45309; font-size: 34rpx; font-weight: 800; box-shadow: 0 2rpx 6rpx rgba(0,0,0,.06); }
+.step-btn:active { background: #fef3c7; border-color: #f59e0b; }
+
+/* 明细行 */
+.row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; padding: 18rpx 0; border-bottom: 1rpx solid #f1f5f9; }
+.row-l { flex: 1; }
+.row-lb { display: block; font-size: 25rpx; color: #334155; font-weight: 600; }
+.row-hint { display: block; font-size: 20rpx; color: #94a3b8; margin-top: 4rpx; }
+.row-v { font-size: 29rpx; font-weight: 800; color: #0f172a; }
+.row-v.neg { color: #dc2626; }
+.row-v.pos { color: #16a34a; }
+.row.net { border-bottom: none; border-top: 2rpx solid #e2e8f0; margin-top: 6rpx; padding-top: 22rpx; }
+.row-lb.strong { font-size: 28rpx; font-weight: 800; color: #0f172a; }
+.row-v.strong { font-size: 38rpx; }
+
+/* 对比条 */
+.bars { margin-top: 20rpx; background: #f8fafc; border-radius: 14rpx; padding: 20rpx 18rpx; }
+.bar-row { display: flex; align-items: center; gap: 12rpx; margin-bottom: 12rpx; }
+.bar-row:last-child { margin-bottom: 0; }
+.bar-lb { font-size: 21rpx; color: #64748b; width: 110rpx; flex-shrink: 0; }
+.bar-track { flex: 1; height: 18rpx; background: #e2e8f0; border-radius: 100rpx; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 100rpx; }
+.bar-fill.in { background: linear-gradient(90deg, #16a34a, #4ade80); }
+.bar-fill.co { background: linear-gradient(90deg, #dc2626, #f87171); }
+.bar-v { font-size: 21rpx; color: #334155; font-weight: 700; width: 130rpx; text-align: right; flex-shrink: 0; }
+
+/* 平衡点 */
+.be { display: flex; align-items: center; justify-content: center; gap: 24rpx; margin-top: 20rpx; background: #fffbeb; border: 2rpx solid #fcd34d; border-radius: 16rpx; padding: 26rpx 18rpx; }
+.be-item { text-align: center; flex: 1; }
+.be-num { display: block; font-size: 46rpx; font-weight: 800; color: #b45309; }
+.be-lb { display: block; font-size: 21rpx; color: #92400e; margin-top: 6rpx; }
+.be-or { font-size: 22rpx; color: #b45309; font-weight: 700; }
+.be-note { display: block; font-size: 22rpx; color: #64748b; line-height: 1.75; margin-top: 16rpx; }
+
+/* tips */
+.tips { margin-top: 18rpx; background: #f0f9ff; border-left: 6rpx solid #0284c7; border-radius: 0 12rpx 12rpx 0; padding: 18rpx 20rpx; }
+.tips-t { display: block; font-size: 24rpx; font-weight: 800; color: #075985; margin-bottom: 10rpx; }
+.tips-i { display: block; font-size: 22rpx; color: #0c4a6e; line-height: 1.85; }
+
+/* why */
+.why { background: #f8fafc; border-radius: 14rpx; padding: 18rpx 20rpx; margin-top: 12rpx; }
+.why-t { display: block; font-size: 25rpx; font-weight: 800; color: #0f172a; }
+.why-d { display: block; font-size: 22rpx; color: #64748b; line-height: 1.7; margin-top: 6rpx; }
+.why-sum { display: block; font-size: 23rpx; color: #b45309; background: #fffbeb; border-radius: 12rpx; padding: 18rpx 20rpx; line-height: 1.8; margin-top: 16rpx; font-weight: 600; }
+
+.foot { display: block; font-size: 20rpx; color: #94a3b8; text-align: center; line-height: 1.7; margin: 28rpx 40rpx 0; }

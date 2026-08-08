@@ -1,0 +1,32 @@
+.page { display: flex; flex-direction: column; height: 100vh; background: #f5f5f5; }
+.hero { background: linear-gradient(135deg,#9333ea,#7e22ce); padding: 32rpx; }
+.hero-title { font-size: 36rpx; font-weight: 800; color: #fff; }
+.hero-sub { display: block; font-size: 23rpx; color: #f3e8ff; margin-top: 8rpx; }
+.tabs { display: flex; background: #fff; }
+.tab { flex: 1; text-align: center; padding: 20rpx 0; font-size: 25rpx; color: #6b7280; border-bottom: 4rpx solid transparent; }
+.tab.on { color: #9333ea; font-weight: 700; border-bottom-color: #9333ea; }
+.body { flex: 1; overflow: hidden; }
+.wrap { padding: 20rpx 24rpx; }
+.course { display: flex; align-items: center; background: #fff; border-radius: 16rpx; padding: 20rpx; margin-bottom: 14rpx; }
+.course-img { width: 88rpx; height: 88rpx; border-radius: 12rpx; background: #faf5ff; display: flex; align-items: center; justify-content: center; margin-right: 18rpx; }
+.course-info { flex: 1; }
+.course-name { font-size: 27rpx; font-weight: 600; color: #1f2937; }
+.course-tags { display: flex; gap: 8rpx; margin-top: 8rpx; }
+.ctag { font-size: 19rpx; color: #9333ea; background: #faf5ff; border-radius: 6rpx; padding: 2rpx 10rpx; }
+.course-btn { background: #9333ea; border-radius: 999rpx; padding: 12rpx 28rpx; }
+.course-btn-t { font-size: 25rpx; color: #fff; }
+.mine { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 14rpx; }
+.mine-top { display: flex; align-items: center; justify-content: space-between; }
+.mine-name { font-size: 27rpx; font-weight: 600; color: #1f2937; }
+.mine-cert { font-size: 22rpx; color: #16a34a; }
+.bar { height: 14rpx; background: #f3e8ff; border-radius: 999rpx; overflow: hidden; margin-top: 14rpx; }
+.bar-fill { height: 100%; background: #9333ea; }
+.mine-h { display: block; font-size: 22rpx; color: #9ca3af; margin-top: 10rpx; }
+.empty { padding: 60rpx 0; text-align: center; }
+.empty-t { font-size: 25rpx; color: #9ca3af; }
+.teacher { display: flex; align-items: center; background: #fff; border-radius: 16rpx; padding: 22rpx; margin-bottom: 12rpx; }
+.teacher-av { width: 80rpx; height: 80rpx; border-radius: 50%; background: #faf5ff; display: flex; align-items: center; justify-content: center; margin-right: 18rpx; }
+.teacher-info { flex: 1; }
+.teacher-name { font-size: 28rpx; font-weight: 700; color: #1f2937; }
+.teacher-field { display: block; font-size: 22rpx; color: #9333ea; margin-top: 4rpx; }
+.teacher-org { display: block; font-size: 21rpx; color: #9ca3af; margin-top: 4rpx; }

@@ -1,0 +1,33 @@
+.page { display: flex; flex-direction: column; height: 100vh; background: #f5f5f5; }
+.hero { background: linear-gradient(135deg,#16a34a,#15803d); padding: 32rpx; }
+.hero-title { font-size: 36rpx; font-weight: 800; color: #fff; }
+.hero-sub { display: block; font-size: 23rpx; color: #dcfce7; margin-top: 8rpx; }
+.credit { background: rgba(255,255,255,0.15); border: 1rpx solid rgba(255,255,255,0.3); border-radius: 18rpx; padding: 24rpx; margin-top: 20rpx; }
+.credit-l { font-size: 22rpx; color: #dcfce7; }
+.credit-n { display: block; font-size: 60rpx; font-weight: 800; color: #fff; line-height: 1.2; }
+.credit-s { font-size: 21rpx; color: #dcfce7; }
+.tabs { display: flex; background: #fff; }
+.tab { flex: 1; text-align: center; padding: 20rpx 0; font-size: 25rpx; color: #6b7280; border-bottom: 4rpx solid transparent; }
+.tab.on { color: #16a34a; font-weight: 700; border-bottom-color: #16a34a; }
+.body { flex: 1; overflow: hidden; }
+.wrap { padding: 20rpx 24rpx; }
+.fcard { background: #fff; border-radius: 18rpx; padding: 24rpx; margin-bottom: 16rpx; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04); }
+.fc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14rpx; }
+.fc-name { font-size: 29rpx; font-weight: 700; color: #1f2937; }
+.fc-tag { background: #fef2f2; border-radius: 6rpx; padding: 2rpx 14rpx; }
+.fc-tag-t { font-size: 20rpx; color: #dc2626; }
+.fc-row { display: flex; justify-content: space-between; padding: 8rpx 0; }
+.fc-k { font-size: 24rpx; color: #9ca3af; }
+.fc-v { font-size: 25rpx; color: #374151; }
+.fc-v.hot { color: #dc2626; font-weight: 700; }
+.fc-btn { background: #16a34a; border-radius: 999rpx; padding: 18rpx; text-align: center; margin-top: 14rpx; }
+.fc-btn-t { font-size: 27rpx; color: #fff; font-weight: 600; }
+.sub-tip { background: #fff7ed; border-radius: 14rpx; padding: 18rpx 22rpx; margin-bottom: 16rpx; }
+.sub-tip-t { font-size: 22rpx; color: #9a3412; line-height: 1.5; }
+.sub { display: flex; align-items: center; justify-content: space-between; background: #fff; border-radius: 16rpx; padding: 22rpx 24rpx; margin-bottom: 12rpx; }
+.sub-info { flex: 1; }
+.sub-name { font-size: 27rpx; color: #1f2937; }
+.sub-date { display: block; font-size: 21rpx; color: #9ca3af; margin-top: 6rpx; }
+.sub-amt { font-size: 28rpx; font-weight: 700; }
+.sub-amt.ok { color: #16a34a; }
+.sub-amt.wait { color: #9ca3af; }

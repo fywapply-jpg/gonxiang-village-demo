@@ -1,0 +1,29 @@
+.page { display: flex; flex-direction: column; height: 100vh; background: #f5f5f5; }
+.hero { background: linear-gradient(135deg,#7c3aed,#a855f7); padding: 32rpx; }
+.hero-t { font-size: 38rpx; font-weight: 800; color: #fff; }
+.hero-s { display: block; font-size: 22rpx; color: #ede9fe; margin-top: 8rpx; }
+.body { flex: 1; padding: 24rpx; }
+.card { background: #fff; border-radius: 16rpx; padding: 22rpx 24rpx; margin-bottom: 20rpx; }
+.card-t { font-size: 27rpx; font-weight: 800; color: #1f2937; }
+.card-sub { display: block; font-size: 21rpx; color: #9ca3af; margin-top: 6rpx; line-height: 1.5; }
+.quota { background: linear-gradient(135deg,#faf5ff,#f3e8ff); border: 1rpx solid #e9d5ff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; text-align: center; }
+.quota-t { font-size: 24rpx; color: #6b21a8; }
+.quota-n { display: block; font-size: 56rpx; font-weight: 800; color: #7c3aed; margin: 6rpx 0; }
+.quota-sub { font-size: 20rpx; color: #9ca3af; }
+.sec { display: block; font-size: 25rpx; font-weight: 700; color: #374151; margin: 8rpx 0 14rpx; }
+.row { display: flex; align-items: center; justify-content: space-between; background: #fff; border-radius: 14rpx; padding: 22rpx 24rpx; margin-bottom: 14rpx; }
+.row-name { font-size: 26rpx; font-weight: 600; color: #1f2937; }
+.row-sub { display: block; font-size: 21rpx; color: #9ca3af; margin-top: 4rpx; }
+.row-btn { background: #7c3aed; border-radius: 100rpx; padding: 12rpx 30rpx; }
+.row-btn-off { background: #d1d5db; }
+.row-btn-t { color: #fff; font-size: 23rpx; font-weight: 700; }
+.pkg { display: flex; align-items: center; background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx; }
+.pkg-icon { font-size: 52rpx; }
+.pkg-info { flex: 1; margin-left: 18rpx; }
+.pkg-name { font-size: 27rpx; font-weight: 700; color: #1f2937; }
+.pkg-desc { display: block; font-size: 21rpx; color: #9ca3af; margin-top: 6rpx; line-height: 1.5; }
+.pkg-buy { text-align: right; }
+.pkg-price { font-size: 30rpx; font-weight: 800; color: #7c3aed; }
+.pkg-unit { font-size: 20rpx; color: #9ca3af; }
+.tip { background: #faf5ff; border-radius: 14rpx; padding: 20rpx; margin-top: 8rpx; }
+.tip-t { font-size: 22rpx; color: #6b21a8; line-height: 1.7; }

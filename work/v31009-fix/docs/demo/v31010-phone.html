@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta http-equiv="Cache-Control" content="no-store,no-cache,must-revalidate">
+  <title>供享村社 v3.1010 · 手机演示版</title>
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
+    body{background:linear-gradient(145deg,#14532d,#22c55e 55%,#dcfce7);padding:20px;display:flex;align-items:center;justify-content:center;gap:38px;flex-wrap:wrap}
+    .phone{width:390px;height:844px;max-width:calc(100vw - 20px);max-height:94vh;background:#111;padding:11px;border-radius:44px;box-shadow:0 28px 80px rgba(0,0,0,.42)}
+    .top{height:36px;background:#eef1f3;border-radius:32px 32px 0 0;position:relative}.notch{position:absolute;width:144px;height:24px;left:50%;top:0;transform:translateX(-50%);background:#111;border-radius:0 0 17px 17px}
+    iframe{display:block;width:100%;height:calc(100% - 36px);border:0;border-radius:0 0 33px 33px;background:#f6f7f8}
+    .side{width:350px;max-width:92vw;color:#fff}.title{font-size:29px;font-weight:900}.ver{font-size:12px;background:#fff;color:#15803d;border-radius:99px;padding:3px 10px;margin-left:6px}.sub{font-size:14px;line-height:1.7;color:#dcfce7;margin:8px 0 18px}
+    button,a{display:block;width:100%;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.16);color:#fff;border-radius:13px;padding:12px 14px;margin:8px 0;text-align:left;font-size:15px;font-weight:800;text-decoration:none;cursor:pointer}
+    button.on{background:#fff;color:#14532d}.tip{font-size:12px;line-height:1.7;background:rgba(255,255,255,.94);color:#14532d;border-radius:13px;padding:13px;margin-top:14px}
+    @media(max-width:800px){body{display:block;padding:8px}.phone{width:min(390px,calc(100vw - 16px));height:calc(100vh - 16px);margin:auto}.side{width:min(390px,calc(100vw - 16px));margin:20px auto;color:#14532d}.sub{color:#166534}button,a{background:rgba(255,255,255,.9);color:#14532d;border-color:#bbf7d0}button.on{background:#14532d;color:#fff}}
+  </style>
+</head>
+<body>
+  <div class="phone"><div class="top"><div class="notch"></div></div><iframe id="app" src="m.html?role=platform_admin&amp;demo=full&amp;v=v3.1009-restore-1#/pages/index/index"></iframe></div>
+  <div class="side">
+    <div class="title">🌾 供享村社<span class="ver">v3.1010</span></div>
+    <div class="sub">恢复 v3.1009 原版视觉 · 全功能手机演示</div>
+    <button class="on" onclick="go(this,'/pages/index/index')">🏠 平台首页</button>
+    <button onclick="go(this,'/pages/presale/index')">🍓 鲜食农产品预售</button>
+    <button onclick="go(this,'/pages/groupon/index')">🧺 惠民团购</button>
+    <button onclick="go(this,'/pages/orders/index')">🧾 我的订单·支付·取消·退款</button>
+    <a href="m.html?role=platform_admin&amp;demo=full&amp;v=v3.1009-restore-1#/pages/index/index">📱 不带手机框直接打开</a>
+    <div class="tip">已恢复 v3.1009 首页原版图标和视觉。后续试装方案继续独立保存，不影响正式演示。</div>
+  </div>
+  <script>
+    function go(btn,path){
+      document.getElementById('app').src='m.html?role=platform_admin&demo=full&v=v3.1009-restore-1#'+path;
+      document.querySelectorAll('button').forEach(function(x){x.classList.remove('on')});btn.classList.add('on');
+    }
+  </script>
+</body>
+</html>

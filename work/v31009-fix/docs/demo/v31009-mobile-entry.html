@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+  <title>供享村社 v3.1009 手机兼容版</title>
+</head>
+<body>
+  <p style="font:16px -apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;padding:24px;color:#166534">
+    正在打开供享村社 v3.1009 手机兼容版…
+  </p>
+  <script>
+    try {
+      localStorage.removeItem('gx_token');
+      localStorage.removeItem('gx_user');
+      sessionStorage.clear();
+      localStorage.setItem('gx_demo_release', 'v3.1009-pc-map-link-4');
+    } catch (e) {}
+    try {
+      if ('caches' in window) caches.keys().then(function (keys) {
+        keys.forEach(function (key) { caches.delete(key); });
+      });
+      if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().then(function (regs) {
+        regs.forEach(function (reg) { reg.unregister(); });
+      });
+    } catch (e) {}
+    location.replace('/demo/app.html?role=platform_admin&demo=full&v=v3.1009-pc-map-link-4&r=' + Date.now() + '#/pages/index/index');
+  </script>
+</body>
+</html>

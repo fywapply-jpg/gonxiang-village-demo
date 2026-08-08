@@ -1,0 +1,113 @@
+/* 平台支付结算系统 —— 金融蓝 / 靛蓝主题（银行级、可信） */
+.page { height: 100vh; box-sizing: border-box; }
+.bg {
+  min-height: 100vh; box-sizing: border-box;
+  padding: 0 0 80rpx;
+  background: linear-gradient(180deg, #f1f5f9 0%, #eef2ff 100%);
+}
+
+/* HERO */
+.hero {
+  text-align: center;
+  padding: 56rpx 32rpx 40rpx;
+  background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 55%, #3b82f6 100%);
+  border-bottom-left-radius: 32rpx; border-bottom-right-radius: 32rpx;
+  box-shadow: 0 8rpx 30rpx rgba(30, 58, 138, .30);
+}
+.hero-t { font-size: 46rpx; font-weight: 800; color: #fff; letter-spacing: 2rpx; text-shadow: 0 2rpx 14rpx rgba(15, 23, 42, .38); }
+.hero-s { display: block; font-size: 23rpx; color: #dbeafe; margin-top: 16rpx; line-height: 1.6; letter-spacing: 1rpx; }
+.badges { display: flex; justify-content: center; flex-wrap: wrap; gap: 12rpx; margin-top: 26rpx; }
+.badge { background: rgba(255,255,255,.18); border: 1rpx solid rgba(255,255,255,.5); border-radius: 100rpx; padding: 9rpx 22rpx; }
+.badge-t { font-size: 20rpx; color: #fff; font-weight: 700; }
+
+/* section 通用 */
+.sec { margin: 26rpx 24rpx 0; background: #fff; border: 1rpx solid #dbeafe; border-radius: 24rpx; padding: 28rpx 24rpx; box-shadow: 0 4rpx 20rpx rgba(30, 64, 175, .06); }
+.sec-h { display: flex; align-items: center; }
+.sec-no { width: 52rpx; height: 52rpx; border-radius: 14rpx; background: linear-gradient(135deg,#1d4ed8,#3b82f6); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-right: 16rpx; box-shadow: 0 3rpx 12rpx rgba(29, 78, 216, .38); }
+.sec-no-t { color: #fff; font-size: 30rpx; font-weight: 800; }
+.sec-t { flex: 1; font-size: 32rpx; font-weight: 800; color: #1e3a8a; }
+.sec-lead { display: block; font-size: 21rpx; color: #475569; line-height: 1.7; margin-top: 16rpx; padding: 16rpx 18rpx; background: #f8fafc; border: 1rpx dashed #bfdbfe; border-radius: 14rpx; }
+.em { color: #1d4ed8; font-weight: 800; }
+
+/* ① 系统架构 · 纵向层卡 */
+.arch { margin-top: 20rpx; }
+.arch-item { background: linear-gradient(180deg,#f8fafc,#eff6ff); border: 1rpx solid #dbeafe; border-left: 8rpx solid #2563eb; border-radius: 16rpx; padding: 22rpx; }
+.arch-h { display: flex; align-items: center; }
+.arch-i { font-size: 40rpx; margin-right: 16rpx; }
+.arch-hb { flex: 1; }
+.arch-t { font-size: 28rpx; font-weight: 800; color: #1e3a8a; }
+.arch-d { display: block; font-size: 21rpx; color: #475569; line-height: 1.6; margin-top: 6rpx; }
+.arch-chips { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 14rpx; }
+.arch-chip { font-size: 19rpx; font-weight: 700; color: #1d4ed8; background: #fff; border: 1rpx solid #bfdbfe; border-radius: 100rpx; padding: 6rpx 16rpx; }
+.arch-conn { display: block; text-align: center; color: #93c5fd; font-size: 26rpx; margin: 8rpx 0; }
+
+/* ② 流程 stepper */
+.steps { display: flex; flex-direction: column; margin-top: 20rpx; }
+.step { position: relative; display: flex; align-items: flex-start; padding-bottom: 24rpx; }
+.step-no { width: 48rpx; height: 48rpx; border-radius: 50%; background: linear-gradient(135deg,#1d4ed8,#3b82f6); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-right: 18rpx; z-index: 2; box-shadow: 0 2rpx 10rpx rgba(29, 78, 216, .34); }
+.step-no-t { color: #fff; font-size: 24rpx; font-weight: 800; }
+.step-b { flex: 1; padding-top: 4rpx; }
+.step-t { font-size: 25rpx; font-weight: 800; color: #1e3a8a; }
+.step-d { display: block; font-size: 20rpx; color: #64748b; line-height: 1.6; margin-top: 6rpx; }
+.step-line { position: absolute; left: 23rpx; top: 48rpx; bottom: 0; width: 3rpx; background: #bfdbfe; z-index: 1; }
+
+/* ③ 支付方式 · 可选 chips + 详情卡 */
+.pays { display: flex; flex-wrap: wrap; gap: 14rpx; margin-top: 20rpx; }
+.pay { display: flex; align-items: center; background: #f8fafc; border: 2rpx solid #e2e8f0; border-radius: 100rpx; padding: 12rpx 20rpx; }
+.pay-i { font-size: 28rpx; margin-right: 10rpx; }
+.pay-name { font-size: 22rpx; font-weight: 700; color: #334155; }
+.pay-badge { font-size: 18rpx; font-weight: 800; color: #64748b; background: #eef2ff; border-radius: 100rpx; padding: 3rpx 12rpx; margin-left: 12rpx; }
+.pay-on { background: linear-gradient(135deg,#1d4ed8,#3b82f6); border-color: #1d4ed8; box-shadow: 0 4rpx 14rpx rgba(29, 78, 216, .3); }
+.pay-on .pay-name { color: #fff; }
+.pay-on .pay-badge { color: #1d4ed8; background: #fff; }
+.pay-zero .pay-badge { color: #047857; background: #d1fae5; }
+.pay-on.pay-zero .pay-badge { color: #047857; background: #fff; }
+.pay-detail { margin-top: 18rpx; background: linear-gradient(135deg,#eff6ff,#e0e7ff); border: 1rpx solid #bfdbfe; border-left: 8rpx solid #2563eb; border-radius: 16rpx; padding: 22rpx 24rpx; }
+.pay-detail-n { font-size: 27rpx; font-weight: 800; color: #1e3a8a; }
+.pay-detail-d { display: block; font-size: 22rpx; color: #334155; line-height: 1.7; margin-top: 10rpx; }
+
+/* ④ 退货期衔接（重点 · 醒目蓝框） */
+.sec-hl { border: 2rpx solid #2563eb; box-shadow: 0 8rpx 30rpx rgba(37, 99, 235, .18); background: linear-gradient(180deg,#ffffff,#f5f8ff); }
+.sec-no-hl { background: linear-gradient(135deg,#1e3a8a,#2563eb); }
+.sec-key { font-size: 19rpx; color: #fff; background: linear-gradient(135deg,#1e3a8a,#2563eb); border-radius: 100rpx; padding: 5rpx 18rpx; font-weight: 800; }
+.rp-lead { margin-top: 18rpx; background: linear-gradient(135deg,#1e3a8a,#1d4ed8); border-radius: 16rpx; padding: 22rpx 24rpx; box-shadow: 0 6rpx 20rpx rgba(30, 58, 138, .24); }
+.rp-lead-t { font-size: 22rpx; color: #eff6ff; line-height: 1.75; font-weight: 600; }
+.rp-cards { display: flex; flex-direction: column; gap: 14rpx; margin-top: 18rpx; }
+.rp-card { display: flex; align-items: flex-start; background: #f8fafc; border: 1rpx solid #dbeafe; border-left: 8rpx solid #2563eb; border-radius: 16rpx; padding: 20rpx 22rpx; }
+.rp-i { font-size: 34rpx; margin-right: 14rpx; line-height: 1.3; }
+.rp-x { flex: 1; font-size: 21rpx; color: #475569; line-height: 1.75; }
+.rp-t { font-size: 23rpx; font-weight: 800; color: #1e3a8a; }
+
+/* ⑤ 到账周期 · 表格 */
+.tbl { margin-top: 20rpx; border: 1rpx solid #dbeafe; border-radius: 16rpx; overflow: hidden; }
+.tbl-row { display: flex; align-items: center; border-bottom: 1rpx solid #eef2ff; }
+.tbl-row:last-child { border-bottom: none; }
+.tbl-head { background: linear-gradient(135deg,#1d4ed8,#3b82f6); }
+.tbl-head .tb-type, .tbl-head .tb-time, .tbl-head .tb-chan { color: #fff; font-weight: 800; font-size: 21rpx; }
+.tb-type { flex: 2.1; padding: 16rpx 14rpx; font-size: 20rpx; color: #334155; font-weight: 700; line-height: 1.45; }
+.tb-time { flex: 1.5; padding: 16rpx 10rpx; font-size: 20rpx; color: #1d4ed8; font-weight: 800; line-height: 1.45; border-left: 1rpx solid #eef2ff; }
+.tb-chan { flex: 1.4; padding: 16rpx 12rpx; font-size: 19rpx; color: #64748b; line-height: 1.45; border-left: 1rpx solid #eef2ff; }
+.tbl-row:nth-child(even) { background: #f8fafc; }
+.tbl-head.tbl-row:nth-child(even) { background: linear-gradient(135deg,#1d4ed8,#3b82f6); }
+
+/* ⑥ 结算规则要点 */
+.rules { display: flex; flex-direction: column; gap: 12rpx; margin-top: 20rpx; }
+.rule { display: flex; align-items: flex-start; background: #f8fafc; border: 1rpx solid #dbeafe; border-radius: 14rpx; padding: 18rpx 20rpx; }
+.rule-dot { flex-shrink: 0; width: 34rpx; height: 34rpx; border-radius: 50%; background: linear-gradient(135deg,#1d4ed8,#3b82f6); color: #fff; font-size: 20rpx; font-weight: 800; text-align: center; line-height: 34rpx; margin-right: 14rpx; }
+.rule-x { flex: 1; font-size: 22rpx; color: #475569; line-height: 1.65; }
+
+/* ⑦ 对账 · 退款 · 风控 · 存证 (2 列) */
+.recon { display: flex; flex-wrap: wrap; gap: 16rpx; margin-top: 20rpx; }
+.rc { width: calc(50% - 8rpx); box-sizing: border-box; background: linear-gradient(180deg,#f8fafc,#eff6ff); border: 1rpx solid #dbeafe; border-radius: 16rpx; padding: 22rpx 18rpx; }
+.rc-i { font-size: 36rpx; }
+.rc-t { display: block; font-size: 25rpx; font-weight: 800; color: #1e3a8a; margin-top: 10rpx; }
+.rc-d { display: block; font-size: 19rpx; color: #64748b; line-height: 1.6; margin-top: 8rpx; }
+
+/* ⑧ 安全合规 · 小卡 */
+.comply { display: flex; flex-direction: column; gap: 12rpx; margin-top: 20rpx; }
+.cp { display: flex; align-items: center; background: linear-gradient(135deg,#eff6ff,#e0e7ff); border: 1rpx solid #bfdbfe; border-radius: 14rpx; padding: 18rpx 22rpx; }
+.cp-i { font-size: 32rpx; margin-right: 16rpx; }
+.cp-t { flex: 1; font-size: 22rpx; font-weight: 700; color: #1e3a8a; line-height: 1.5; }
+
+/* 底部说明 */
+.foot { display: block; font-size: 19rpx; color: #94a3b8; line-height: 1.7; margin: 30rpx 32rpx 0; text-align: center; }

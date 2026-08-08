@@ -1,0 +1,17 @@
+.page { display: flex; flex-direction: column; height: 100vh; background: #f5f5f5; position: relative; }
+.hero { background: linear-gradient(135deg,#c81e1e,#e23b3b); padding: 32rpx; }
+.hero-t { font-size: 36rpx; font-weight: 800; color: #fff; }
+.hero-s { display: block; font-size: 22rpx; color: #ffe4e4; margin-top: 8rpx; }
+.body { flex: 1; padding: 24rpx; }
+.mcard { display: flex; align-items: center; background: #fff; border-radius: 16rpx; padding: 22rpx 24rpx; margin-bottom: 16rpx; }
+.mav { width: 76rpx; height: 76rpx; border-radius: 50%; background: #fef2f2; display: flex; align-items: center; justify-content: center; }
+.mav-t { font-size: 34rpx; font-weight: 800; color: #c81e1e; }
+.minfo { flex: 1; margin-left: 18rpx; }
+.mname { font-size: 28rpx; font-weight: 700; color: #1f2937; }
+.mrole { display: block; font-size: 22rpx; color: #9ca3af; margin-top: 4rpx; }
+.mact { background: #16a34a; border-radius: 100rpx; padding: 12rpx 28rpx; }
+.mact-t { color: #fff; font-size: 24rpx; font-weight: 700; }
+.tip { background: #fff7ed; border-radius: 14rpx; padding: 20rpx; margin-top: 8rpx; }
+.tip-t { font-size: 22rpx; color: #9a3412; line-height: 1.7; }
+.fab { position: absolute; left: 32rpx; right: 32rpx; bottom: 40rpx; background: #c81e1e; border-radius: 100rpx; padding: 24rpx 0; text-align: center; box-shadow: 0 6rpx 20rpx rgba(200,30,30,.4); }
+.fab-t { color: #fff; font-size: 28rpx; font-weight: 700; }

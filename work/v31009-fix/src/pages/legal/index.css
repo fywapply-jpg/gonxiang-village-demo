@@ -1,0 +1,34 @@
+.page { display: flex; flex-direction: column; height: 100vh; background: #f5f5f5; }
+.hero { background: linear-gradient(135deg,#9333ea,#7e22ce); padding: 32rpx; }
+.hero-title { font-size: 36rpx; font-weight: 800; color: #fff; }
+.hero-sub { display: block; font-size: 23rpx; color: #f3e8ff; margin-top: 8rpx; }
+.tabs { display: flex; background: #fff; }
+.tab { flex: 1; text-align: center; padding: 20rpx 0; font-size: 24rpx; color: #6b7280; border-bottom: 4rpx solid transparent; }
+.tab.on { color: #9333ea; font-weight: 700; border-bottom-color: #9333ea; }
+.body { flex: 1; overflow: hidden; }
+.wrap { padding: 20rpx 24rpx; }
+.qa { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 14rpx; }
+.qa-q { font-size: 27rpx; font-weight: 700; color: #1f2937; }
+.qa-a { display: block; font-size: 25rpx; color: #4b5563; line-height: 1.6; margin-top: 12rpx; }
+.qa-by { display: block; font-size: 21rpx; color: #9333ea; margin-top: 10rpx; }
+.case { display: flex; align-items: center; background: #fff; border-radius: 16rpx; padding: 22rpx; margin-bottom: 12rpx; }
+.case-info { flex: 1; }
+.case-title { font-size: 27rpx; font-weight: 600; color: #1f2937; }
+.case-m { display: block; font-size: 22rpx; color: #9ca3af; margin-top: 6rpx; }
+.case-st { border-radius: 999rpx; padding: 4rpx 16rpx; }
+.case-st.ing { background: #faf5ff; } .case-st.done { background: #f0fdf4; }
+.case-st-t { font-size: 21rpx; }
+.case-st.ing .case-st-t { color: #9333ea; } .case-st.done .case-st-t { color: #16a34a; }
+.row { display: flex; align-items: center; background: #fff; border-radius: 16rpx; padding: 22rpx; margin-bottom: 14rpx; }
+.row-emoji { font-size: 44rpx; margin-right: 18rpx; }
+.row-name { font-size: 27rpx; color: #1f2937; }
+.row-name.flex1 { flex: 1; }
+.row-arrow { font-size: 32rpx; color: #d1d5db; }
+.staff { display: flex; align-items: center; background: #fff; border-radius: 16rpx; padding: 22rpx; margin-bottom: 12rpx; }
+.staff-av { width: 80rpx; height: 80rpx; border-radius: 50%; background: #faf5ff; display: flex; align-items: center; justify-content: center; margin-right: 18rpx; }
+.staff-info { flex: 1; }
+.staff-name { font-size: 28rpx; font-weight: 700; color: #1f2937; }
+.staff-role { display: block; font-size: 22rpx; color: #9333ea; margin-top: 4rpx; }
+.staff-field { display: block; font-size: 21rpx; color: #9ca3af; margin-top: 4rpx; }
+.fab { position: fixed; right: 32rpx; bottom: 48rpx; background: #9333ea; border-radius: 999rpx; padding: 22rpx 40rpx; box-shadow: 0 8rpx 24rpx rgba(147,51,234,0.4); }
+.fab-t { font-size: 28rpx; color: #fff; font-weight: 600; }

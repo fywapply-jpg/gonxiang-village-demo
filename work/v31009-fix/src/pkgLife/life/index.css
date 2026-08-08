@@ -1,0 +1,15 @@
+.page { display: flex; flex-direction: column; height: 100vh; background: #f4f6f8; }
+.hero { background: linear-gradient(135deg,#0891b2,#22d3ee); padding: 32rpx; }
+.hero-t { font-size: 36rpx; font-weight: 800; color: #fff; }
+.hero-s { display: block; font-size: 22rpx; color: #cffafe; margin-top: 8rpx; }
+.body { flex: 1; padding: 24rpx; }
+.cat { background: #fff; border-radius: 16rpx; padding: 22rpx 24rpx; margin-bottom: 18rpx; }
+.cat-head { display: flex; align-items: center; margin-bottom: 14rpx; }
+.cat-idx { width: 36rpx; height: 36rpx; border-radius: 50%; background: #ecfeff; color: #0891b2; font-size: 22rpx; font-weight: 800; text-align: center; line-height: 36rpx; }
+.cat-t { flex: 1; font-size: 27rpx; font-weight: 800; color: #1f2937; margin-left: 12rpx; }
+.cat-n { font-size: 20rpx; color: #9ca3af; }
+.chips { display: flex; flex-wrap: wrap; gap: 12rpx; }
+.chip { background: #f3f4f6; border-radius: 100rpx; padding: 12rpx 22rpx; }
+.chip-t { font-size: 22rpx; color: #374151; }
+.foot { background: #fef2f2; border-radius: 14rpx; padding: 20rpx; margin-top: 6rpx; }
+.foot-t { font-size: 22rpx; color: #9a3412; line-height: 1.7; }

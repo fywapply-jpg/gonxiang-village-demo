@@ -1,0 +1,125 @@
+/* AI 智能小卖部 —— 清新便利店 青绿(teal) + 暖橙(amber) 主题 */
+.page { height: 100vh; box-sizing: border-box; }
+.wrap {
+  min-height: 100vh; box-sizing: border-box;
+  padding: 24rpx 24rpx 60rpx;
+  background: linear-gradient(180deg, #f0fdfa 0%, #ecfeff 100%);
+}
+
+/* ① Hero */
+.hero {
+  background: linear-gradient(135deg, #0d9488 0%, #14b8a6 60%, #22c9b5 100%);
+  border-radius: 28rpx; padding: 34rpx 30rpx 28rpx;
+  box-shadow: 0 12rpx 30rpx rgba(13,148,136,.28);
+}
+.hero-top { display: flex; align-items: center; }
+.hero-logo { font-size: 68rpx; margin-right: 18rpx; }
+.hero-tt { flex: 1; }
+.hero-t { font-size: 44rpx; font-weight: 800; color: #fff; letter-spacing: 1rpx; }
+.hero-status { display: flex; align-items: center; margin-top: 8rpx; }
+.dot { width: 16rpx; height: 16rpx; border-radius: 50%; background: #4ade80; margin-right: 10rpx; box-shadow: 0 0 0 0 rgba(74,222,128,.7); animation: pulse 1.8s infinite; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(74,222,128,.7); } 70% { box-shadow: 0 0 0 14rpx rgba(74,222,128,0); } 100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); } }
+.hero-status-t { font-size: 24rpx; color: #ecfeff; font-weight: 700; }
+.hero-sub { display: block; font-size: 23rpx; color: #d1fae5; margin-top: 18rpx; line-height: 1.55; }
+.stats { display: flex; gap: 14rpx; margin-top: 24rpx; }
+.stat { flex: 1; background: rgba(255,255,255,.16); border: 1rpx solid rgba(255,255,255,.28); border-radius: 16rpx; padding: 16rpx 6rpx; text-align: center; }
+.stat-n { display: block; font-size: 40rpx; font-weight: 800; color: #fff; line-height: 1.1; }
+.stat-n.warn { color: #fde68a; }
+.stat-l { display: block; font-size: 19rpx; color: #d1fae5; margin-top: 6rpx; }
+
+/* 通用卡片 */
+.card { background: #fff; border-radius: 24rpx; padding: 26rpx 24rpx; margin-top: 22rpx; box-shadow: 0 6rpx 20rpx rgba(15,118,110,.07); }
+.card-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18rpx; }
+.card-t { font-size: 30rpx; font-weight: 800; color: #0f766e; }
+.card-badge { font-size: 20rpx; color: #0d9488; background: #f0fdfa; border: 1rpx solid #99f6e4; border-radius: 100rpx; padding: 5rpx 16rpx; font-weight: 700; }
+.card-badge.warn { color: #b45309; background: #fffbeb; border-color: #fcd34d; }
+.card-badge.live { color: #16a34a; background: #f0fdf4; border-color: #bbf7d0; }
+
+/* ② 聊天 */
+.chatlog { height: 560rpx; background: #f6fefd; border: 1rpx solid #ccfbf1; border-radius: 18rpx; padding: 20rpx; box-sizing: border-box; }
+.row { display: flex; margin-bottom: 22rpx; align-items: flex-start; }
+.row.me { justify-content: flex-end; }
+.ava { font-size: 42rpx; margin-right: 12rpx; }
+.bubble { max-width: 80%; background: #fff; border: 1rpx solid #d1faf3; border-radius: 18rpx; padding: 18rpx 22rpx; box-shadow: 0 3rpx 10rpx rgba(13,148,136,.06); }
+.row.ai .bubble { border-top-left-radius: 6rpx; background: #e6fbf7; }
+.row.me .bubble { border-top-right-radius: 6rpx; background: #fff4dc; border-color: #fde3ad; }
+.btext { font-size: 26rpx; color: #134e4a; line-height: 1.6; }
+.row.me .btext { color: #7c4a03; }
+
+/* AI 商品小卡 */
+.ai-cards { margin-top: 14rpx; }
+.ai-card { display: flex; align-items: center; background: #fff; border: 1rpx solid #99f6e4; border-radius: 14rpx; padding: 14rpx 16rpx; margin-top: 12rpx; }
+.ai-emoji { font-size: 40rpx; margin-right: 14rpx; }
+.ai-mid { flex: 1; display: flex; flex-direction: column; }
+.ai-name { font-size: 26rpx; color: #134e4a; font-weight: 700; }
+.ai-badge { font-size: 18rpx; margin-top: 6rpx; align-self: flex-start; border-radius: 6rpx; padding: 3rpx 10rpx; }
+.ai-price { font-size: 30rpx; font-weight: 800; color: #f59e0b; margin-right: 14rpx; }
+.ai-btn { background: linear-gradient(135deg, #f59e0b, #f6b73c); border-radius: 100rpx; padding: 12rpx 26rpx; box-shadow: 0 4rpx 12rpx rgba(245,158,11,.32); }
+.ai-btn-t { font-size: 23rpx; color: #fff; font-weight: 800; }
+
+/* 库存徽标配色 */
+.b-green { color: #0d9488; background: #f0fdfa; }
+.b-red { color: #dc2626; background: #fef2f2; }
+.b-gray { color: #9ca3af; background: #f3f4f6; }
+
+.chat-end { height: 2rpx; }
+
+/* 快捷问句 */
+.quicks { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 16rpx; }
+.quick { background: #f0fdfa; border: 1rpx solid #99f6e4; border-radius: 100rpx; padding: 12rpx 22rpx; }
+.quick-t { font-size: 23rpx; color: #0d9488; font-weight: 600; }
+
+/* 输入栏 */
+.inbar { display: flex; align-items: center; gap: 14rpx; margin-top: 18rpx; }
+.inp { flex: 1; background: #f3f6f6; border: 1rpx solid #e2f4f1; border-radius: 100rpx; padding: 18rpx 28rpx; font-size: 26rpx; color: #134e4a; }
+.sendbtn { background: linear-gradient(135deg, #0d9488, #14b8a6); border-radius: 100rpx; padding: 18rpx 38rpx; box-shadow: 0 4rpx 12rpx rgba(13,148,136,.3); }
+.sendbtn-t { color: #fff; font-size: 26rpx; font-weight: 800; }
+
+/* ③ 货架 */
+.cat-block { margin-top: 10rpx; }
+.cat-head { display: flex; align-items: center; justify-content: space-between; margin: 18rpx 0 12rpx; }
+.cat-head-t { font-size: 26rpx; font-weight: 800; color: #115e59; }
+.cat-head-n { font-size: 20rpx; color: #5eead4; }
+.grid { display: flex; flex-wrap: wrap; gap: 16rpx; }
+.tile {
+  width: calc(50% - 8rpx); box-sizing: border-box;
+  background: #f9fffe; border: 1rpx solid #d1faf3; border-radius: 18rpx;
+  padding: 20rpx 18rpx 18rpx; display: flex; flex-direction: column;
+}
+.tile-off { opacity: .62; }
+.tile-emoji { font-size: 52rpx; }
+.tile-name { font-size: 27rpx; font-weight: 700; color: #134e4a; margin-top: 8rpx; }
+.tile-row { display: flex; align-items: center; justify-content: space-between; margin-top: 12rpx; }
+.tile-price { font-size: 34rpx; font-weight: 800; color: #f59e0b; }
+.tile-badge { font-size: 19rpx; border-radius: 6rpx; padding: 4rpx 12rpx; }
+.tile-btn { margin-top: 14rpx; background: linear-gradient(135deg, #f59e0b, #f6b73c); border-radius: 100rpx; padding: 13rpx 0; text-align: center; box-shadow: 0 4rpx 12rpx rgba(245,158,11,.28); }
+.tile-btn.off { background: #e5e7eb; box-shadow: none; }
+.tile-btn-t { font-size: 24rpx; color: #fff; font-weight: 800; }
+.tile-btn.off .tile-btn-t { color: #9ca3af; }
+
+/* ④ 自动补货 */
+.restock-intro { display: block; font-size: 22rpx; color: #5b7a76; line-height: 1.6; }
+.low-list { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 18rpx; }
+.low-empty { font-size: 24rpx; color: #0d9488; }
+.low-chip { background: #fef2f2; border: 1rpx solid #fecaca; border-radius: 100rpx; padding: 10rpx 20rpx; }
+.low-chip-t { font-size: 22rpx; color: #dc2626; font-weight: 600; }
+.restock-btn { margin-top: 22rpx; background: linear-gradient(135deg, #0d9488, #14b8a6); border-radius: 16rpx; padding: 22rpx 0; text-align: center; box-shadow: 0 6rpx 16rpx rgba(13,148,136,.28); }
+.restock-btn.dim { opacity: .55; }
+.restock-btn-t { font-size: 28rpx; color: #fff; font-weight: 800; letter-spacing: 1rpx; }
+.log-title { display: block; font-size: 24rpx; font-weight: 800; color: #0f766e; margin: 26rpx 0 14rpx; }
+.log-item { display: flex; align-items: flex-start; margin-top: 14rpx; }
+.log-dot { width: 14rpx; height: 14rpx; border-radius: 50%; background: #14b8a6; margin: 8rpx 16rpx 0 4rpx; flex-shrink: 0; box-shadow: 0 0 0 6rpx rgba(20,184,166,.14); }
+.log-body { flex: 1; border-bottom: 1rpx dashed #e2f4f1; padding-bottom: 14rpx; }
+.log-text { display: block; font-size: 23rpx; color: #134e4a; line-height: 1.55; }
+.log-time { display: block; font-size: 19rpx; color: #94b8b3; margin-top: 6rpx; }
+
+/* ⑤ 值守能力 */
+.abilities { display: flex; flex-wrap: wrap; gap: 16rpx; }
+.ability { width: calc(50% - 8rpx); box-sizing: border-box; background: #f0fdfa; border: 1rpx solid #ccfbf1; border-radius: 16rpx; padding: 20rpx 18rpx; }
+.ability-i { font-size: 40rpx; }
+.ability-t { display: block; font-size: 25rpx; font-weight: 800; color: #0f766e; margin-top: 8rpx; }
+.ability-d { display: block; font-size: 20rpx; color: #5b7a76; margin-top: 8rpx; line-height: 1.55; }
+.ability-foot { display: block; font-size: 21rpx; color: #0d9488; background: #f0fdfa; border: 1rpx dashed #99f6e4; border-radius: 12rpx; padding: 14rpx 18rpx; margin-top: 18rpx; line-height: 1.6; }
+
+/* 底部 */
+.foot { display: block; font-size: 20rpx; color: #94b8b3; line-height: 1.7; margin-top: 26rpx; text-align: center; padding: 0 12rpx; }

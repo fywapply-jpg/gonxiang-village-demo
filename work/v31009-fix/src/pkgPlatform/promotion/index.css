@@ -1,0 +1,87 @@
+.page { display: flex; flex-direction: column; min-height: 100vh; background: #f5f5f5; }
+.hero { background: linear-gradient(135deg,#15803d,#16a34a); padding: 34rpx 32rpx; }
+.hero-t { font-size: 38rpx; font-weight: 800; color: #fff; }
+.hero-s { display: block; font-size: 21rpx; color: #dcfce7; margin-top: 8rpx; line-height: 1.5; }
+.body { flex: 1; padding: 24rpx; }
+
+/* 概览 */
+.ov { display: flex; gap: 14rpx; margin-bottom: 22rpx; }
+.ov-c { flex: 1; background: #fff; border-radius: 16rpx; padding: 22rpx 8rpx; text-align: center; box-shadow: 0 2rpx 10rpx rgba(0,0,0,.03); }
+.ov-n { font-size: 30rpx; font-weight: 800; color: #16a34a; }
+.ov-l { display: block; font-size: 19rpx; color: #6b7280; margin-top: 6rpx; }
+
+/* 通用卡片 */
+.card { background: #fff; border-radius: 18rpx; padding: 26rpx; margin-bottom: 22rpx; }
+.card-t { font-size: 28rpx; font-weight: 800; color: #1f2937; }
+
+/* 分销制度 */
+.rule { display: flex; align-items: flex-start; margin-top: 20rpx; }
+.rule-i { font-size: 34rpx; margin-right: 16rpx; line-height: 1.2; }
+.rule-b { flex: 1; }
+.rule-t { font-size: 26rpx; font-weight: 700; color: #1f2937; }
+.rule-d { display: block; font-size: 21rpx; color: #6b7280; margin-top: 5rpx; line-height: 1.6; }
+
+/* 分销流程 步骤条 */
+.steps { margin-top: 20rpx; }
+.step { display: flex; align-items: center; position: relative; flex-wrap: wrap; }
+.step-no { width: 48rpx; height: 48rpx; border-radius: 50%; background: #16a34a; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.step-no-t { color: #fff; font-size: 24rpx; font-weight: 800; }
+.step-b { flex: 1; margin-left: 18rpx; padding: 8rpx 0; }
+.step-t { font-size: 25rpx; font-weight: 700; color: #1f2937; }
+.step-d { display: block; font-size: 20rpx; color: #9ca3af; margin-top: 2rpx; }
+.step-arrow { width: 100%; color: #86efac; font-size: 22rpx; margin: 2rpx 0 2rpx 22rpx; }
+
+/* 组织列表 */
+.sec-lbl { display: block; font-size: 24rpx; color: #6b7280; font-weight: 700; margin: 6rpx 4rpx 14rpx; }
+.org { background: #fff; border-radius: 18rpx; padding: 24rpx; margin-bottom: 18rpx; }
+.org-h { display: flex; align-items: flex-start; justify-content: space-between; }
+.org-hl { flex: 1; padding-right: 12rpx; }
+.org-n { font-size: 28rpx; font-weight: 800; color: #1f2937; }
+.org-tp { display: block; font-size: 21rpx; color: #6b7280; margin-top: 6rpx; }
+.pill { border-radius: 100rpx; padding: 6rpx 18rpx; flex-shrink: 0; }
+.pill-t { font-size: 20rpx; font-weight: 700; }
+.s-ok { background: #dcfce7; } .s-ok .pill-t { color: #16a34a; }
+.s-wait { background: #fef3c7; } .s-wait .pill-t { color: #b45309; }
+.s-rej { background: #f3f4f6; } .s-rej .pill-t { color: #9ca3af; }
+
+.org-grid { display: flex; margin-top: 20rpx; background: #f9fafb; border-radius: 14rpx; padding: 18rpx 0; }
+.og-c { flex: 1; text-align: center; position: relative; }
+.og-c::after { content: ''; position: absolute; right: 0; top: 12rpx; bottom: 12rpx; width: 1rpx; background: #e5e7eb; }
+.og-c:last-child::after { display: none; }
+.og-n { font-size: 26rpx; font-weight: 800; color: #1f2937; }
+.og-hl { color: #16a34a; }
+.og-l { display: block; font-size: 18rpx; color: #9ca3af; margin-top: 5rpx; }
+
+.org-svc { display: flex; gap: 14rpx; margin-top: 16rpx; }
+.svc-i { flex: 1; background: #f0fdf4; border-radius: 10rpx; padding: 12rpx; text-align: center; font-size: 21rpx; color: #15803d; font-weight: 600; }
+
+.org-f { display: flex; align-items: center; justify-content: space-between; margin-top: 18rpx; }
+.org-score { font-size: 23rpx; color: #6b7280; }
+.org-score-n { font-size: 30rpx; font-weight: 800; color: #16a34a; }
+.grade { border-radius: 100rpx; padding: 6rpx 22rpx; }
+.grade-t { font-size: 22rpx; font-weight: 800; }
+.g-exc { background: #16a34a; } .g-exc .grade-t { color: #fff; }
+.g-pass { background: #dbeafe; } .g-pass .grade-t { color: #2563eb; }
+.g-fix { background: #fef3c7; } .g-fix .grade-t { color: #b45309; }
+.g-fail { background: #fee2e2; } .g-fail .grade-t { color: #dc2626; }
+
+.org-act { display: flex; gap: 16rpx; margin-top: 20rpx; }
+.act-btn { flex: 1; border-radius: 100rpx; padding: 18rpx; text-align: center; }
+.act-pass { background: #16a34a; }
+.act-t { color: #fff; font-size: 25rpx; font-weight: 700; }
+.act-rej { background: #fff; border: 1rpx solid #e5e7eb; }
+.act-t2 { color: #6b7280; font-size: 25rpx; font-weight: 700; }
+
+/* 考核指标 */
+.assess { margin-top: 20rpx; }
+.assess-h { font-size: 25rpx; font-weight: 700; color: #1f2937; }
+.assess-tags { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 12rpx; }
+.tag { background: #f0fdf4; border: 1rpx solid #bbf7d0; border-radius: 100rpx; padding: 8rpx 20rpx; }
+.tag-t { font-size: 21rpx; color: #15803d; }
+.assess-lbl { display: block; font-size: 24rpx; color: #6b7280; font-weight: 700; margin: 26rpx 0 14rpx; }
+.rewards { display: flex; flex-direction: column; gap: 12rpx; }
+.reward { display: flex; align-items: center; background: #f9fafb; border-radius: 12rpx; padding: 14rpx 18rpx; }
+.reward-arrow { color: #9ca3af; font-size: 24rpx; margin: 0 18rpx; }
+.reward-act { font-size: 24rpx; font-weight: 700; color: #1f2937; }
+
+.tip { display: block; font-size: 20rpx; color: #9ca3af; line-height: 1.7; margin-top: 20rpx; }

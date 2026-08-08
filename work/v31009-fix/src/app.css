@@ -1,0 +1,64 @@
+page {
+  background-color: #f3f4f6;
+  font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 28rpx;
+  color: #111827;
+}
+
+/*
+ * H5 演示滚动硬化：
+ * 很多业务页使用「flex:1 + ScrollView」，页面自己的 .body/.list 样式里又有
+ * overflow:hidden，会在手机浏览器里覆盖 Taro 的纵向滚动规则，造成只能看到上半页。
+ * 这里仅把真正声明 scroll-y 的 Taro 容器恢复为可滚动，不影响普通卡片的裁切效果。
+ */
+taro-scroll-view-core {
+  min-height: 0;
+  min-width: 0;
+}
+
+taro-scroll-view-core.taro-scroll-view__scroll-y {
+  display: block !important;
+  position: relative;
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: scroll !important;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  overscroll-behavior-y: contain;
+}
+
+/*
+ * 微信 iOS / Safari 的嵌套 flex 高度兼容：
+ * 页面根节点必须有明确高度，内部 ScrollView 的触摸滚动才不会被父层截断。
+ */
+html,
+body,
+#app,
+.taro_router,
+.taro_page {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.taro_page {
+  overflow: hidden;
+}
+
+.taro_page > .page {
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+}
+
+/* 新版手机浏览器地址栏伸缩时，页面仍占满可视区，不把底部内容截掉。 */
+@supports (height: 100dvh) {
+  page,
+  #app,
+  .taro_router,
+  .taro_page {
+    height: 100dvh;
+    min-height: 0;
+  }
+}

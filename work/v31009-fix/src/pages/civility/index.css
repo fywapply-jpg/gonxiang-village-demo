@@ -1,0 +1,38 @@
+.page { display: flex; flex-direction: column; height: 100vh; background: #f5f5f5; }
+.hero { background: linear-gradient(135deg,#9333ea,#7e22ce); padding: 32rpx; }
+.hero-title { font-size: 36rpx; font-weight: 800; color: #fff; }
+.hero-sub { display: block; font-size: 23rpx; color: #f3e8ff; margin-top: 8rpx; }
+.tabs { display: flex; background: #fff; }
+.tab { flex: 1; text-align: center; padding: 20rpx 0; font-size: 24rpx; color: #6b7280; border-bottom: 4rpx solid transparent; }
+.tab.on { color: #9333ea; font-weight: 700; border-bottom-color: #9333ea; }
+.body { flex: 1; overflow: hidden; }
+.wrap { padding: 20rpx 24rpx; }
+.score-tip { background: #faf5ff; border-radius: 14rpx; padding: 18rpx 22rpx; margin-bottom: 14rpx; }
+.score-tip-t { font-size: 22rpx; color: #7e22ce; }
+.rank { display: flex; align-items: center; background: #fff; border-radius: 14rpx; padding: 20rpx 24rpx; margin-bottom: 10rpx; }
+.rank.me { background: #faf5ff; border: 1rpx solid #d8b4fe; }
+.rank-no { width: 48rpx; font-size: 28rpx; font-weight: 800; color: #9ca3af; }
+.rank-no.top { color: #9333ea; }
+.rank-name { flex: 1; font-size: 27rpx; color: #1f2937; }
+.rank-score { font-size: 27rpx; font-weight: 700; color: #9333ea; }
+.bswitch { display: flex; gap: 16rpx; margin-bottom: 16rpx; }
+.bs { flex: 1; text-align: center; padding: 16rpx 0; border-radius: 12rpx; background: #fff; font-size: 26rpx; color: #6b7280; }
+.bs.on.red { background: #fef2f2; color: #dc2626; font-weight: 700; }
+.bs.on.black { background: #f3f4f6; color: #374151; font-weight: 700; }
+.deed { background: #fff; border-radius: 14rpx; padding: 22rpx; margin-bottom: 12rpx; border-left: 6rpx solid #16a34a; }
+.deed.black { border-left-color: #9ca3af; }
+.deed-name { font-size: 27rpx; font-weight: 700; color: #1f2937; }
+.deed-text { display: block; font-size: 24rpx; color: #4b5563; margin-top: 8rpx; }
+.star { display: flex; align-items: center; justify-content: space-between; background: #fff; border-radius: 14rpx; padding: 22rpx 24rpx; margin-bottom: 12rpx; }
+.star-name { font-size: 27rpx; font-weight: 600; color: #1f2937; }
+.star-row { display: block; font-size: 24rpx; margin-top: 6rpx; }
+.star-badge { background: #faf5ff; border-radius: 999rpx; padding: 6rpx 18rpx; }
+.star-badge-t { font-size: 21rpx; color: #9333ea; }
+.rule-card { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx; }
+.rule-title { font-size: 27rpx; font-weight: 700; color: #1f2937; }
+.rule-item { display: block; font-size: 24rpx; color: #4b5563; line-height: 1.8; margin-top: 8rpx; }
+.sign-btn { background: #9333ea; border-radius: 999rpx; padding: 26rpx; text-align: center; }
+.sign-btn.done { background: #16a34a; }
+.sign-btn-t { font-size: 27rpx; color: #fff; font-weight: 700; }
+.fab { position: fixed; right: 32rpx; bottom: 48rpx; background: #9333ea; border-radius: 999rpx; padding: 22rpx 40rpx; box-shadow: 0 8rpx 24rpx rgba(147,51,234,0.4); }
+.fab-t { font-size: 28rpx; color: #fff; font-weight: 600; }

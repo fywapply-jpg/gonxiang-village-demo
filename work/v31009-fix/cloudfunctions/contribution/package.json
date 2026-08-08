@@ -1,0 +1,9 @@
+{
+  "name": "contribution",
+  "version": "1.0.0",
+  "description": "供享村社 - 贡献值",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

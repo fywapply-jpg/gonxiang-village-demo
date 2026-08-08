@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>供享村社 · v3.1007 全功能演示版</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{background:linear-gradient(160deg,#f0fdf4 0%,#dcfce7 30%,#e5e7eb 100%);min-height:100vh;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#1f2937;}
+  .wrap{max-width:1360px;margin:0 auto;padding:24px 20px 48px;display:flex;gap:30px;align-items:flex-start;flex-wrap:wrap;}
+  /* 左：品牌 + 手机 */
+  .left{width:430px;flex-shrink:0;position:sticky;top:20px;}
+  @media(max-width:980px){.left{position:static;width:100%;display:flex;flex-direction:column;align-items:center;}}
+  .brand{margin-bottom:16px;}
+  .brand-banner{width:100%;border-radius:14px;display:block;margin-bottom:12px;box-shadow:0 6px 18px rgba(0,0,0,.12);}
+  .logo{font-size:30px;font-weight:900;color:#15803d;letter-spacing:1px;}
+  .ver{display:inline-block;margin-top:8px;background:#15803d;color:#fff;font-size:14px;font-weight:800;padding:5px 14px;border-radius:100px;}
+  .date{font-size:12.5px;color:#6b7280;margin-top:8px;}
+  .phone{width:390px;height:812px;max-height:82vh;background:#111;border-radius:44px;padding:12px;box-shadow:0 26px 70px rgba(0,0,0,.34);position:relative;display:flex;flex-direction:column;}
+  .phone .statusbar{height:38px;background:#eef0f2;border-radius:32px 32px 0 0;flex-shrink:0;position:relative;}
+  .phone .notch{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:150px;height:26px;background:#111;border-radius:0 0 18px 18px;z-index:3;}
+  .phone iframe{width:100%;flex:1;border:none;border-radius:0 0 33px 33px;background:#eef0f2;display:block;}
+  .tip{margin-top:14px;font-size:12.5px;color:#4b5563;line-height:1.7;background:#fff;border-radius:12px;padding:12px 15px;box-shadow:0 4px 16px rgba(0,0,0,.06);max-width:390px;}
+  .tip b{color:#b45309;}
+  /* 右：功能目录 */
+  .right{flex:1;min-width:320px;}
+  .hd{margin-bottom:18px;}
+  .hd h1{font-size:26px;font-weight:900;color:#111827;}
+  .stats{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;}
+  .stats span{background:#fff;border:1px solid #d1fae5;color:#15803d;font-size:12.5px;font-weight:700;padding:5px 12px;border-radius:100px;box-shadow:0 2px 8px rgba(0,0,0,.04);}
+  .grp{background:#fff;border-radius:18px;padding:16px 16px 18px;margin-bottom:16px;box-shadow:0 6px 22px rgba(0,0,0,.05);border-left:5px solid var(--c);}
+  .grp-h{display:flex;align-items:center;gap:9px;margin-bottom:4px;}
+  .grp-dot{width:11px;height:11px;border-radius:50%;background:var(--c);flex-shrink:0;}
+  .grp-t{font-size:16.5px;font-weight:800;color:#111827;}
+  .grp-note{font-size:11.5px;font-weight:700;color:var(--c);background:color-mix(in srgb,var(--c) 12%,#fff);padding:2px 9px;border-radius:100px;margin-left:2px;}
+  .grp-sub{font-size:12px;color:#9ca3af;margin:2px 0 12px;}
+  .chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:9px;}
+  .chip{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:#f9fafb;border:1.5px solid #eef0f2;border-radius:13px;padding:13px 7px 11px;cursor:pointer;transition:.14s;text-align:center;min-height:74px;}
+  .chip:hover{transform:translateY(-2px);border-color:var(--c);box-shadow:0 8px 18px rgba(0,0,0,.09);}
+  .chip.on{background:var(--c);border-color:var(--c);}
+  .chip.on .chip-n{color:#fff;}
+  .chip-i{font-size:23px;line-height:1;}
+  .chip-n{font-size:12.5px;font-weight:700;color:#374151;line-height:1.25;}
+  .chip .tg{position:absolute;top:-7px;right:-5px;font-size:9.5px;font-weight:800;color:#fff;padding:1px 6px;border-radius:100px;box-shadow:0 2px 6px rgba(0,0,0,.18);}
+  .tg.new{background:#dc2626;}
+  .tg.adm{background:#64748b;}
+  .foot{margin-top:8px;font-size:12px;color:#9ca3af;line-height:1.8;background:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 4px 16px rgba(0,0,0,.05);}
+  .foot a{color:#15803d;word-break:break-all;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <aside class="left">
+    <div class="brand">
+      <img class="brand-banner" src="village-banner.jpg" alt="供享村社 · 中国供销合作社">
+      <span class="ver">v3.1007 · 全功能演示版</span>
+      <div class="date">📦 2026-07-15 全功能存档 · 城乡数字供销共富平台</div>
+    </div>
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="statusbar"></div>
+      <iframe id="ph" src="app.html#/pages/index/index" allow="geolocation"></iframe>
+    </div>
+    <div class="tip">👉 右侧点<b>任意功能</b>，这台"手机"里就打开对应页面。<br>标 <b>管理</b> 的功能，需在应用内右上角<b>切换到村委 / 平台身份</b>后查看。</div>
+  </aside>
+  <main class="right">
+    <div class="hd">
+      <h1>全功能总览 · 一站直达</h1>
+      <div class="stats"><span>10 大板块</span><span id="fcount">— 项功能</span><span>六大民生 · 平台机制 · 管理中心</span><span>点击即在左侧手机预览</span></div>
+    </div>
+    <div id="dir"></div>
+    <div class="foot">
+      本页为 <b>供享村社 v3.1007</b> 全功能演示存档：汇总平台全部功能入口，点击即在左侧手机内实时预览。<br>
+      直接进应用：<a href="app.html#/pages/index/index">app.html</a> ｜ 社会公益专项演示：<a href="gongyi-phone.html">gongyi-phone.html</a> ｜ 数据均为演示示意。
+    </div>
+  </main>
+</div>
+<script>
+const GROUPS = [
+  { t:'便民服务', c:'#2563eb', s:'供享普惠 · 党建便民（村/社区通用）', items:[
+    {n:'供享大集',i:'🛒',u:'/pkgShop/my-store/index'},{n:'周边美食',i:'🍜',u:'/pkgLife/food/index'},
+    {n:'棋牌室',i:'🀄',u:'/pkgLife/chess/index'},{n:'旅游服务',i:'🚌',u:'/pkgLife/travel/index'},
+    {n:'便民维修',i:'🔧',u:'/pkgLife/repair/index'},{n:'文体活动',i:'🎭',u:'/pkgLife/activity/index'},
+    {n:'一老一小',i:'👵',u:'/pkgLife/senior/index'},{n:'生活代办',i:'🛍️',u:'/pkgLife/errand/index'},
+    {n:'政务办事',i:'🏛️',u:'/pages/gov/index'},{n:'健康医疗',i:'🏥',u:'/pages/health/index'},
+    {n:'医保社保',i:'📋',u:'/pkgLife/social/index'},{n:'生活缴费',i:'💡',u:'/pages/pay/index'},
+    {n:'快递物流',i:'📦',u:'/pages/express/index'},{n:'惠民团购',i:'🧺',u:'/pages/groupon/index'},
+    {n:'贡献商城',i:'🎁',u:'/pages/contrib-mall/index'},{n:'AI智能助手',i:'🤖',u:'/pages/assistant/index'},
+    {n:'生活服务大厅',i:'🤝',u:'/pkgLife/life/index'},{n:'消息中心',i:'💬',u:'/pages/messages/index'},{n:'邀请有礼',i:'🎁',u:'/pages/invite/index'},
+  ]},
+  { t:'兴农增收', c:'#16a34a', s:'供建共富 · 党建兴农（村民专属）', items:[
+    {n:'产销对接',i:'🚚',u:'/pages/sales/index'},{n:'农资农机',i:'🚜',u:'/pages/agri-rental/index'},
+    {n:'农技指导',i:'📚',u:'/pages/agri-tech/index'},{n:'宅基地·产权',i:'📄',u:'/pages/property/index'},
+    {n:'助农金融',i:'💰',u:'/pages/finance/index'},{n:'文旅休闲',i:'🏞️',u:'/pages/tourism/index'},
+    {n:'就业招工',i:'💼',u:'/pages/jobs/index'},{n:'鲜食预售',i:'🥬',u:'/pages/presale/index'},
+    {n:'以物换物',i:'🔁',u:'/pages/barter/index'},{n:'助农小店',i:'🏪',u:'/pages/help-store/index'},
+  ]},
+  { t:'社区生活', c:'#0891b2', s:'供享宜居 · 党建惠民（居民专属）', items:[
+    {n:'物业报修',i:'🔧',u:'/pages/feature/index?key=wuye'},{n:'家政服务',i:'🧹',u:'/pages/feature/index?key=jiazheng'},
+    {n:'社区团购',i:'🧺',u:'/pages/groupon/index'},{n:'便民缴费',i:'💡',u:'/pages/pay/index'},
+    {n:'综治网格',i:'🛡️',u:'/pages/safety/index'},{n:'就业创业',i:'💼',u:'/pages/jobs/index'},
+    {n:'日间照料',i:'👵',u:'/pages/care/index'},{n:'居民议事',i:'🗳️',u:'/pages/council/index'},
+  ]},
+  { t:'社会贡献值', c:'#d97706', s:'全平台统一权益凭证 · 1值=0.01元', items:[
+    {n:'贡献值账户',i:'⭐',u:'/pages/contribution/index'},{n:'贡献商城',i:'🎁',u:'/pages/contrib-mall/index'},
+    {n:'我的成就',i:'🏅',u:'/pages/achievement/index'},{n:'贡献申报',i:'📝',u:'/pkgLife/contrib-submit/index'},
+  ]},
+  { t:'乡村治理', c:'#ea580c', s:'供管共治 · 党建强基（村/社区）', items:[
+    {n:'双向流通',i:'🤝',u:'/pages/exchange/index'},{n:'村务公开',i:'📋',u:'/pages/affairs/index'},
+    {n:'村民议事',i:'🗳️',u:'/pages/council/index'},{n:'平安综治',i:'🛡️',u:'/pages/safety/index'},
+    {n:'志愿服务',i:'❤️',u:'/pages/volunteer/index'},
+  ]},
+  { t:'党建联建', c:'#dc2626', s:'供心筑堡 · 党旗领航', items:[
+    {n:'党建首页',i:'🚩',u:'/pkgParty/party/index'},{n:'结对帮扶',i:'🤝',u:'/pkgParty/party-help/index'},
+    {n:'微心愿',i:'💗',u:'/pkgParty/party-wish/index'},{n:'党费管理',i:'💴',u:'/pkgParty/party-dues/index'},
+    {n:'党建地图',i:'🗺️',u:'/pkgParty/party-map/index'},{n:'村党组织',i:'🏛',u:'/pkgParty/village-party/index'},
+  ]},
+  { t:'社会公益 · 关心下一代', c:'#e11d48', s:'供爱共育 · 青少年体育公益数字化', items:[
+    {n:'公益机构',i:'🏛',u:'/pkgLife/charity/index?tab=org'},{n:'公益项目',i:'📋',u:'/pkgLife/charity/index?tab=proj'},
+    {n:'我要申领',i:'📝',u:'/pkgLife/charity/index?tab=apply'},{n:'资金公示',i:'💰',u:'/pkgLife/charity/index?tab=fund'},
+    {n:'物资溯源',i:'📦',u:'/pkgLife/charity/index?tab=mat'},{n:'信息公开监督',i:'📢',u:'/pkgLife/charity/index?tab=open'},
+  ]},
+  { t:'乡风文明', c:'#9333ea', s:'供享新风 · 党建铸魂', items:[
+    {n:'邻里互助',i:'🤝',u:'/pages/neighbor/index'},{n:'法务调解',i:'⚖️',u:'/pages/legal/index'},
+    {n:'技能学堂',i:'🎓',u:'/pages/school/index'},{n:'非遗文化',i:'🏮',u:'/pages/heritage/index'},
+    {n:'文明乡风',i:'🌸',u:'/pages/civility/index'},{n:'居家养老',i:'👵',u:'/pages/care/index'},
+    {n:'家庭档案',i:'👨‍👩‍👧',u:'/pages/family/index'},{n:'生命周期',i:'🌱',u:'/pkgPlatform/lifecycle/index'},
+  ]},
+  { t:'平台机制 · v3.1 新增', c:'#b45309', s:'共富底座 · 一体化机制', items:[
+    {n:'共富分配机制',i:'💰',u:'/pkgPlatform/prosperity/index',tg:'new'},{n:'区块链底座',i:'⛓',u:'/pkgPlatform/web3/index',tg:'new'},
+    {n:'社会公益专项',i:'🏀',u:'/pkgLife/charity/index',tg:'new'},{n:'数字资产',i:'🔗',u:'/pkgPlatform/digital-asset/index'},
+    {n:'信用积分',i:'📊',u:'/pkgPlatform/credit/index'},
+  ]},
+  { t:'管理中心', c:'#475569', s:'村委 / 居委 / 平台三级 · 所有管理功能统一入口（需切换身份）', items:[
+    {n:'村委后台',i:'🏛️',u:'/pages/admin/index',tg:'adm'},{n:'居委会后台',i:'🏙️',u:'/pkgPlatform/community/index',tg:'adm'},
+    {n:'平台后台',i:'🖥',u:'/pkgPlatform/platform/index',tg:'adm'},{n:'审批中心',i:'📋',u:'/pages/approval/index',tg:'adm'},
+    {n:'组织码·名单',i:'📇',u:'/pages/org-code/index',tg:'adm'},{n:'名单导入',i:'📥',u:'/pkgAdmin/roster-import/index',tg:'adm'},
+    {n:'聚光星·流量',i:'✨',u:'/pkgLife/spotlight/index',tg:'adm'},{n:'贡献审核',i:'✅',u:'/pkgLife/contrib-audit/index',tg:'adm'},
+    {n:'公益授权管理',i:'🔑',u:'/pkgPlatform/charity-auth/index',tg:'adm'},{n:'推广分销管理',i:'📣',u:'/pkgPlatform/promotion/index',tg:'adm'},
+    {n:'村庄功能配置',i:'⚙️',u:'/pkgAdmin/village-config/index',tg:'adm'},
+  ]},
+];
+
+const dir = document.getElementById('dir');
+let total = 0;
+GROUPS.forEach(g=>{
+  total += g.items.length;
+  const box = document.createElement('div');
+  box.className='grp'; box.style.setProperty('--c', g.c);
+  const chips = g.items.map(it=>{
+    const tg = it.tg==='new' ? '<span class="tg new">新</span>' : it.tg==='adm' ? '<span class="tg adm">管理</span>' : '';
+    return `<div class="chip" data-u="${it.u}">${tg}<span class="chip-i">${it.i}</span><span class="chip-n">${it.n}</span></div>`;
+  }).join('');
+  box.innerHTML = `<div class="grp-h"><span class="grp-dot"></span><span class="grp-t">${g.t}</span><span class="grp-note">${g.items.length}</span></div><div class="grp-sub">${g.s}</div><div class="chips">${chips}</div>`;
+  dir.appendChild(box);
+});
+document.getElementById('fcount').textContent = total + ' 项功能';
+
+let active = null;
+function go(u, el){
+  const f = document.getElementById('ph');
+  try{
+    const w = f.contentWindow;
+    if(w && w.location && String(w.location.href).indexOf('app.html')>=0){ w.location.hash = u; }
+    else { f.src = 'app.html#' + u; }
+  }catch(e){ f.src = 'app.html#' + u; }
+  if(active) active.classList.remove('on');
+  el.classList.add('on'); active = el;
+  if(window.innerWidth <= 980){ document.querySelector('.phone').scrollIntoView({behavior:'smooth', block:'center'}); }
+}
+dir.addEventListener('click', e=>{ const c = e.target.closest('.chip'); if(c) go(c.getAttribute('data-u'), c); });
+</script>
+</body>
+</html>

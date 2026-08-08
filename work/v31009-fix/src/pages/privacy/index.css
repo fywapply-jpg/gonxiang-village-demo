@@ -1,0 +1,12 @@
+.page { display: flex; flex-direction: column; height: 100vh; background: #f5f5f5; }
+.tabs { display: flex; background: #fff; }
+.tab { flex: 1; text-align: center; padding: 26rpx 0; font-size: 27rpx; color: #6b7280; position: relative; }
+.tab.on { color: #16a34a; font-weight: 800; }
+.tab.on::after { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 56rpx; height: 5rpx; background: #16a34a; border-radius: 3rpx; }
+.body { flex: 1; padding: 24rpx; }
+.upd { display: block; font-size: 21rpx; color: #9ca3af; margin-bottom: 16rpx; }
+.sec { background: #fff; border-radius: 14rpx; padding: 22rpx 24rpx; margin-bottom: 16rpx; }
+.sec-h { font-size: 27rpx; font-weight: 800; color: #14532d; display: block; margin-bottom: 10rpx; }
+.sec-c { font-size: 24rpx; color: #4b5563; line-height: 1.75; }
+.contact { padding: 20rpx 4rpx; }
+.contact-t { font-size: 21rpx; color: #9ca3af; line-height: 1.6; }

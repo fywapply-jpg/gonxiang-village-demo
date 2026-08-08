@@ -1,0 +1,133 @@
+.page { min-height: 100vh; background: #f3f4f6; padding-bottom: 140rpx; }
+
+/* 头部 */
+.header { background: linear-gradient(135deg, #1e3a8a, #1d4ed8); padding: 48rpx 32rpx 36rpx; }
+.header-title { font-size: 36rpx; font-weight: bold; color: #fff; display: block; margin-bottom: 8rpx; }
+.header-sub { font-size: 24rpx; color: rgba(255,255,255,0.7); display: block; }
+
+/* Tab */
+.tab-scroll { background: #fff; white-space: nowrap; border-bottom: 1rpx solid #f3f4f6; }
+.tab-item:first-child { margin-left: 16rpx; }
+.tab-item:last-child { margin-right: 16rpx; }
+.tab-item { display: inline-block; padding: 28rpx 24rpx; font-size: 26rpx; color: #9ca3af; border-bottom: 4rpx solid transparent; }
+.tab-active { color: #1d4ed8; border-bottom-color: #1d4ed8; font-weight: 600; }
+
+.tab-content { padding: 20rpx 24rpx; }
+
+/* KPI */
+.kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; margin-bottom: 20rpx; }
+.kpi-card { border-radius: 20rpx; padding: 28rpx; text-align: center; }
+.kpi-green { background: linear-gradient(135deg, #dcfce7, #f0fdf4); }
+.kpi-blue  { background: linear-gradient(135deg, #dbeafe, #eff6ff); }
+.kpi-purple{ background: linear-gradient(135deg, #ede9fe, #f5f3ff); }
+.kpi-yellow{ background: linear-gradient(135deg, #fef3c7, #fffbeb); }
+.kpi-num { font-size: 44rpx; font-weight: bold; color: #1f2937; display: block; margin-bottom: 8rpx; }
+.kpi-label { font-size: 22rpx; color: #6b7280; display: block; }
+
+/* 待结算 Alert */
+.alert-card { background: #fff; border-radius: 20rpx; padding: 24rpx 28rpx; margin-bottom: 20rpx; display: flex; align-items: center; gap: 20rpx; border-left: 8rpx solid #f59e0b; }
+.alert-icon { font-size: 48rpx; }
+.alert-info { flex: 1; }
+.alert-main { font-size: 28rpx; font-weight: bold; color: #1f2937; display: block; margin-bottom: 4rpx; }
+.alert-sub { font-size: 22rpx; color: #9ca3af; display: block; }
+.alert-btn { background: #f59e0b; color: #fff; border: none; border-radius: 100rpx; font-size: 24rpx; padding: 0 32rpx; height: 64rpx; line-height: 64rpx; }
+
+/* 排行榜 */
+.rank-card { background: #fff; border-radius: 20rpx; padding: 28rpx; margin-bottom: 20rpx; }
+.rank-title { font-size: 26rpx; font-weight: bold; color: #1f2937; display: block; margin-bottom: 20rpx; }
+.rank-item { display: flex; align-items: center; gap: 20rpx; padding: 16rpx 0; border-bottom: 1rpx solid #f9fafb; }
+.rank-item:last-child { border-bottom: none; }
+.rank-no { width: 40rpx; text-align: center; font-size: 28rpx; font-weight: bold; }
+.rank-1 { color: #f59e0b; }
+.rank-2 { color: #9ca3af; }
+.rank-3 { color: #92400e; }
+.rank-info { flex: 1; }
+.rank-name { font-size: 26rpx; color: #1f2937; display: block; }
+.rank-admin { font-size: 22rpx; color: #9ca3af; display: block; }
+.rank-gmv { font-size: 26rpx; font-weight: bold; color: #16a34a; }
+
+/* 村庄管理 */
+.btn-add { background: #1d4ed8; color: #fff; border: none; border-radius: 16rpx; margin-bottom: 20rpx; font-size: 26rpx; height: 80rpx; }
+.village-card { background: #fff; border-radius: 20rpx; padding: 24rpx; margin-bottom: 16rpx; }
+.v-pending { border: 2rpx dashed #fbbf24; background: #fffbeb; }
+.v-reviewing { border: 2rpx dashed #94a3b8; background: #f8fafc; }
+.village-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16rpx; }
+.village-name { font-size: 28rpx; font-weight: bold; color: #1f2937; }
+.village-badge { padding: 6rpx 16rpx; border-radius: 100rpx; font-size: 22rpx; }
+.badge-active { background: #dcfce7; color: #16a34a; }
+.badge-pending { background: #fef3c7; color: #d97706; }
+.badge-reviewing { background: #e2e8f0; color: #475569; }
+.village-stats { display: flex; gap: 0; margin-bottom: 16rpx; }
+.vs-item { flex: 1; text-align: center; border-right: 1rpx solid #f3f4f6; }
+.vs-item:last-child { border-right: none; }
+.vs-num { font-size: 32rpx; font-weight: bold; color: #1f2937; display: block; margin-bottom: 4rpx; }
+.vs-label { font-size: 22rpx; color: #9ca3af; display: block; }
+.village-admin-txt { font-size: 22rpx; color: #9ca3af; display: block; margin-bottom: 16rpx; }
+.btn-activate { background: #16a34a; color: #fff; border: none; border-radius: 100rpx; font-size: 26rpx; height: 72rpx; }
+.intake-actions { display: flex; gap: 16rpx; }
+.intake-actions .btn-reject { flex: 1; background: #fff; color: #ef4444; border: 2rpx solid #fecaca; border-radius: 100rpx; font-size: 26rpx; height: 72rpx; line-height: 68rpx; }
+.intake-actions .btn-pass { flex: 1; background: #1d4ed8; color: #fff; border: none; border-radius: 100rpx; font-size: 26rpx; height: 72rpx; }
+
+/* 接入新村庄 底部表单 */
+.intake-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(0,0,0,.55); z-index: 100; display: flex; align-items: flex-end; }
+.intake-sheet { width: 100%; background: #fff; border-radius: 28rpx 28rpx 0 0; padding: 32rpx; box-sizing: border-box; max-height: 85vh; overflow-y: auto; }
+.intake-title { font-size: 32rpx; font-weight: 800; color: #1f2937; display: block; }
+.intake-sub { font-size: 22rpx; color: #9ca3af; display: block; margin-top: 8rpx; line-height: 1.6; }
+.intake-label { font-size: 24rpx; font-weight: 700; color: #1f2937; display: block; margin-top: 24rpx; margin-bottom: 10rpx; }
+.intake-type-row { display: flex; gap: 16rpx; }
+.intake-type { flex: 1; text-align: center; padding: 20rpx 0; border-radius: 12rpx; background: #f3f4f6; border: 2rpx solid transparent; }
+.intake-type-on { background: #eff6ff; border-color: #1d4ed8; }
+.intake-type-t { font-size: 26rpx; color: #374151; }
+.intake-type-on .intake-type-t { color: #1d4ed8; font-weight: 700; }
+.intake-inp { width: 100%; background: #f9fafb; border-radius: 12rpx; padding: 20rpx 18rpx; font-size: 26rpx; box-sizing: border-box; }
+.intake-btns { display: flex; gap: 16rpx; margin-top: 32rpx; }
+.intake-cancel { flex: 1; background: #f3f4f6; color: #6b7280; border: none; border-radius: 100rpx; font-size: 28rpx; height: 84rpx; }
+.intake-submit { flex: 2; background: #1d4ed8; color: #fff; border: none; border-radius: 100rpx; font-size: 28rpx; height: 84rpx; }
+
+/* 结算中心 */
+.settle-summary { background: linear-gradient(135deg, #1e3a8a, #1d4ed8); border-radius: 20rpx; padding: 32rpx; margin-bottom: 20rpx; text-align: center; }
+.settle-pending-label { font-size: 24rpx; color: rgba(255,255,255,0.7); display: block; margin-bottom: 12rpx; }
+.settle-pending-val { font-size: 56rpx; font-weight: bold; color: #fff; display: block; margin-bottom: 24rpx; }
+.btn-batch-pay { background: #f59e0b; color: #fff; border: none; border-radius: 100rpx; font-size: 26rpx; height: 80rpx; }
+
+.settle-card { background: #fff; border-radius: 20rpx; padding: 24rpx; margin-bottom: 16rpx; }
+.settle-done { opacity: 0.6; }
+.settle-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16rpx; }
+.settle-name { font-size: 28rpx; font-weight: 600; color: #1f2937; display: block; margin-bottom: 4rpx; }
+.settle-village { font-size: 22rpx; color: #9ca3af; display: block; }
+.settle-status { padding: 6rpx 16rpx; border-radius: 100rpx; font-size: 22rpx; }
+.ss-pending { background: #fef3c7; color: #d97706; }
+.ss-paid { background: #dcfce7; color: #16a34a; }
+.settle-body { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16rpx; }
+.settle-detail {}
+.settle-orders { font-size: 24rpx; color: #6b7280; display: block; margin-bottom: 4rpx; }
+.settle-due { font-size: 22rpx; color: #9ca3af; display: block; }
+.settle-amount { font-size: 40rpx; font-weight: bold; color: #ef4444; }
+.btn-pay-single { background: #1d4ed8; color: #fff; border: none; border-radius: 100rpx; font-size: 26rpx; height: 72rpx; }
+
+/* 用户权限 */
+.perm-tip { font-size: 22rpx; color: #9ca3af; display: block; margin-bottom: 16rpx; text-align: center; }
+.user-row { background: #fff; border-radius: 20rpx; padding: 24rpx; margin-bottom: 12rpx; display: flex; align-items: center; gap: 20rpx; }
+.user-avatar { width: 72rpx; height: 72rpx; background: #dbeafe; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32rpx; font-weight: bold; color: #1d4ed8; flex-shrink: 0; }
+.user-info { flex: 1; }
+.user-name { font-size: 28rpx; font-weight: 600; color: #1f2937; display: block; margin-bottom: 4rpx; }
+.user-phone { font-size: 22rpx; color: #9ca3af; display: block; }
+.role-tag { padding: 8rpx 20rpx; border-radius: 100rpx; }
+.role-tag-text { font-size: 22rpx; }
+.role-user            { background: #f3f4f6; }
+.role-user .role-tag-text { color: #6b7280; }
+.role-entrepreneur    { background: #fef3c7; }
+.role-entrepreneur .role-tag-text { color: #d97706; }
+.role-village_admin   { background: #dcfce7; }
+.role-village_admin .role-tag-text { color: #16a34a; }
+.role-platform_admin  { background: #dbeafe; }
+.role-platform_admin .role-tag-text { color: #1d4ed8; }
+
+/* 🗂️ 管理功能 导航网格 */
+.mgmt-card { background: #fff; border-radius: 20rpx; padding: 28rpx; margin-bottom: 20rpx; }
+.mgmt-title { font-size: 26rpx; font-weight: bold; color: #1f2937; display: block; margin-bottom: 20rpx; }
+.mgmt-grid { display: flex; flex-wrap: wrap; }
+.mgmt-item { width: 25%; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; padding: 16rpx 6rpx; border-radius: 16rpx; }
+.mgmt-item:active { background: #f3f4f6; }
+.mgmt-icon { width: 84rpx; height: 84rpx; border-radius: 24rpx; background: #dbeafe; display: flex; align-items: center; justify-content: center; font-size: 42rpx; margin-bottom: 12rpx; }
+.mgmt-label { font-size: 22rpx; color: #374151; text-align: center; line-height: 1.3; }

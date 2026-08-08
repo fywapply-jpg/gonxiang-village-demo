@@ -1,0 +1,51 @@
+{
+  "name": "gonxiang-miniapp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "供享村社小程序",
+  "templateInfo": {
+    "name": "default",
+    "typescript": true,
+    "css": "none"
+  },
+  "scripts": {
+    "build:weapp": "taro build --type weapp",
+    "dev:weapp": "NODE_ENV=development taro build --type weapp --watch",
+    "build:h5": "taro build --type h5 && node scripts/gen-h5-index.cjs",
+    "dev:h5": "NODE_ENV=development taro build --type h5 --watch"
+  },
+  "browserslist": [
+    "last 3 Chrome versions",
+    "last 3 Firefox versions",
+    "Safari >= 10",
+    "Explorer >= 11"
+  ],
+  "dependencies": {
+    "@tarojs/components": "3.6.32",
+    "@tarojs/helper": "3.6.32",
+    "@tarojs/plugin-framework-react": "3.6.32",
+    "@tarojs/react": "3.6.32",
+    "@tarojs/runtime": "3.6.32",
+    "@tarojs/shared": "3.6.32",
+    "@tarojs/taro": "3.6.32",
+    "leaflet": "^1.9.4",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "xlsx": "^0.18.5"
+  },
+  "overrides": {
+    "webpack": "5.88.2"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.8.0",
+    "@tarojs/cli": "3.6.32",
+    "@tarojs/mini-runner": "3.6.32",
+    "@tarojs/plugin-platform-h5": "^3.6.32",
+    "@tarojs/webpack5-runner": "3.6.32",
+    "@types/leaflet": "^1.9.21",
+    "@types/react": "^18.0.0",
+    "@types/webpack-env": "^1.13.6",
+    "babel-preset-taro": "3.6.32",
+    "typescript": "^4.1.0"
+  }
+}
