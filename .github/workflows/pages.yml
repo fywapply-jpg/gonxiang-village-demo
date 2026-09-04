@@ -23,6 +23,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Reject tracked credentials and private keys
+        run: node scripts/check-secret-hygiene.mjs
+
       # 当前公开根路径必须始终指向数智供社 v8533；历史 v3demo 仅保留在
       # /legacy-v3/，避免用户打开固定链接时落到旧版。源目录不做删除。
       - name: Build site for project subpath

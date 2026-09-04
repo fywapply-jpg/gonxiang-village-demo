@@ -1,4 +1,19 @@
 node_modules
 dist
+dist-admin
+local-backend/data/*.db*
 .DS_Store
 *.local
+
+# 生产凭据只能放在服务器/KMS，任何真实环境文件和私钥不得进入仓库。
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+credentials*.json
+secrets*.json
