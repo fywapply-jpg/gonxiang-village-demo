@@ -1,0 +1,13 @@
+{
+  "platform_version": "v8533",
+  "backend_release": "v8530",
+  "version": "v8533",
+  "entry": "index.html",
+  "mobile_entry": "app.html",
+  "excluded_versions": [
+    "v3.1208"
+  ],
+  "file_count": 102,
+  "bundle_sha256": "dc2207fb8d05c0e495bcf3ebc76ea924ff1a29c64e14cd3f80bedd0d71d4d269",
+  "updated_at": "2026-09-05T00:05:00+08:00"
+}
