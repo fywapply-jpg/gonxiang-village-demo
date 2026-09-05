@@ -230,7 +230,8 @@ add(serverSource.includes("https://example.invalid") ? "warn" : "pass", "演示�
 add(existsSync(resolve(root, "scripts/backup-shuzhi-local.mjs")) && existsSync(resolve(root, "scripts/verify-shuzhi-backup.mjs")) ? "pass" : "fail", "备份恢复工具", "一致性备份、SHA-256 与 integrity_check");
 add(existsSync(resolve(root, "scripts/check-shuzhi-v8530-backup-restore.mjs")) ? "pass" : "fail", "恢复演练工具", "可将最新备份恢复到临时 SQLite 库并读取关键业务表");
 const deployFiles = ["deploy/README.md", "deploy/shuzhi-v8530.env.example", "deploy/shuzhi-v8530.service", "deploy/nginx-shuzhi-v8530.conf", "deploy/nginx-shuzhi-api-v8530.conf.example", "docs/数智供社-v8530-上线执行清单.md", "docs/数智供社-v8530-外部联调验收表.md", "scripts/create-shuzhi-production-env.mjs"];
-add(deployFiles.every((file) => existsSync(resolve(root, file))) && existsSync(resolve(root, "scripts/build-shuzhi-pages-site.mjs")) && text("deploy/README.md").includes("旧的 `v8514`—`v8529` 配置文件仅为历史归档") ? "pass" : "fail", "部署资产", "当前 v8530 生产模板、API-only Nginx、密钥初始化工具、Pages 构建器和旧版本隔离说明齐备");
+const releaseChecklist = text("docs/数智供社-v8530-上线执行清单.md");
+add(deployFiles.every((file) => existsSync(resolve(root, file))) && existsSync(resolve(root, "scripts/build-shuzhi-pages-site.mjs")) && text("deploy/README.md").includes("旧的 `v8514`—`v8529` 配置文件仅为历史归档") && releaseChecklist.includes("npm run build:h5:production") ? "pass" : "fail", "部署资产", "当前 v8530 生产模板、API-only Nginx、密钥初始化工具、Pages 构建器和生产 H5 构建命令齐备");
 const serviceTemplate = text("deploy/shuzhi-v8530.service");
 add(serviceTemplate.includes("ExecStartPre=/usr/bin/node") && serviceTemplate.includes("ProtectSystem=strict") && serviceTemplate.includes("RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6") ? "pass" : "fail", "服务启动与隔离", "systemd 启动前执行生产门禁并限制文件、设备和网络权限");
 const envTemplate = text("deploy/shuzhi-v8530.env.example");
