@@ -1,13 +1,13 @@
 {
   "platform": "数智供社",
   "version": "v8533",
-  "generated_at": "2026-09-05T00:12:00+08:00",
+  "generated_at": "2026-09-05T01:31:00+08:00",
   "artifacts": [
     {
       "name": "数智供社-v8533-手机演示版.html",
       "purpose": "前台手机离线演示",
-      "bytes": 4050765,
-      "sha256": "795d873a82a4d3bb574e2b71dc1b728eb8e5356d9f2d1acea66c97044c4db51f"
+      "bytes": 4038845,
+      "sha256": "2c4f8d1a92ad2e2f3ebfbe872b7bbb34fc5b3a138da36cef48062aeb777f3b1a"
     },
     {
       "name": "数智供社-v8533-后台手机演示版.html",
@@ -18,14 +18,14 @@
     {
       "name": "数智供社-v8533-Pages静态发布包.zip",
       "purpose": "静态托管上传包",
-      "bytes": 27154606,
-      "sha256": "714486a3d33331b2cf8b3381d984944624eafa84362e313d1fe5d944138bfa93"
+      "bytes": 28133707,
+      "sha256": "9e0e1c26e26db87e6ac18790cfe34f3f10f33dbdc7a2b4b8293e6ef8ee8a5153"
     },
     {
       "name": "数智供社-v8533-微信小程序开发者工具预览包.zip",
       "purpose": "微信开发者工具预览包",
-      "bytes": 12060345,
-      "sha256": "d2d85202da288618c3ef95b10e825dd3de567f07747c37973949da9b72abb136"
+      "bytes": 12058736,
+      "sha256": "3af0c66f46182204a1939adeff23b97a20a63d2b24c5148234d0a65fbf73b0fd"
     }
   ],
   "excluded": ["历史版本展示目录", "生产数据库", "生产密钥"]
