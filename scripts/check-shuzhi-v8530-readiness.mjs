@@ -136,10 +136,15 @@ const mockPageGuardFailures = mockPageFiles.filter((path) => {
 });
 const workPackage = text("work/shuzhi-v8502-source/package.json");
 const legacyCloudReadme = text("cloud-server/README.md");
+const historicalDeploymentDocs = [
+  text("docs/数智供社-v8513-微信小程序与后端部署.md"),
+  text("docs/数智供社-v8513-本地三层部署说明.md"),
+].join("\n");
 const serverProductBlock = serverSource.slice(serverSource.indexOf('if (path === "/api/v1/products" && req.method === "POST")'), serverSource.indexOf('const productReviewMatch'));
 add(manifestText.includes(`"versionName" : "${currentName}"`) && manifestText.includes(`"versionCode" : "${currentCode}"`) ? "pass" : "fail", "版本一致性", `manifest 必须为 ${currentName} / ${currentCode}`);
 add(versionIndex.current_version === currentVersion && versionIndex.next_version === `v${Number(currentCode) + 1}` ? "pass" : "fail", "版本索引", `current=${versionIndex.current_version} next=${versionIndex.next_version}`);
 add(legacyCloudReadme.includes("历史隔离说明（数智供社 v8533）") && legacyCloudReadme.includes("不得将本目录接入当前生产域名") ? "pass" : "fail", "旧版后端隔离", "v3.1208 微信云托管目录仅作历史保留，不进入当前 v8533 生产链路");
+add(!historicalDeploymentDocs.includes("生产环境应切换到 `cloud-server/` 的 MySQL 后端") && historicalDeploymentDocs.includes("不能直接切换到 `cloud-server/`") ? "pass" : "fail", "历史部署文档冲突隔离", "旧版三层部署说明不得把 cloud-server 直接宣称为当前 v8533 生产后端");
 add(Boolean(project.appid && /^wx[a-z0-9]{16}$/i.test(project.appid)) ? "pass" : "fail", "微信 AppID", project.appid || "未配置");
 add(existsSync(resolve(root, "work/shuzhi-v8502-source/dist/build/mp-weixin/app.json")) ? "pass" : "fail", "微信构建产物", "dist/build/mp-weixin/app.json");
 const v8514Archive = text("deliverables/数智供社-v8514/数智供社-v8514-手机演示版.html");
