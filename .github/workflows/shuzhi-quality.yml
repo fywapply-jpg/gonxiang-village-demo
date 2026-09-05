@@ -43,6 +43,10 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Build current WeChat preview package
+        run: |
+          npm ci --prefix work/shuzhi-v8502-source
+          npm run build:shuzhi-mp
       - name: Check credential hygiene
         run: npm run check:secret-hygiene
       - name: Check v8533 readiness and release assets
