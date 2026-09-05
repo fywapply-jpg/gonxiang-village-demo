@@ -54,8 +54,12 @@ for _ in {1..30}; do
   if ! pgrep -f "/Applications/wechatwebdevtools.app/Contents/MacOS/wechatdevtools" >/dev/null 2>&1; then break; fi
   sleep 1
 done
-# 直接把配置文件交给 IDE；这条路径会载入指定项目，而不是只打开最近项目列表。
-open -a "$DEVTOOLS_APP" "$PROJECT_DIR/project.config.json"
+# 使用微信官方 CLI 精确载入项目，避免 macOS 将 project.config.json 当成普通文本
+# 或把 IDE 带回最近项目列表；CLI 失败时再回退到配置文件打开方式。
+if ! "$CLI" open --project "$PROJECT_DIR" --lang zh; then
+  echo "官方 CLI 打开失败，尝试回退打开项目配置文件"
+  open -a "$DEVTOOLS_APP" "$PROJECT_DIR/project.config.json"
+fi
 echo "启动请求已发送：v8533（首次启动约需 30 秒完成模拟器初始化）"
 # 首次启动可能需要几秒，后台置前显示项目窗口。
 (
