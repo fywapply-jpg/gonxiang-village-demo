@@ -16,5 +16,12 @@ for (const artifact of manifest.artifacts || []) {
   if (data.length !== artifact.bytes || sha256 !== artifact.sha256) failures.push(`${artifact.name}: bytes/hash 不匹配`);
   if (/供享村社/.test(artifact.name) || /供享村社/.test(data.toString("utf8"))) failures.push(`${artifact.name}: 混入历史品牌`);
 }
+// 若本机保留了便于手动导入的目录，也必须与当前构建一致，不能让旧 IP 版本被再次导入。
+const devtoolsDir = resolve(root, "deliverables/数智供社-v8533/微信开发者工具项目");
+const devtoolsApi = resolve(devtoolsDir, "services/localApi.js");
+if (existsSync(devtoolsDir) && existsSync(devtoolsApi)) {
+  const source = readFileSync(devtoolsApi, "utf8");
+  if (source.includes("192.168.2.104")) failures.push("微信开发者工具项目目录：仍残留历史局域网 IP");
+}
 if (failures.length) { console.error("[shuzhi-release-integrity] FAIL"); failures.forEach((item) => console.error(`- ${item}`)); process.exitCode = 1; }
 else console.log(`[shuzhi-release-integrity] OK：${manifest.artifacts.length} 个 v8533 制品 bytes/SHA256 一致`);
