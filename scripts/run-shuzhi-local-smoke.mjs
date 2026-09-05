@@ -61,25 +61,23 @@ let child = null;
 let tempRoot = null;
 let base = configuredBase;
 try {
-  if (!(await canReach(base))) {
-    const parsed = new URL(base);
-    if (!((parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost") && parsed.protocol === "http:")) {
-      throw new Error(`无法连接 ${base}，非本机地址不会自动启动服务`);
-    }
-    let port = Number(parsed.port || 8787);
-    if (parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost") {
-      // 端口被其他进程占用时改用随机空闲端口，并把后续回归请求指向该临时 API。
+  const explicitBase = Boolean(process.env.SHUZHI_TEST_BASE);
+  const parsed = new URL(base);
+  const localBase = parsed.protocol === "http:" && (parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost");
+  // 默认烟测永远使用隔离实例；仅显式传入 SHUZHI_TEST_BASE 时才复用已有服务。
+  if (!explicitBase || !(await canReach(base))) {
+    if (!localBase) throw new Error(`无法连接 ${base}，非本机地址不会自动启动服务`);
+    let port = explicitBase ? Number(parsed.port || 8787) : await findFreePort();
+    if (explicitBase) {
+      // 显式指定的本机端口被其他进程占用时，仍改用随机临时端口，避免覆盖其他服务。
       const probe = await new Promise((resolvePromise) => {
         const server = createServer();
         server.once("error", () => resolvePromise(false));
         server.listen(port, parsed.hostname, () => server.close(() => resolvePromise(true)));
       });
-      if (!probe) {
-        port = await findFreePort();
-        base = `http://127.0.0.1:${port}`;
-        console.log(`[shuzhi-smoke] 默认端口被占用，改用临时端口：${base}`);
-      }
+      if (!probe) port = await findFreePort();
     }
+    base = `http://127.0.0.1:${port}`;
     tempRoot = mkdtempSync(join(tmpdir(), "shuzhi-smoke-"));
     const db = join(tempRoot, "smoke.sqlite");
     child = spawn(process.execPath, [resolve(root, "local-backend/server.mjs")], {
@@ -97,7 +95,7 @@ try {
     }
     console.log(`[shuzhi-smoke] 已自动启动临时本地 API：${base}`);
   } else {
-    console.log(`[shuzhi-smoke] 复用已运行本地 API：${base}`);
+    console.log(`[shuzhi-smoke] 复用显式指定的本地 API：${base}`);
   }
 
   const env = { ...process.env, SHUZHI_TEST_BASE: base };
