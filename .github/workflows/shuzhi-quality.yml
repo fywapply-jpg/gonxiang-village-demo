@@ -1,0 +1,53 @@
+name: 数智供社 v8533 quality gates
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "local-backend/**"
+      - "scripts/check-shuzhi-*.mjs"
+      - "scripts/run-shuzhi-local-smoke.mjs"
+      - "scripts/check-secret-hygiene.mjs"
+      - "deliverables/数智供社-v8533/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/shuzhi-quality.yml"
+  pull_request:
+    paths:
+      - "local-backend/**"
+      - "scripts/check-shuzhi-*.mjs"
+      - "scripts/run-shuzhi-local-smoke.mjs"
+      - "scripts/check-secret-hygiene.mjs"
+      - "deliverables/数智供社-v8533/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/shuzhi-quality.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shuzhi-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    name: v8533 local and release gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Check credential hygiene
+        run: npm run check:secret-hygiene
+      - name: Check v8533 readiness and release assets
+        run: |
+          npm run check:shuzhi-readiness
+          npm run check:shuzhi-release-integrity
+      - name: Run isolated local transaction smoke tests
+        run: npm run smoke:shuzhi-local
