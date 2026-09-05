@@ -73,6 +73,8 @@
 
 闭环回归命令为 `npm run check:shuzhi-demand-flow`，测试在临时 SQLite 库中运行并自动清理，不污染本地演示数据；`npm run smoke:shuzhi-local` 已纳入该回归。
 
+`npm run smoke:shuzhi-local` 默认每次在随机本机端口启动隔离 API 和临时数据库，即使 8787 上已有开发者工具演示服务也不会复用其状态。只有显式设置 `SHUZHI_TEST_BASE` 时才会针对指定服务回归；这样重复执行物流、支付和结算回调不会因上一次演示状态产生假失败。
+
 正式 H5 与小程序构建都必须显式提供 HTTPS API 根地址（不要附加 `/api`，前端会自动拼接 `/api/v1`）：`VITE_API_BASE=https://真实 API 域名 npm --prefix work/shuzhi-v8502-source run build:h5:production` 或 `npm --prefix work/shuzhi-v8502-source run build:mp-weixin:production`。未配置或使用局域网 HTTP 地址时构建直接失败，避免把离线演示包误当作生产前端。
 
 ### 微信身份认证
