@@ -21,6 +21,11 @@ if [[ ! -d "$DEVTOOLS_APP" ]]; then
 fi
 
 echo "正在打开：数智供社 v8533"
+echo "正在按当前电脑网络地址更新小程序构建产物..."
+(
+  cd "$ROOT_DIR"
+  npm run build:shuzhi-mp
+)
 echo "项目目录：$PROJECT_DIR"
 # 先确保前台点击登录、订单和后台接口有本地 BFF 可用；已运行时不重复启动。
 if ! curl -fsS --max-time 2 "$API_URL" >/dev/null 2>&1; then
