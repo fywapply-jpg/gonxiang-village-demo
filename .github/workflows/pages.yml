@@ -26,6 +26,13 @@ jobs:
       - name: Reject tracked credentials and private keys
         run: node scripts/check-secret-hygiene.mjs
 
+      - name: Preflight v8533 release assets
+        run: |
+          set -e
+          node scripts/check-shuzhi-pages-assets.mjs
+          node scripts/check-shuzhi-pages-build.mjs
+          node scripts/check-shuzhi-release-integrity.mjs
+
       # 当前公开根路径必须始终指向数智供社 v8533；历史 v3demo 仅保留在
       # /legacy-v3/，避免用户打开固定链接时落到旧版。源目录不做删除。
       - name: Build site for project subpath
@@ -43,3 +50,17 @@ jobs:
 
       - id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Verify public v8533 deployment
+        env:
+          SHUZHI_PUBLIC_BASE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -e
+          for attempt in $(seq 1 12); do
+            if node scripts/check-shuzhi-public-pages.mjs; then
+              exit 0
+            fi
+            echo "公网 CDN 尚未完成传播，第 ${attempt}/12 次重试"
+            sleep 5
+          done
+          exit 1
