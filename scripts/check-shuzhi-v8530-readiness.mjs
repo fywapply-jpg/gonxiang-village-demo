@@ -155,6 +155,7 @@ const legacyMobilePath = resolve(root, "deliverables/数智供销-v85-手机离�
 const legacyMobile = existsSync(legacyMobilePath) ? readFileSync(legacyMobilePath) : null;
 add(legacyMobile && v8533Source && legacyMobile.equals(v8533Source) && legacyMobile.includes("数智供社 v8533 · 手机离线演示版") && legacyMobile.includes("grid-template-columns:repeat(2") ? "pass" : "fail", "旧手机链接兼容", "原数智供销-v85 文件名继续指向 v8533 最新内容，避免手机收藏链接打开旧版");
 add(workPackage.includes('"build:mp-weixin:production"') && workPackage.includes('"build:h5:production"') && workPackage.includes("VITE_API_BASE") && workPackage.includes("https://") ? "pass" : "fail", "生产端构建门禁", "正式 H5/小程序构建强制 HTTPS API 地址，局域网构建仅供联调");
+add(!workPackage.includes("192.168.2.104") && workPackage.includes("VITE_API_HOST") && workPackage.includes("ipconfig getifaddr") ? "pass" : "fail", "本地联调地址动态探测", "微信真机联调不固化历史局域网 IP，优先使用 VITE_API_BASE/VITE_API_HOST 或自动探测当前网卡");
 add(existsSync(resolve(root, "scripts/sync-shuzhi-h5.mjs")) && text("scripts/sync-shuzhi-h5.mjs").includes("rmSync(targetAssets") && text("package.json").includes('"sync:shuzhi-h5"') ? "pass" : "fail", "H5 发布同步", "生产 H5 通过受控脚本同步并清理旧哈希资源，避免发布包累积历史前端代码");
 add(existsSync(resolve(root, "dist-admin/index.html")) ? "pass" : "fail", "后台构建产物", "dist-admin/index.html");
 add(adminSource.includes("productionAdminBuild") && adminSource.includes("productionAdminBuild ? \"\" : \"local-demo-token\"") && adminSource.includes("正式环境需要管理员岗位令牌") && adminSource.includes("正式后台 API") ? "pass" : "fail", "后台生产认证门禁", "正式管理台不内置演示令牌，必须输入会话令牌并显示生产连接提示");

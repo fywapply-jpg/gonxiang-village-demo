@@ -2,7 +2,12 @@
 set -euo pipefail
 
 PROJECT_DIR="/Users/fengwen/gonxiang-village-demo/work/shuzhi-v8502-source/dist/build/mp-weixin"
+ROOT_DIR="/Users/fengwen/gonxiang-village-demo"
 DEVTOOLS_APP="/Applications/wechatwebdevtools.app"
+API_URL="http://127.0.0.1:8787/health"
+API_LOG="/tmp/shuzhi-v8533-local-api.log"
+API_PID_FILE="/tmp/shuzhi-v8533-local-api.pid"
+LAN_HOST="${VITE_API_HOST:-$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)}"
 
 if [[ ! -f "$PROJECT_DIR/project.config.json" || ! -f "$PROJECT_DIR/app.json" ]]; then
   echo "找不到最新版小程序构建目录：$PROJECT_DIR"
@@ -17,6 +22,30 @@ fi
 
 echo "正在打开：数智供社 v8533"
 echo "项目目录：$PROJECT_DIR"
+# 先确保前台点击登录、订单和后台接口有本地 BFF 可用；已运行时不重复启动。
+if ! curl -fsS --max-time 2 "$API_URL" >/dev/null 2>&1; then
+  echo "本地 API 未运行，正在启动（日志：$API_LOG）"
+  (
+    cd "$ROOT_DIR"
+    nohup /usr/bin/env node local-backend/server.mjs >"$API_LOG" 2>&1 &
+    echo $! >"$API_PID_FILE"
+  )
+  for _ in {1..15}; do
+    if curl -fsS --max-time 2 "$API_URL" >/dev/null 2>&1; then
+      echo "本地 API 已就绪：http://127.0.0.1:8787"
+      break
+    fi
+    sleep 1
+  done
+  if ! curl -fsS --max-time 2 "$API_URL" >/dev/null 2>&1; then
+    echo "警告：本地 API 未在 15 秒内就绪，请查看：$API_LOG"
+  fi
+else
+  echo "本地 API 已运行：http://127.0.0.1:8787"
+fi
+if [[ -n "$LAN_HOST" ]]; then
+  echo "手机同 Wi-Fi 联调地址：http://$LAN_HOST:8787"
+fi
 # 先关闭旧会话，避免微信开发者工具复用失效的空白模拟器页面。
 CLI="$DEVTOOLS_APP/Contents/MacOS/cli"
 "$CLI" quit --lang zh >/dev/null 2>&1 || true

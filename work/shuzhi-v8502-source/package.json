@@ -1,0 +1,36 @@
+{
+  "name": "shuzhi-gongxiao-mp",
+  "version": "1.8.1",
+  "description": "数智供销 B2B 供应链+金融平台 微信小程序（uni-app 一套代码 → H5 + 微信小程序）",
+  "scripts": {
+    "dev:h5": "uni",
+    "dev:mp-weixin": "uni -p mp-weixin",
+    "build:h5": "uni build",
+    "build:h5:production": "test -n \"$VITE_API_BASE\" || { echo 'VITE_API_BASE must be an HTTPS production API origin' >&2; exit 1; }; case \"$VITE_API_BASE\" in https://*) ;; *) echo 'VITE_API_BASE must start with https://' >&2; exit 1 ;; esac; uni build",
+    "build:mp-weixin": "uni build -p mp-weixin",
+    "build:mp-weixin:local": "API_HOST=\"${VITE_API_HOST:-$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}')}\"; test -n \"$API_HOST\" || { echo '无法探测局域网地址，请设置 VITE_API_HOST'; exit 1; }; VITE_API_BASE=\"${VITE_API_BASE:-http://$API_HOST:8787}\" uni build -p mp-weixin",
+    "build:mp-weixin:production": "test -n \"$VITE_API_BASE\" || { echo 'VITE_API_BASE must be an HTTPS production API origin' >&2; exit 1; }; case \"$VITE_API_BASE\" in https://*) ;; *) echo 'VITE_API_BASE must start with https://' >&2; exit 1 ;; esac; uni build -p mp-weixin",
+    "type-check": "vue-tsc --noEmit",
+    "check:perms": "node scripts/check-perms.mjs"
+  },
+  "dependencies": {
+    "@dcloudio/uni-app": "3.0.0-4080420251103001",
+    "@dcloudio/uni-components": "3.0.0-4080420251103001",
+    "@dcloudio/uni-h5": "3.0.0-4080420251103001",
+    "@dcloudio/uni-mp-weixin": "3.0.0-4080420251103001",
+    "pinia": "^2.1.7",
+    "vue": "^3.4.21"
+  },
+  "devDependencies": {
+    "@dcloudio/types": "^3.4.8",
+    "@dcloudio/uni-cli-shared": "3.0.0-4080420251103001",
+    "@dcloudio/uni-stacktracey": "3.0.0-4080420251103001",
+    "@dcloudio/vite-plugin-uni": "3.0.0-4080420251103001",
+    "@vue/runtime-core": "^3.4.21",
+    "@vue/tsconfig": "^0.1.3",
+    "sass": "^1.101.0",
+    "typescript": "^4.9.4",
+    "vite": "5.2.8",
+    "vue-tsc": "^1.0.24"
+  }
+}

@@ -1,0 +1,207 @@
+{
+  "pages": [
+    { "path": "pages/login/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/home/index", "style": { "navigationBarTitleText": "数智供社", "navigationStyle": "custom" } },
+    { "path": "pages/home/search", "style": { "navigationBarTitleText": "全局搜索" } },
+    { "path": "pages/home/price", "style": { "navigationBarTitleText": "农产品价格指数" } },
+    { "path": "pages/home/emergency", "style": { "navigationBarTitleText": "应急保供专区" } },
+    { "path": "pages/operation/index", "style": { "navigationBarTitleText": "业务运营中心" } },
+
+    { "path": "pages/trade/index", "style": { "navigationBarTitleText": "B2B 交易大厅" } },
+    { "path": "pages/trade/control", "style": { "navigationBarTitleText": "交易准入与资金总控" } },
+    { "path": "pages/trade/batch-workbench", "style": { "navigationBarTitleText": "批量交易工作台" } },
+    { "path": "pages/trade/supply-detail", "style": { "navigationBarTitleText": "货源详情" } },
+    { "path": "pages/trade/shop", "style": { "navigationBarTitleText": "供应商企业店铺" } },
+    { "path": "pages/trade/tender", "style": { "navigationBarTitleText": "大宗集采招投标" } },
+    { "path": "pages/trade/fulfillment", "style": { "navigationBarTitleText": "合同履约管理" } },
+    { "path": "pages/trade/demand-detail", "style": { "navigationBarTitleText": "采购需求" } },
+    { "path": "pages/trade/publish", "style": { "navigationBarTitleText": "发布供需" } },
+    { "path": "pages/trade/orders", "style": { "navigationBarTitleText": "我的订单" } },
+    { "path": "pages/trade/order-detail", "style": { "navigationBarTitleText": "订单详情" } },
+    { "path": "pages/trade/contracts", "style": { "navigationBarTitleText": "CA合同包与线上签约" } },
+    { "path": "pages/trade/chat", "style": { "navigationBarTitleText": "询盘沟通" } },
+    { "path": "pages/trade/chain", "style": { "navigationBarTitleText": "供应链闭环体系" } },
+    { "path": "pages/trade/assist", "style": { "navigationBarTitleText": "消费帮扶 · 乡村振兴" } },
+    { "path": "pages/trade/citymarket", "style": { "navigationBarTitleText": "城市农批枢纽" } },
+    { "path": "pages/trade/markets", "style": { "navigationBarTitleText": "全国农批市场清单" } },
+    { "path": "pages/trade/endtype", "style": { "navigationBarTitleText": "小端详情" } },
+    { "path": "pages/trade/kitchen-bom", "style": { "navigationBarTitleText": "中央厨房 · 菜谱BOM测算" } },
+    { "path": "pages/trade/canteen-bid", "style": { "navigationBarTitleText": "机关食堂 · 阳光招采" } },
+    { "path": "pages/trade/tool-market", "style": { "navigationBarTitleText": "农贸市场 · 行情批货" } },
+    { "path": "pages/trade/tool-store", "style": { "navigationBarTitleText": "社区门店 · 智能补货" } },
+    { "path": "pages/trade/tool-process", "style": { "navigationBarTitleText": "食品加工 · 原料年单" } },
+    { "path": "pages/trade/tool-catering", "style": { "navigationBarTitleText": "餐饮公司 · 多店集单" } },
+    { "path": "pages/trade/tool-army", "style": { "navigationBarTitleText": "军供 · 计划配送" } },
+    { "path": "pages/trade/tool-student", "style": { "navigationBarTitleText": "学生餐 · 带量配餐" } },
+
+    { "path": "pages/trace/scan", "style": { "navigationBarTitleText": "扫码溯源" } },
+    { "path": "pages/trace/detail", "style": { "navigationBarTitleText": "全链路溯源" } },
+    { "path": "pages/trace/fullchain", "style": { "navigationBarTitleText": "全链路溯源总览" } },
+
+    { "path": "pages/finance/index", "style": { "navigationBarTitleText": "供应链金融" } },
+    { "path": "pages/finance/product", "style": { "navigationBarTitleText": "金融产品" } },
+    { "path": "pages/finance/apply", "style": { "navigationBarTitleText": "融资申请" } },
+    { "path": "pages/finance/credit", "style": { "navigationBarTitleText": "信用资产中心" } },
+    { "path": "pages/finance/insurance", "style": { "navigationBarTitleText": "农业保险" } },
+    { "path": "pages/finance/dividend", "style": { "navigationBarTitleText": "全民分红" } },
+    { "path": "pages/finance/loop", "style": { "navigationBarTitleText": "供应链金融闭环" } },
+    { "path": "pages/finance/loanlife", "style": { "navigationBarTitleText": "订单贷全生命周期" } },
+    { "path": "pages/finance/bankbid", "style": { "navigationBarTitleText": "主办银行制 · 银行竞标" } },
+    { "path": "pages/finance/factoring", "style": { "navigationBarTitleText": "应收账款保理" } },
+    { "path": "pages/finance/grainbank", "style": { "navigationBarTitleText": "粮食银行" } },
+    { "path": "pages/finance/settle", "style": { "navigationBarTitleText": "支付结算体系" } },
+    { "path": "pages/finance/fourflow", "style": { "navigationBarTitleText": "四流合一 · 融资贸易风控" } },
+
+    { "path": "pages/message/index", "style": { "navigationBarTitleText": "消息中心" } },
+
+    { "path": "pages/mine/index", "style": { "navigationBarTitleText": "商户中心", "navigationStyle": "custom" } },
+    { "path": "pages/mine/wallet", "style": { "navigationBarTitleText": "我的钱包" } },
+    { "path": "pages/mine/did", "style": { "navigationBarTitleText": "DID 链上身份" } },
+    { "path": "pages/mine/settings", "style": { "navigationBarTitleText": "系统设置" } },
+    { "path": "pages/mine/about", "style": { "navigationBarTitleText": "关于 · 服务导览" } },
+    { "path": "pages/mine/compliance", "style": { "navigationBarTitleText": "合规公示中心" } },
+    { "path": "pages/mine/privacy", "style": { "navigationBarTitleText": "隐私授权管理" } },
+    { "path": "pages/mine/security", "style": { "navigationBarTitleText": "账号安全管理" } },
+    { "path": "pages/mine/invoice", "style": { "navigationBarTitleText": "发票管理" } },
+    { "path": "pages/mine/favorites", "style": { "navigationBarTitleText": "收藏关注" } },
+    { "path": "pages/mine/feedback", "style": { "navigationBarTitleText": "意见反馈" } }
+  ],
+  "subPackages": [
+    { "root": "pages/register", "pages": [
+      { "path": "index", "style": { "navigationBarTitleText": "企业主体入驻" } },
+      { "path": "endjoin", "style": { "navigationBarTitleText": "小端商户入驻" } },
+      { "path": "faceauth", "style": { "navigationBarTitleText": "人脸识别认证" } }
+    ]},
+    { "root": "pages/party", "pages": [
+      { "path": "endorse", "style": { "navigationBarTitleText": "党组织信用背书体系" } }
+    ]},
+    { "root": "pages/promo", "pages": [
+      { "path": "index", "style": { "navigationBarTitleText": "小B端推广体系" } },
+      { "path": "org", "style": { "navigationBarTitleText": "推广组织" } },
+      { "path": "promoter", "style": { "navigationBarTitleText": "推广员工作台" } },
+      { "path": "commission", "style": { "navigationBarTitleText": "佣金结算台账" } },
+      { "path": "opinion", "style": { "navigationBarTitleText": "关系维护·舆情处理" } },
+      { "path": "dividend", "style": { "navigationBarTitleText": "考核系数·集体分红反哺" } }
+    ]},
+    { "root": "pages/emergency", "pages": [
+      { "path": "apply", "style": { "navigationBarTitleText": "保供备案申请" } },
+      { "path": "task", "style": { "navigationBarTitleText": "应急征召任务" } },
+      { "path": "subsidy", "style": { "navigationBarTitleText": "保供补贴申领" } }
+    ]},
+    { "root": "pages/merchant", "pages": [
+      { "path": "star", "style": { "navigationBarTitleText": "商户星级" } }
+    ]},
+    { "root": "pages/pay", "pages": [
+      { "path": "index", "style": { "navigationBarTitleText": "收银台" } },
+      { "path": "result", "style": { "navigationBarTitleText": "支付结果" } }
+    ]},
+    { "root": "pages/agri", "pages": [
+      { "path": "index", "style": { "navigationBarTitleText": "农资集采商城" } },
+      { "path": "inputs", "style": { "navigationBarTitleText": "农资集采 · 集采拼团" } },
+      { "path": "qualification", "style": { "navigationBarTitleText": "农资与作业人员资质审核" } },
+      { "path": "machinery-merchant", "style": { "navigationBarTitleText": "农机具商家 · 机具全生命周期管理" } },
+      { "path": "credit", "style": { "navigationBarTitleText": "村支书信用背书 · 白名单" } },
+      { "path": "detail", "style": { "navigationBarTitleText": "农资商品" } },
+      { "path": "contract", "style": { "navigationBarTitleText": "订单农业合约" } },
+      { "path": "futures", "style": { "navigationBarTitleText": "农产品期货年单" } },
+      { "path": "preseason", "style": { "navigationBarTitleText": "跨年度订单农业 · 今年定明年" } },
+      { "path": "settle", "style": { "navigationBarTitleText": "订单农业履约兑现结算" } },
+      { "path": "trust", "style": { "navigationBarTitleText": "土地托管 · 农业社会化服务" } },
+      { "path": "recycle", "style": { "navigationBarTitleText": "再生资源回收 · 绿色循环" } },
+      { "path": "primary", "style": { "navigationBarTitleText": "产地初加工中心" } },
+      { "path": "property", "style": { "navigationBarTitleText": "农村产权流转交易" } },
+      { "path": "machine", "style": { "navigationBarTitleText": "共享农机 · 跨区作业调度" } },
+      { "path": "brand", "style": { "navigationBarTitleText": "区域公用品牌运营中心" } }
+    ]},
+    { "root": "pages/digitalfarm", "pages": [
+      { "path": "index", "style": { "navigationBarTitleText": "数字种植项目运营台" } },
+      { "path": "livestock", "style": { "navigationBarTitleText": "数字养殖项目运营台" } },
+      { "path": "project", "style": { "navigationBarTitleText": "种养项目发起与验收" } },
+      { "path": "resources", "style": { "navigationBarTitleText": "县域农业资源底图" } }
+    ]},
+    { "root": "pages/logistics", "pages": [
+      { "path": "index", "style": { "navigationBarTitleText": "仓储物流" } },
+      { "path": "dispatch", "style": { "navigationBarTitleText": "统仓统配·冷链配送调度" } },
+      { "path": "wms", "style": { "navigationBarTitleText": "智慧仓储 WMS" } },
+      { "path": "waybill", "style": { "navigationBarTitleText": "运单追踪" } },
+      { "path": "receipt", "style": { "navigationBarTitleText": "电子仓单" } },
+      { "path": "warehouse", "style": { "navigationBarTitleText": "仓容预约" } },
+      { "path": "capacity", "style": { "navigationBarTitleText": "运力竞价" } }
+    ]},
+    { "root": "pages/station", "pages": [
+      { "path": "index", "style": { "navigationBarTitleText": "基层服务站" } },
+      { "path": "hub", "style": { "navigationBarTitleText": "村社综合服务站" } }
+    ]},
+    { "root": "pages/village", "pages": [
+      { "path": "index", "style": { "navigationBarTitleText": "数智供社 · 民生终端" } },
+      { "path": "groupbuy", "style": { "navigationBarTitleText": "社区团购" } },
+      { "path": "meal", "style": { "navigationBarTitleText": "老年助餐订餐" } },
+      { "path": "care", "style": { "navigationBarTitleText": "银发关怀 · 助餐公益" } },
+      { "path": "leader", "style": { "navigationBarTitleText": "社区团长中心" } }
+    ]},
+    { "root": "pages/crossborder", "pages": [
+      { "path": "index", "style": { "navigationBarTitleText": "跨境贸易专区" } },
+      { "path": "hub", "style": { "navigationBarTitleText": "区域枢纽详情" } },
+      { "path": "func", "style": { "navigationBarTitleText": "跨境功能演示" } },
+      { "path": "export", "style": { "navigationBarTitleText": "出口订单全流程" } },
+      { "path": "import", "style": { "navigationBarTitleText": "进口分销全流程" } },
+      { "path": "compare", "style": { "navigationBarTitleText": "五大枢纽对比" } },
+      { "path": "tax", "style": { "navigationBarTitleText": "跨境税费测算" } }
+    ]},
+    { "root": "pages/arch", "pages": [
+      { "path": "index", "style": { "navigationBarTitleText": "平台架构总览" } },
+      { "path": "chain", "style": { "navigationBarTitleText": "可信数字底座" } },
+      { "path": "flow", "style": { "navigationBarTitleText": "端到端全流程贯通" } }
+    ]},
+    { "root": "pages/ai", "pages": [
+      { "path": "index", "style": { "navigationBarTitleText": "AI 智能中枢" } },
+      { "path": "qa", "style": { "navigationBarTitleText": "AI 农技智能问答" } },
+      { "path": "quality", "style": { "navigationBarTitleText": "AI 品质识别" } },
+      { "path": "pick", "style": { "navigationBarTitleText": "AI 智能选品" } },
+      { "path": "forecast", "style": { "navigationBarTitleText": "AI 价格预测" } },
+      { "path": "risk", "style": { "navigationBarTitleText": "AI 智能风控" } },
+      { "path": "match", "style": { "navigationBarTitleText": "AI 供需撮合" } }
+    ]},
+    { "root": "pages/admin", "pages": [
+      { "path": "index", "style": { "navigationBarTitleText": "管理中心" } },
+      { "path": "dashboard", "style": { "navigationBarTitleText": "数据看板" } },
+      { "path": "region", "style": { "navigationBarTitleText": "区域管理" } },
+      { "path": "permission", "style": { "navigationBarTitleText": "管理权限设置" } },
+      { "path": "permdetail", "style": { "navigationBarTitleText": "操作级权限明细" } }
+    ]},
+    { "root": "pages/aftersale", "pages": [
+      { "path": "review", "style": { "navigationBarTitleText": "评价交易" } },
+      { "path": "ticket", "style": { "navigationBarTitleText": "售后工单" } },
+      { "path": "dispute", "style": { "navigationBarTitleText": "质量争议判责" } }
+    ]},
+    { "root": "pages/cert", "pages": [
+      { "path": "index", "style": { "navigationBarTitleText": "品质认证中心" } },
+      { "path": "premium", "style": { "navigationBarTitleText": "同品类 · 信誉分层收益" } }
+    ]},
+    { "root": "pages/alliance", "pages": [
+      { "path": "index", "style": { "navigationBarTitleText": "利益共同体" } }
+    ]}
+  ],
+  "preloadRule": {
+    "pages/home/index": { "network": "all", "packages": ["pages/agri", "pages/village", "pages/crossborder"] }
+  },
+  "tabBar": {
+    "color": "#9aa0aa",
+    "selectedColor": "#16884c",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      { "pagePath": "pages/home/index", "text": "首页" },
+      { "pagePath": "pages/trade/index", "text": "交易" },
+      { "pagePath": "pages/trace/scan", "text": "溯源" },
+      { "pagePath": "pages/finance/index", "text": "金融" },
+      { "pagePath": "pages/mine/index", "text": "我的" }
+    ]
+  },
+  "globalStyle": {
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "数智供社",
+    "navigationBarBackgroundColor": "#16884c",
+    "backgroundColor": "#f4f6f8"
+  }
+}
