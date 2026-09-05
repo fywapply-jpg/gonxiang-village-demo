@@ -61,13 +61,15 @@ for (const ref of metaAssetRefs) {
   if (relative && !existsSync(resolve(demoDir, relative))) failures.push(`app.html 元数据资源不存在：${relative}`);
 }
 const pagesWorkflow = readFileSync(resolve(root, ".github/workflows/pages.yml"), "utf8");
-const pagesBuilder = readFileSync(resolve(root, "scripts/build-v85-sites.mjs"), "utf8");
+const pagesBuilder = readFileSync(resolve(root, "scripts/build-shuzhi-pages-site.mjs"), "utf8");
 if (/供享村社|数智供销\s+v85/.test(pagesBuilder)) failures.push("静态发布脚本仍包含历史品牌或 v85 元数据");
-if (!pagesWorkflow.includes("cp -R shuzhi-demo/. _site/")) failures.push("Pages 根路径未从 shuzhi-demo 发布当前平台制品");
-if (!pagesWorkflow.includes("cp deliverables/数智供社-v8533/数智供社-v8533-后台手机演示版.html _site/admin.html")) failures.push("Pages 未发布独立后台手机演示入口");
-if (!pagesWorkflow.includes("cp -R shuzhi-demo/* _site/shuzhi/")) failures.push("Pages /shuzhi/ 兼容入口未从当前平台制品发布");
-if (!pagesWorkflow.includes("legacy-v3") || pagesWorkflow.includes("cp -R v3demo _site")) failures.push("Pages 历史 v3demo 未隔离到独立路径");
-if (/v3\.1208|work\/v31009-fix/.test(pagesWorkflow)) failures.push("Pages 工作流错误关联已隔离的 v3.1208");
+if (!pagesWorkflow.includes("node scripts/build-shuzhi-pages-site.mjs _site")) failures.push("Pages 工作流未调用当前 Node 发布构建器");
+if (!pagesBuilder.includes('copyIfPresent(demo, output)')) failures.push("Pages 根路径未从 shuzhi-demo 发布当前平台制品");
+if (!pagesBuilder.includes('数智供社-v8533-后台手机演示版.html') ||
+    !pagesBuilder.includes('join(output, "admin.html")')) failures.push("Pages 未发布独立后台手机演示入口");
+if (!pagesBuilder.includes('copyIfPresent(demo, join(output, "shuzhi"))')) failures.push("Pages /shuzhi/ 兼容入口未从当前平台制品发布");
+if (!pagesBuilder.includes('join(output, "legacy-v3")') || !pagesBuilder.includes('join(output, "v3.1")')) failures.push("Pages 历史入口未隔离到独立路径");
+if (/v3\.1208|work\/v31009-fix/.test(pagesWorkflow) || /v3\.1208|work\/v31009-fix/.test(pagesBuilder)) failures.push("Pages 工作流错误关联已隔离的 v3.1208");
 const mobileDemo = resolve(root, "deliverables/数智供社-v8533/数智供社-v8533-手机演示版.html");
 if (!existsSync(mobileDemo)) failures.push("缺少 v8533 手机单文件演示版");
 else {
