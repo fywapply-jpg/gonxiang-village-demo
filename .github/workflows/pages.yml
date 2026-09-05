@@ -31,41 +31,7 @@ jobs:
       - name: Build site for project subpath
         run: |
           set -e
-          rm -rf _site
-          mkdir -p _site
-
-          # 数智供社 v8533：根路径与 /shuzhi/ 双入口，保证旧收藏和新链接都到同一版本。
-          cp -R shuzhi-demo/. _site/
-          # 后台只发布脱敏的手机演示入口；真实管理台仍须部署在受保护的 API 域名和岗位认证后。
-          cp deliverables/数智供社-v8533/数智供社-v8533-后台手机演示版.html _site/admin.html
-          mkdir -p _site/shuzhi
-          cp -R shuzhi-demo/* _site/shuzhi/
-          # 根路径 app.html 的构建资源原本带 /shuzhi/ 前缀，改写为项目根路径。
-          sed -i 's#/gonxiang-village-demo/shuzhi/#/gonxiang-village-demo/#g' _site/app.html
-          find _site/assets -type f -name '*.js' -exec sed -i 's#"/static/#"/gonxiang-village-demo/static/#g' {} +
-
-          node scripts/check-shuzhi-pages-assets.mjs
-          # /shuzhi/ 入口的商品图片使用绝对路径，统一改为项目子路径。
-          find _site/shuzhi/assets -type f -name '*.js' -exec sed -i 's#"/static/#"/gonxiang-village-demo/shuzhi/static/#g' {} +
-
-          # 历史 v3demo 独立挂到 /legacy-v3/，不再占用默认根路径。
-          mkdir -p _site/legacy-v3
-          cp -R v3demo/. _site/legacy-v3/
-          mv _site/legacy-v3/index.html _site/legacy-v3/app.html
-          sed -i 's#href="/css/#href="/gonxiang-village-demo/legacy-v3/css/#g; s#src="/js/#src="/gonxiang-village-demo/legacy-v3/js/#g' _site/legacy-v3/app.html
-          sed -i 's#__webpack_require__.p="/"#__webpack_require__.p="/gonxiang-village-demo/legacy-v3/"#g' _site/legacy-v3/js/app.js
-          sed -i 's#src="/index.html"#src="app.html"#g; s#src="index.html"#src="app.html"#g' _site/legacy-v3/demo.html
-          cp _site/legacy-v3/demo.html _site/legacy-v3/index.html
-
-          # v3.1 迭代版继续挂到 /v3.1/ 子路径。
-          mkdir -p _site/v3.1
-          cp -R v3.1demo/. _site/v3.1/
-          mv _site/v3.1/index.html _site/v3.1/app.html
-          sed -i 's#href="/css/#href="/gonxiang-village-demo/v3.1/css/#g; s#src="/js/#src="/gonxiang-village-demo/v3.1/js/#g' _site/v3.1/app.html
-          sed -i 's#__webpack_require__.p="/"#__webpack_require__.p="/gonxiang-village-demo/v3.1/"#g' _site/v3.1/js/app.js
-          sed -i 's#src="/index.html"#src="app.html"#g; s#src="index.html"#src="app.html"#g' _site/v3.1/demo.html
-          cp _site/v3.1/demo.html _site/v3.1/index.html
-          touch _site/.nojekyll
+          node scripts/build-shuzhi-pages-site.mjs _site
 
       - uses: actions/configure-pages@v5
         with:
