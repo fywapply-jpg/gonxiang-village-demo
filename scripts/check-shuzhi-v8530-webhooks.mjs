@@ -57,6 +57,10 @@ const paymentUnknown = await send("payment", { event_id: `v8530-payment-unknown-
 add(paymentUnknown.status === 400, "支付未知状态拒绝落账", `HTTP ${paymentUnknown.status}`);
 const paymentMismatch = await send("payment", { event_id: `v8530-payment-mismatch-${Date.now()}`, order_id: orderId, payment_id: "PAY-SZGS-850901", status: "paid", amount: 1 });
 add(paymentMismatch.status === 409, "支付回调金额一致性校验", `HTTP ${paymentMismatch.status}`);
+const sharedCallbackKey = `v8530-cross-provider-key-${Date.now()}`;
+const sharedPayment = await send("payment", { event_id: `v8530-payment-shared-${Date.now()}`, order_id: orderId, payment_id: "PAY-SZGS-850901", status: "paid", amount: 276000 }, { idempotencyKey: sharedCallbackKey });
+const sharedLogistics = await send("logistics", { event_id: `v8530-logistics-shared-${Date.now()}`, order_id: orderId, tracking_no: "SF202608030001", status: "in_transit", temperature: 4.1 }, { idempotencyKey: sharedCallbackKey });
+add(sharedPayment.status === 202 && sharedLogistics.status === 202, "不同机构相同幂等键各自落库", `payment=${sharedPayment.status} logistics=${sharedLogistics.status}`);
 let alreadyAccepted = false;
 try {
   const trade = await fetch(`${base}/api/v1/trades/${orderId}`, { headers: { Authorization: `Bearer ${process.env.SHUZHI_TEST_TOKEN || "local-demo-token"}` } });

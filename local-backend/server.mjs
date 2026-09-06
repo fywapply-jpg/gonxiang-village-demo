@@ -743,12 +743,15 @@ const processIntegrationWebhook = async (provider, req, res) => {
   const eventId = String(req.headers["x-webhook-id"] || payload.event_id || "").trim();
   const idemKey = requestKey(req, payload) || eventId;
   if (!eventId || !idemKey) throw new HttpError(400, "回调必须提供 event_id 和 Idempotency-Key（或使用 X-Webhook-Id）");
-  const existing = db.prepare("SELECT provider,event_id,status FROM integration_callbacks WHERE idempotency_key=? OR (provider=? AND event_id=?) LIMIT 1").get(idemKey, provider, eventId);
+  // 回调幂等键在机构域内生效；存储时增加 provider 命名空间，避免支付机构和
+  // 监管机构恰好使用同一字符串时互相吞掉回调。旧版本未加前缀的记录仍兼容读取。
+  const callbackStorageKey = `${provider}:${idemKey}`;
+  const existing = db.prepare("SELECT provider,event_id,status FROM integration_callbacks WHERE idempotency_key IN (?,?) OR (provider=? AND event_id=?) LIMIT 1").get(callbackStorageKey, idemKey, provider, eventId);
   if (existing) return json(res, 200, { accepted: true, provider, event_id: existing.event_id, replayed: true, status: existing.status });
   const t = now();
   db.exec("BEGIN");
   try {
-    db.prepare("INSERT INTO integration_callbacks(provider,event_id,idempotency_key,signature,payload,status,received_at) VALUES (?,?,?,?,?,?,?)").run(provider, eventId, idemKey, String(req.headers["x-webhook-signature"] || ""), raw, "received", t);
+    db.prepare("INSERT INTO integration_callbacks(provider,event_id,idempotency_key,signature,payload,status,received_at) VALUES (?,?,?,?,?,?,?)").run(provider, eventId, callbackStorageKey, String(req.headers["x-webhook-signature"] || ""), raw, "received", t);
     const orderId = String(payload.order_id || "").trim();
     let nextAction = "已记录，等待后台复核";
     if (provider !== "regulator") {
@@ -924,7 +927,7 @@ const processIntegrationWebhook = async (provider, req, res) => {
       db.prepare("UPDATE regulatory_submissions SET status=?,receipt_ref=?,failure_code=?,failure_message=?,updated_at=? WHERE id=?").run(nextStatus, receiptRef, failureCode, failureMessage, t, submission.id);
       nextAction = nextStatus === "已回执" ? "监管/检测机构已回执，数据提交完成" : nextStatus === "失败" ? "监管/检测机构处理失败，进入复核与补偿" : nextStatus === "已撤回" ? "监管提交已撤回" : "监管/检测机构处理中，等待最终回执";
     }
-    db.prepare("UPDATE integration_callbacks SET status='processed',processed_at=? WHERE idempotency_key=?").run(t, idemKey);
+    db.prepare("UPDATE integration_callbacks SET status='processed',processed_at=? WHERE idempotency_key=?").run(t, callbackStorageKey);
     log(`integration-${provider}`, "WEBHOOK_ACCEPTED", orderId || eventId, `${eventId} · ${nextAction}`);
     db.exec("COMMIT");
     return json(res, 202, { accepted: true, provider, event_id: eventId, replayed: false, next_action: nextAction });
