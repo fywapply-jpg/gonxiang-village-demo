@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 
+const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+
 // 同一品类：赣南脐橙。同样的地、同样的品种、同样产 100 吨，信誉不同 → 收益不同
 const BASE = 4.6;      // 基准收购价 元/斤
 const YIELD = 100;     // 年产量 吨
@@ -104,6 +106,11 @@ const pathMode = ref<"up" | "down">("up");
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">暂无后台信用收益档案</text>
+      <text class="production-empty-text">正式环境的商户星级、认证、溯源、价格和收益待遇只能由后台风控与真实认证/交易回执计算。本页不展示固定商户评分、收购价或收益对比样例。</text>
+    </view>
+    <template v-else>
     <view class="hero">
       <text class="ht">⚖️ 同品类 · 信誉分层收益</text>
       <text class="hs">同一个品类、同样的地、同样产 100 吨——认证与信誉不同，收益天差地别。让信用值钱，良币驱逐劣币。</text>
@@ -206,6 +213,7 @@ const pathMode = ref<"up" | "down">("up");
     </view>
 
     <view class="tip">🔗 从农户到商户到客户全流程可信：产地环境/投入品/农事记录 → 认证与检测 → 冷链与交付 → 争议判责与评价，逐环上链沉淀为信誉资产。同品类不同信誉、不同收益，把"认认真真做好货"变成看得见的钱，倒逼各环节主动建信用。</view>
+    </template>
   </view>
 </template>
 
@@ -270,4 +278,7 @@ const pathMode = ref<"up" | "down">("up");
 .lp-t { font-size: 24rpx; font-weight: 800; display: block; }
 .lp-d { font-size: 20rpx; color: $sg-text-2; margin-top: 6rpx; display: block; line-height: 1.6; }
 .tip { margin: 20rpx 24rpx 40rpx; font-size: 21rpx; color: $sg-text-3; line-height: 1.6; }
+.production-empty { margin: 40rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>

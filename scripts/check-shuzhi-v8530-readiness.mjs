@@ -237,6 +237,14 @@ add(fulfillmentSource.includes("if (productionBuild) return productionBlocked(\"
 add(loanLifeSource.includes("v-if=\"productionBuild\" class=\"production-empty\"") && loanLifeSource.includes("暂无后台贷款档案") ? "pass" : "fail", "金融样例隔离", "正式环境不展示本地授信/放款样例，必须等待银行或持牌机构回执");
 const settlementPageSource = text("work/shuzhi-v8502-source/src/pages/finance/settle.vue");
 add(settlementPageSource.includes("v-if=\"productionBuild\" class=\"production-empty\"") && settlementPageSource.includes("暂无后台结算流水") && settlementPageSource.includes("<template v-else>") ? "pass" : "fail", "结算演示隔离", "正式环境不展示固定演示订单、账户或资金台账，真实结算只读后台与持牌机构回执");
+const agricultureSettlementSource = text("work/shuzhi-v8502-source/src/pages/agri/settle.vue");
+const premiumSource = text("work/shuzhi-v8502-source/src/pages/cert/premium.vue");
+const priceSource = text("work/shuzhi-v8502-source/src/pages/home/price.vue");
+const paymentResultSource = text("work/shuzhi-v8502-source/src/pages/pay/result.vue");
+add(agricultureSettlementSource.includes("v-if=\"productionBuild\" class=\"production-empty\"") && agricultureSettlementSource.includes("暂无后台履约结算档案") && agricultureSettlementSource.includes("<template v-else>") ? "pass" : "fail", "订单农业结算演示隔离", "正式环境不展示固定合同、价格、理赔或农户收益，必须读取后台履约和机构回执");
+add(premiumSource.includes("v-if=\"productionBuild\" class=\"production-empty\"") && premiumSource.includes("暂无后台信用收益档案") && premiumSource.includes("<template v-else>") ? "pass" : "fail", "信用收益演示隔离", "正式环境不展示固定商户评分、收购价或收益对比，必须读取后台风控和认证回执");
+add(priceSource.includes("v-if=\"productionBuild\" class=\"production-empty\"") && priceSource.includes("暂无实时行情接口") && priceSource.includes("<template v-else>") ? "pass" : "fail", "行情样例隔离", "正式环境不展示过期静态行情，也不据此生成采购或报价");
+add(paymentResultSource.includes("const productionBuild") && paymentResultSource.includes("支付结果待后台回执") && paymentResultSource.includes("正式环境不会根据页面参数") && paymentResultSource.includes("<template v-else>") ? "pass" : "fail", "支付结果参数防伪", "正式环境不信任 URL 的 ok、amount 或 trade 参数，支付成功只能来自后台和持牌机构回执");
 add(serverSource.includes("/api/v1/purchase-demands") && serverSource.includes("demand_quotes") && serverSource.includes("已确认采购报价必须以供货方响应场景生成订单") && serverSource.includes("同一采购需求只能确认一家供货方报价") && serverSource.includes("该采购需求已关闭，不能再确认报价") && batchSource.includes("submitSupplierQuotes") && batchSource.includes("采购方尚未确认全部报价") ? "pass" : "fail", "采购大厅报价闭环", "采购需求、供货报价、单一授标、采购确认和 quote_id 正式订单均绑定真实主体、审核商品与库存，未确认不得进入合同支付");
 add(existsSync(resolve(root, "scripts/check-shuzhi-v8530-demand-flow.mjs")) && text("package.json").includes("check:shuzhi-demand-flow") ? "pass" : "fail", "报价闭环回归资产", "采购大厅匿名拦截、主体隔离、报价幂等、采购确认、越权阻断和 quote_id 建单均有独立自动化回归");
 add(batchSource.includes("backendOrderAmount.value ?? displayTotalAmount.value") ? "pass" : "fail", "生产开票金额接线", "前台开票使用后台订单金额，服务端再次校验，避免生产模式缺少 amount");

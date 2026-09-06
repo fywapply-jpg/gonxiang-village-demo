@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from "vue";
 
+const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+
 const view = ref<"origin" | "sales">("origin");
 
 // 产区行情：品类 · 产区 · 规格 · 产地价 · 涨跌 · 预计收购时段
@@ -28,6 +30,11 @@ const heatColor: Record<string, string> = { 旺: "#d64541", 稳: "#16884c", 淡:
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">暂无实时行情接口</text>
+      <text class="production-empty-text">正式环境的产区价、销区价和需求热度必须由已授权行情/交易数据源按更新时间、地域和品类返回。本页不展示过期的本地行情样例，也不据此生成采购或报价。</text>
+    </view>
+    <template v-else>
     <view class="hero">
       <text class="ht">农产品价格指数</text>
       <text class="hs">2026-07-02 更新 · 数据来源：产地集货 + 销区批发</text>
@@ -67,6 +74,7 @@ const heatColor: Record<string, string> = { 旺: "#d64541", 稳: "#16884c", 淡:
       </view>
       <view class="tip">🛒 销区批发价 + 需求热度，帮助采购商选品选区、供应商找销路</view>
     </block>
+    </template>
   </view>
 </template>
 
@@ -105,4 +113,7 @@ const heatColor: Record<string, string> = { 旺: "#d64541", 稳: "#16884c", 淡:
 .s3.price { font-size: 28rpx; font-weight: 700; color: $sg-red; }
 .s4 { flex: 0.8; text-align: right; font-size: 26rpx; font-weight: 700; }
 .tip { margin: 24rpx; font-size: 22rpx; color: $sg-text-3; line-height: 1.6; }
+.production-empty { margin: 40rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>

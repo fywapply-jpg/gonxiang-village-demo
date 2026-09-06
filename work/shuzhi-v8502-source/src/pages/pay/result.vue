@@ -3,8 +3,14 @@ import { ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { payMethods } from "@/utils/pay";
 
+const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
 const r = ref({ ok: true, method: "wechat", amount: 0, no: "", trade: "" });
 onLoad((q) => {
+  if (productionBuild) {
+    // 生产环境不能信任 URL 上的 ok、amount 或 trade 参数；支付事实必须来自后台/持牌机构回执。
+    r.value = { ok: false, method: "bank", amount: 0, no: String(q?.no || ""), trade: "" };
+    return;
+  }
   r.value = {
     ok: q?.ok === "1",
     method: q?.method || "wechat",
@@ -21,6 +27,13 @@ function home() { uni.switchTab({ url: "/pages/home/index" }); }
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">支付结果待后台回执</text>
+      <text class="production-empty-text">正式环境不会根据页面参数显示“支付成功”。请返回订单详情，等待银行/持牌支付机构异步回调、流水核对和后台状态更新；未收到回执前不视为已付款。</text>
+      <text v-if="r.no" class="production-empty-order">订单号：{{ r.no }}</text>
+      <view class="production-empty-btn" @tap="orders">查看订单状态</view>
+    </view>
+    <template v-else>
     <view class="head" :class="{ fail: !r.ok }">
       <text class="ic">{{ r.ok ? '✅' : '❌' }}</text>
       <text class="t">{{ r.ok ? '支付成功' : '支付失败' }}</text>
@@ -41,6 +54,7 @@ function home() { uni.switchTab({ url: "/pages/home/index" }); }
       <view class="btn ghost" @tap="home">返回首页</view>
       <view class="btn" @tap="orders">查看订单</view>
     </view>
+    </template>
   </view>
 </template>
 
@@ -59,4 +73,9 @@ function home() { uni.switchTab({ url: "/pages/home/index" }); }
 .btns { display: flex; gap: 20rpx; margin: 10rpx 24rpx; }
 .btn { flex: 1; text-align: center; padding: 24rpx 0; border-radius: 999rpx; font-size: 30rpx; font-weight: 700; background: linear-gradient(135deg, $sg-primary, $sg-primary-deep); color: #fff; }
 .btn.ghost { background: $sg-primary-light; color: $sg-primary; }
+.production-empty { margin: 40rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
+.production-empty-order { display: block; margin-top: 14rpx; color: #496458; font-size: 23rpx; }
+.production-empty-btn { margin-top: 24rpx; padding: 20rpx; border-radius: 999rpx; background: #16884c; color: #fff; text-align: center; font-size: 27rpx; font-weight: 700; }
 </style>

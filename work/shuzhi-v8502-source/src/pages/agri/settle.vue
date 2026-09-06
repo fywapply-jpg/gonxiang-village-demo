@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 
+const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+
 // 合约参数（与 contract.vue 的脐橙订单一致）
 const C = {
   crop: "赣南脐橙",
@@ -62,6 +64,11 @@ const steps = [
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">暂无后台履约结算档案</text>
+      <text class="production-empty-text">正式环境的订单农业结算必须读取后台合同、交付验收、核灾定损、保险及持牌机构回执。本页不展示本地示例合同、价格或农户收益，也不会在前台计算或确认应付款。</text>
+    </view>
+    <template v-else>
     <view class="hero">
       <text class="ht">💰 订单农业 · 履约兑现结算</text>
       <text class="hs">以销定产的最后一环——到期真能算出农户拿多少钱：保底兜底 · 随行就市 · 减产理赔 · 二次分红</text>
@@ -156,6 +163,7 @@ const steps = [
     </view>
 
     <view class="tip">🔗 结算单价、理赔、分红全部按链上履约数据（交付验收/过磅/核灾定损/终端销售）自动核算；保底价兜住"价格跌"，履约险兜住"减产", 随行就市保证"价格涨不吃亏", 二次分红让农户共享终端溢价——把"以销定产"从签约做到兑现闭环。</view>
+    </template>
   </view>
 </template>
 
@@ -214,4 +222,7 @@ const steps = [
 .stp-t { font-size: 24rpx; font-weight: 600; }
 .stp-d { font-size: 20rpx; color: $sg-text-3; margin-top: 2rpx; line-height: 1.4; }
 .tip { margin: 20rpx 24rpx 40rpx; font-size: 21rpx; color: $sg-text-3; line-height: 1.6; }
+.production-empty { margin: 40rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>
