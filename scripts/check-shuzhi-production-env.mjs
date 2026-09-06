@@ -121,6 +121,12 @@ if (!existsSync(file)) {
     const value = String(values[key] || "");
     add(value === "true" || value === "false", `${key} 开关`, value ? "布尔值" : "未填写（必须明确 true/false）");
   }
+
+  for (const key of ["SHUZHI_HTTPS_ACCEPTANCE_REF", "SHUZHI_DATABASE_ACCEPTANCE_REF", "SHUZHI_WECHAT_ACCEPTANCE_REF", "SHUZHI_CA_ACCEPTANCE_REF", "SHUZHI_PAYMENT_ACCEPTANCE_REF", "SHUZHI_LOGISTICS_ACCEPTANCE_REF", "SHUZHI_INVOICE_ACCEPTANCE_REF", "SHUZHI_REGULATOR_ACCEPTANCE_REF"]) {
+    const value = String(values[key] || "");
+    const ok = Boolean(value) && !value.includes("CHANGE_ME");
+    add(ok, `验收证据 ${key}`, ok ? "已登记受控证据编号或路径" : "未登记真实验收证据；不得用密钥或敏感报文代替");
+  }
 }
 
 const failed = checks.filter((item) => !item.ok).length;

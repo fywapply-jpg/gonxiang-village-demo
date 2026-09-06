@@ -27,6 +27,7 @@
     "check:shuzhi-frontend-backend": "node scripts/check-shuzhi-frontend-backend-compat.mjs",
     "check:shuzhi-production": "node scripts/check-shuzhi-v8530-readiness.mjs --production",
     "check:shuzhi-production-env": "node scripts/check-shuzhi-production-env.mjs",
+    "check:shuzhi-activation": "node scripts/check-shuzhi-production-activation.mjs",
     "check:secret-hygiene": "node scripts/check-secret-hygiene.mjs",
     "check:shuzhi-public": "node scripts/check-shuzhi-public-pages.mjs",
     "check:shuzhi-role-isolation": "node scripts/check-shuzhi-v8530-role-isolation.mjs",
