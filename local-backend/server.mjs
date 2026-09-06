@@ -714,6 +714,11 @@ const moneyCents = (value, label = "金额", { allowZero = false } = {}) => {
   return cents;
 };
 const centsMoney = (cents) => Math.round(Number(cents)) / 100;
+const prepaidShipmentModels = new Set(["advance", "预付款 + 尾款", "custody", "机构监管结算", "持牌机构条件结算（验收后分账）"]);
+const shipmentPaymentReady = (order) => {
+  if (!productionMode || !prepaidShipmentModels.has(String(order?.settlement_model || ""))) return true;
+  return ["已入金待验收", "待验收分账", "机构已确认（验收后分账）", "已支付"].includes(String(order?.payment_status || ""));
+};
 // 第三方回调只接受明确的状态词，并按单向状态机落账；未知状态或回退
 // 不能覆盖已经确认、已送达或已分账的事实，避免供应商重试/异常回调改写账本。
 const normalizeWebhookStatus = (provider, value) => {
@@ -2119,6 +2124,7 @@ const server = createServer(async (req, res) => {
     if (productionMode) {
       const contract = db.prepare("SELECT status FROM contracts WHERE order_id=? ORDER BY id LIMIT 1").get(id);
       if (!contract || contract.status !== "已签署") return error(res, 409, "合同双方完成CA签署前不得登记发运");
+      if (!shipmentPaymentReady(order)) return error(res, 409, "当前结算模型要求托管资金确认后才能登记发运");
     }
     if (productionMode && process.env.SHUZHI_LOGISTICS_READY !== "true") return error(res, 503, "物流机构尚未完成联调，暂不接受生产发运登记");
     if (!payload.provider) return error(res, 400, "物流公司不能为空");
