@@ -41,6 +41,7 @@
     "check:shuzhi-public": "node scripts/check-shuzhi-public-pages.mjs",
     "check:shuzhi-role-isolation": "node scripts/check-shuzhi-v8530-role-isolation.mjs",
     "check:shuzhi-startup": "node scripts/check-shuzhi-v8530-production-startup.mjs",
+    "check:shuzhi-production-startup": "node scripts/check-shuzhi-v8530-production-startup.mjs",
     "check:shuzhi-production-settlement": "node scripts/check-shuzhi-v8530-production-settlement.mjs",
     "verify:production-deployment": "node scripts/verify-production-deployment.mjs",
     "check:shuzhi-access": "node scripts/run-shuzhi-check-with-local-api.mjs scripts/check-shuzhi-v8530-access.mjs",
