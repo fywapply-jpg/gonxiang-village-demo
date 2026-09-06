@@ -248,6 +248,32 @@ const platformCapabilities = () => {
     },
   };
 };
+// 后端运行总览必须反映真实证据和机构能力，不能把“没有数据”或“未接入机构”显示成“正常”。
+// 演示环境保留可读的正常状态；生产环境则明确区分暂无真实数据、有待处理和未开通。
+const adminControlStatuses = ({ stats, merchantStats, riskStats }) => {
+  const capabilities = platformCapabilities();
+  const capabilityReady = (key) => capabilities.capabilities.some((item) => item.key === key && item.ready);
+  const productionEmpty = (label) => productionMode ? `暂无真实${label}` : "正常";
+  const merchantStatus = Number(merchantStats.total || 0) === 0
+    ? productionEmpty("主体")
+    : Number(merchantStats.verified || 0) < Number(merchantStats.total || 0) ? "有待处理" : "正常";
+  const productStatus = Number(riskStats.pending_products || 0)
+    ? "有待处理"
+    : Number(riskStats.product_total || 0) === 0 ? productionEmpty("商品") : "正常";
+  const logisticsStatus = Number(riskStats.disputes || 0)
+    ? "有待处理"
+    : !capabilityReady("LOGISTICS_CALLBACK") ? "未开通" : Number(stats.orders || 0) === 0 ? productionEmpty("交易") : "正常";
+  const paymentStatus = !capabilityReady("ESCROW_PAYMENT")
+    ? "未开通"
+    : Number(stats.pending_payment || 0) ? "有待处理" : Number(stats.orders || 0) === 0 ? productionEmpty("交易") : "正常";
+  return [
+    { key: "主体与对公账户", status: merchantStatus },
+    { key: "商品图文视频审核", status: productStatus },
+    { key: "物流验收与争议", status: logisticsStatus },
+    { key: "支付双人复核", status: paymentStatus },
+    { key: "验收后分账", status: paymentStatus },
+  ];
+};
 const adminRole = (req) => {
   if (productionMode) {
     const auth = String(req.headers.authorization || "");
@@ -2412,12 +2438,12 @@ const server = createServer(async (req, res) => {
     const flow = db.prepare("SELECT fulfillment_step step, COUNT(*) count FROM orders GROUP BY fulfillment_step ORDER BY fulfillment_step").all();
     const analytics = db.prepare("SELECT COALESCE(AVG(amount),0) average_order_value, COALESCE(SUM(CASE WHEN payment_status='已分账' THEN amount ELSE 0 END),0) settled_amount, COALESCE(SUM(CASE WHEN invoice_status='待开票' THEN amount ELSE 0 END),0) invoice_pending_amount FROM orders").get();
     const audit = db.prepare("SELECT COUNT(*) events, MAX(created_at) last_event_at FROM audit_logs").get();
-    const riskStats = db.prepare("SELECT (SELECT COUNT(*) FROM products WHERE quality_status='pending_review') pending_products,(SELECT COUNT(*) FROM acceptances WHERE result='disputed') disputes,(SELECT COUNT(*) FROM merchant_credit WHERE score<70) low_credit_merchants").get();
+    const riskStats = db.prepare("SELECT (SELECT COUNT(*) FROM products WHERE quality_status='pending_review') pending_products,(SELECT COUNT(*) FROM products) product_total,(SELECT COUNT(*) FROM acceptances WHERE result='disputed') disputes,(SELECT COUNT(*) FROM merchant_credit WHERE score<70) low_credit_merchants").get();
     return json(res, 200, {
       ...stats,
       merchants: merchantStats.total,
       analytics: { ...analytics, order_completion_rate: Number(stats.orders) ? Number(stats.completed || 0) / Number(stats.orders) : 0 },
-      security: { merchant_total: merchantStats.total, merchant_verified: merchantStats.verified, elevated_risk_merchants: merchantStats.elevated, audit_events: audit.events, last_audit_at: audit.last_event_at, ...riskStats, controls: [{ key: "主体与对公账户", status: "正常" }, { key: "商品图文视频审核", status: Number(riskStats.pending_products) ? "有待处理" : "正常" }, { key: "物流验收与争议", status: Number(riskStats.disputes) ? "有待处理" : "正常" }, { key: "支付双人复核", status: "正常" }, { key: "验收后分账", status: Number(stats.pending_payment) ? "有待处理" : "正常" }] },
+      security: { merchant_total: merchantStats.total, merchant_verified: merchantStats.verified, elevated_risk_merchants: merchantStats.elevated, audit_events: audit.events, last_audit_at: audit.last_event_at, ...riskStats, controls: adminControlStatuses({ stats, merchantStats, riskStats }) },
       flow,
       db: { engine: "SQLite", path: productionMode ? undefined : dbPath, mode: runtimeMode },
     });

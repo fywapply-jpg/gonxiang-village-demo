@@ -109,6 +109,16 @@ try {
       add(false, "生产能力清单不虚报", error instanceof Error ? error.message : String(error));
     }
     try {
+      const response = await fetch(`http://127.0.0.1:${securePort}/api/v1/admin/overview`, { headers: { Authorization: "Bearer prod-finance-token-1234567890123456" } });
+      const body = await response.json();
+      const overview = body?.data || body;
+      const controls = Array.isArray(overview?.security?.controls) ? overview.security.controls : [];
+      const statusOf = (key) => controls.find((item) => item.key === key)?.status;
+      add(response.ok && statusOf("主体与对公账户") === "暂无真实主体" && statusOf("支付双人复核") === "未开通" && statusOf("验收后分账") === "未开通", "后端总览不虚报生产状态", "空生产库显示暂无真实主体，支付/分账机构未 ready 显示未开通");
+    } catch (error) {
+      add(false, "后端总览不虚报生产状态", error instanceof Error ? error.message : String(error));
+    }
+    try {
       const response = await fetch(`http://127.0.0.1:${securePort}/api/v1/auth/wechat/session`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: "not-configured" }) });
       const body = await response.json();
       add(response.status === 503 && body?.message?.includes("微信身份认证尚未完成"), "生产禁止伪造微信登录", `HTTP ${response.status}`);
