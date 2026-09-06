@@ -59,6 +59,9 @@ function award() {
       <text class="hs">阳光比价 · 综合评标 · 中标公示 · 全程留痕可审计（B2B）</text>
     </view>
 
+    <view v-if="productionBuild" class="production-empty">正式环境暂无已授权的招采项目。公告、供应商报价、评标和中标结果必须由后台招采单与授权采购岗位返回；本页不展示演示投标方，也不会在前台生成中标结果。</view>
+    <template v-else>
+
     <!-- 招标公告 -->
     <view class="sec">招标公告</view>
     <view class="sg-card">
@@ -98,6 +101,7 @@ function award() {
     <view v-if="opened" class="award-btn" @tap="award">查看中标公示 · CA 电子签约 ›</view>
 
     <view class="tip">🔒 招标、投标、报价、评分、中标、合同、验收全程上链留痕，防围标、防暗箱，符合阳光采购要求；投标方均为企业法人主体。</view>
+    </template>
   </view>
 </template>
 
@@ -132,5 +136,6 @@ function award() {
 .b-score { font-size: 20rpx; color: $sg-primary; margin-top: 2rpx; }
 .award-note { margin: 4rpx 24rpx 0; padding: 16rpx 20rpx; background: $sg-gold-light; border-radius: $sg-radius; font-size: 21rpx; color: #9a6a12; line-height: 1.5; }
 .award-btn { margin: 16rpx 24rpx 0; text-align: center; padding: 26rpx 0; border-radius: 999rpx; background: linear-gradient(135deg, $sg-primary, $sg-primary-deep); color: #fff; font-size: 27rpx; font-weight: 700; }
+.production-empty { margin: 28rpx 24rpx; padding: 28rpx 24rpx; border: 2rpx solid #efd494; border-radius: 20rpx; color: #755f39; background: #fff8e7; font-size: 24rpx; line-height: 1.6; }
 .tip { margin: 20rpx 24rpx 30rpx; font-size: 21rpx; color: $sg-text-3; line-height: 1.6; }
 </style>

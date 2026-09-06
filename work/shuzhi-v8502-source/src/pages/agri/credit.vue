@@ -84,6 +84,9 @@ function partyEndorse() { uni.navigateTo({ url: "/pages/party/endorse" }); }
       </view>
     </view>
 
+    <view v-if="productionBuild" class="production-empty">正式环境暂无已授权的信用档案。农户白名单、背书扣分和授信资格必须由后台根据真实履约证据、授权岗位和审计记录返回；本页不展示演示农户，也不会在前台修改信用结果。</view>
+    <template v-else>
+
     <view class="party-entry" @tap="partyEndorse">
       <text class="pe-ic">🚩</text>
       <view class="pe-i"><text class="pe-t">党组织信用背书体系（村/社区/企事业单位）</text><text class="pe-s">三类党支部背书 · 社会贡献值 · 考核奖惩 · 红黑榜</text></view>
@@ -180,6 +183,7 @@ function partyEndorse() { uni.navigateTo({ url: "/pages/party/endorse" }); }
 
     <view class="rec-btn" @tap="recommend">🚩 村支书推荐农户入白名单（需人脸核验）</view>
     <view class="tip">🔗 信用评分自动重算、等级变动同步触发订单/金融权限；C 级自动进灰名单、禁授信与保底订单；评分、推荐、失信全程上链。</view>
+    </template>
   </view>
 </template>
 
@@ -262,5 +266,6 @@ function partyEndorse() { uni.navigateTo({ url: "/pages/party/endorse" }); }
 .dq-d { font-size: 21rpx; color: $sg-text-2; }
 .sim-btn { margin: 16rpx 24rpx 0; text-align: center; padding: 22rpx 0; border-radius: 999rpx; background: #fff; border: 2rpx solid #c0392b; color: #c0392b; font-size: 24rpx; font-weight: 700; }
 .rec-btn { margin: 20rpx 24rpx 0; text-align: center; padding: 26rpx 0; border-radius: 999rpx; background: linear-gradient(135deg, #c0392b, #922b21); color: #fff; font-size: 26rpx; font-weight: 700; }
+.production-empty { margin: 28rpx 24rpx; padding: 28rpx 24rpx; border: 2rpx solid #efd494; border-radius: 20rpx; color: #755f39; background: #fff8e7; font-size: 24rpx; line-height: 1.6; }
 .tip { margin: 20rpx 24rpx 30rpx; font-size: 21rpx; color: $sg-text-3; line-height: 1.6; }
 </style>
