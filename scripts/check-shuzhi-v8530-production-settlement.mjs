@@ -63,6 +63,8 @@ const seedIncompleteOrder = () => {
   db.prepare("INSERT INTO organizations VALUES (?,?,?,?,?,?)").run("org-supplier", "测试供货主体", "产地供货商", "测试地区", "active", t);
   db.prepare("INSERT INTO merchants VALUES (?,?,?,?,?,?,?,?)").run("m-buyer", "org-buyer", "测试采购主体", "buyer", "verified", "verified", "低", t);
   db.prepare("INSERT INTO merchants VALUES (?,?,?,?,?,?,?,?)").run("m-supplier", "org-supplier", "测试供货主体", "supplier", "verified", "verified", "低", t);
+  db.prepare("INSERT INTO merchant_identity(merchant_id,credit_code,legal_name,status,provider,evidence_ref,verified_at,updated_at) VALUES (?,?,?,?,?,?,?,?)").run("m-buyer", "91420100MA8V85013Y", "测试采购主体", "verified", "测试核验机构", "EVID-m-buyer-identity", t, t);
+  db.prepare("INSERT INTO merchant_identity(merchant_id,credit_code,legal_name,status,provider,evidence_ref,verified_at,updated_at) VALUES (?,?,?,?,?,?,?,?)").run("m-supplier", "91360722MA8V85013X", "测试供货主体", "verified", "测试核验机构", "EVID-m-supplier-identity", t, t);
   const verificationStmt = db.prepare("INSERT INTO merchant_verifications(id,merchant_id,verification_type,status,provider,evidence_ref,verified_by,verified_at,expires_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
   for (const merchantId of ["m-buyer", "m-supplier"]) {
     for (const type of ["license", "bank"]) {

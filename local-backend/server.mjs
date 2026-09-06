@@ -224,6 +224,7 @@ db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeou
 db.exec(`
   CREATE TABLE IF NOT EXISTS organizations (id TEXT PRIMARY KEY, name TEXT NOT NULL, type TEXT NOT NULL, region TEXT, status TEXT NOT NULL DEFAULT 'active', created_at TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS merchants (id TEXT PRIMARY KEY, organization_id TEXT NOT NULL, name TEXT NOT NULL, role TEXT NOT NULL, license_status TEXT NOT NULL, bank_status TEXT NOT NULL, risk_level TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY (organization_id) REFERENCES organizations(id));
+  CREATE TABLE IF NOT EXISTS merchant_identity (merchant_id TEXT PRIMARY KEY, credit_code TEXT NOT NULL UNIQUE, legal_name TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', provider TEXT NOT NULL DEFAULT '', evidence_ref TEXT NOT NULL DEFAULT '', verified_at TEXT, updated_at TEXT NOT NULL, FOREIGN KEY (merchant_id) REFERENCES merchants(id));
   CREATE TABLE IF NOT EXISTS merchant_verifications (id TEXT PRIMARY KEY, merchant_id TEXT NOT NULL, verification_type TEXT NOT NULL, status TEXT NOT NULL, provider TEXT NOT NULL, evidence_ref TEXT NOT NULL, verified_by TEXT NOT NULL, verified_at TEXT, expires_at TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE(merchant_id,verification_type), FOREIGN KEY (merchant_id) REFERENCES merchants(id));
   CREATE TABLE IF NOT EXISTS products (id TEXT PRIMARY KEY, merchant_id TEXT NOT NULL, name TEXT NOT NULL, category TEXT NOT NULL, spec TEXT, unit TEXT, price REAL NOT NULL, stock REAL NOT NULL, origin TEXT, quality_status TEXT NOT NULL, FOREIGN KEY (merchant_id) REFERENCES merchants(id));
   CREATE TABLE IF NOT EXISTS product_media (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id TEXT NOT NULL, media_type TEXT NOT NULL, url TEXT NOT NULL, sort_no INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'pending', FOREIGN KEY (product_id) REFERENCES products(id));
@@ -283,6 +284,10 @@ const seed = () => {
     db.prepare("INSERT INTO merchants VALUES (?,?,?,?,?,?,?,?)").run("m-buyer", "org-buyer", "华中商贸采购中心有限公司", "buyer", "verified", "verified", "低", t);
     db.prepare("INSERT INTO merchants VALUES (?,?,?,?,?,?,?,?)").run("m-supplier", "org-supplier", "赣南优品农业合作社", "supplier", "verified", "verified", "低", t);
     db.prepare("INSERT INTO merchants VALUES (?,?,?,?,?,?,?,?)").run("m-platform", "org-platform", "数智供社平台运营中心", "platform", "verified", "verified", "低", t);
+    const identityStmt = db.prepare("INSERT INTO merchant_identity(merchant_id,credit_code,legal_name,status,provider,evidence_ref,verified_at,updated_at) VALUES (?,?,?,?,?,?,?,?)");
+    identityStmt.run("m-buyer", "91420100MA8V85013Y", "华中商贸采购中心有限公司", "verified", "本地演示核验", "LOCAL-BUYER-IDENTITY", t, t);
+    identityStmt.run("m-supplier", "91360722MA8V85013X", "赣南优品农业合作社", "verified", "本地演示核验", "LOCAL-SUPPLIER-IDENTITY", t, t);
+    identityStmt.run("m-platform", "91110108MA8V85013Z", "数智供社平台运营中心", "verified", "本地演示核验", "LOCAL-PLATFORM-IDENTITY", t, t);
     const products = [
       ["p-orange", "m-supplier", "赣南脐橙", "水果", "果径70mm·特级", "箱", 68, 2400, "江西赣州", "passed"],
       ["p-vegetable", "m-supplier", "高山菜心", "蔬菜", "净菜·2.5kg", "袋", 32, 1800, "江西寻乌", "passed"],
@@ -351,12 +356,14 @@ const syncOriginalCatalog = () => {
     const t = now();
     const orgStmt = db.prepare("INSERT OR IGNORE INTO organizations VALUES (?,?,?,?,?,?)");
     const merchantStmt = db.prepare("INSERT OR IGNORE INTO merchants VALUES (?,?,?,?,?,?,?,?)");
+    const identityStmt = db.prepare("INSERT OR IGNORE INTO merchant_identity(merchant_id,credit_code,legal_name,status,provider,evidence_ref,verified_at,updated_at) VALUES (?,?,?,?,?,?,?,?)");
     const productStmt = db.prepare("INSERT OR IGNORE INTO products VALUES (?,?,?,?,?,?,?,?,?,?)");
     const mediaStmt = db.prepare("INSERT INTO product_media(product_id,media_type,url,sort_no,status) VALUES (?,?,?,?,?)");
     suppliers.forEach((name, index) => {
       const suffix = String(index + 1).padStart(3, "0");
       orgStmt.run(`org-catalog-${suffix}`, name, "产地供货商", "全国", "active", t);
       merchantStmt.run(`m-catalog-${suffix}`, `org-catalog-${suffix}`, name, "supplier", "verified", "verified", "低", t);
+      identityStmt.run(`m-catalog-${suffix}`, `913600000MA8V85${suffix}`, name, "verified", "本地演示核验", `LOCAL-CATALOG-${suffix}`, t, t);
     });
     catalog.forEach((item) => {
       const supplierIndex = suppliers.indexOf(String(item.supplier || "产地供货商"));
@@ -422,11 +429,13 @@ const merchantVerificationReady = (merchantId) => {
   const merchant = db.prepare("SELECT license_status,bank_status FROM merchants WHERE id=?").get(String(merchantId));
   if (!merchant || merchant.license_status !== "verified" || merchant.bank_status !== "verified") return false;
   if (!productionMode) return true;
+  const identity = db.prepare("SELECT credit_code FROM merchant_identity WHERE merchant_id=? AND status IN ('pending','verified')").get(String(merchantId));
+  if (!identity || !/^[0-9A-Z]{18}$/.test(String(identity.credit_code || "").toUpperCase())) return false;
   const result = db.prepare("SELECT COUNT(*) AS n FROM merchant_verifications WHERE merchant_id=? AND verification_type IN ('license','bank') AND status='verified' AND TRIM(provider)<>'' AND TRIM(evidence_ref)<>''").get(String(merchantId));
   return Number(result?.n || 0) === 2;
 };
 if (productionMode) {
-  const invalidVerifiedMerchants = db.prepare("SELECT m.id FROM merchants m WHERE (m.license_status='verified' OR m.bank_status='verified') AND (SELECT COUNT(*) FROM merchant_verifications v WHERE v.merchant_id=m.id AND v.verification_type IN ('license','bank') AND v.status='verified') < 2 LIMIT 1").get();
+  const invalidVerifiedMerchants = db.prepare("SELECT m.id FROM merchants m WHERE (m.license_status='verified' OR m.bank_status='verified') AND ((SELECT COUNT(*) FROM merchant_verifications v WHERE v.merchant_id=m.id AND v.verification_type IN ('license','bank') AND v.status='verified') < 2 OR NOT EXISTS (SELECT 1 FROM merchant_identity i WHERE i.merchant_id=m.id AND i.status IN ('pending','verified') AND length(i.credit_code)=18)) LIMIT 1").get();
   if (invalidVerifiedMerchants) throw new Error(`生产库商户 ${invalidVerifiedMerchants.id} 缺少完整资质核验凭证，禁止启动；请先补齐 merchant_verifications`);
 }
 
@@ -672,10 +681,11 @@ const institutionCallbackUrl = (provider) => {
   return `${base}/api/v1/integrations/${provider}/webhook`;
 };
 const merchantParty = (merchantId, creditCode) => {
-  const row = db.prepare("SELECT m.id,m.name,o.name organization_name FROM merchants m JOIN organizations o ON o.id=m.organization_id WHERE m.id=?").get(merchantId);
+  const row = db.prepare("SELECT m.id,m.name,o.name organization_name,i.credit_code registered_credit_code FROM merchants m JOIN organizations o ON o.id=m.organization_id LEFT JOIN merchant_identity i ON i.merchant_id=m.id WHERE m.id=?").get(merchantId);
   const code = String(creditCode || "").trim();
   if (!row || !code) throw new HttpError(400, "机构指令缺少交易主体统一社会信用代码");
   if (!/^[0-9A-Z]{15,18}$/i.test(code)) throw new HttpError(400, "统一社会信用代码格式不正确");
+  if (productionMode && (!row.registered_credit_code || String(row.registered_credit_code).toUpperCase() !== code.toUpperCase())) throw new HttpError(409, "统一社会信用代码与后台备案主体不一致，禁止发送机构指令");
   return { merchant_id: row.id, legal_name: row.organization_name || row.name, credit_code: code };
 };
 const enqueueProductionInstitutionCommand = (input) => enqueueInstitutionCommand(db, {
@@ -821,7 +831,7 @@ const server = createServer(async (req, res) => {
   const path = url.pathname;
   if (path === "/health" || path === "/health/live") return json(res, 200, { status: "ok", database: "sqlite", dbPath: productionMode ? undefined : dbPath, version: healthVersion, platform_version: platformVersion, api_version: apiReleaseVersion, runtime_mode: runtimeMode, reserved_ports: integrationPorts });
   if (path === "/health/ready") {
-    const requiredTables = ["organizations", "merchants", "products", "orders", "order_items", "inventory_reservations", "contracts", "payments", "invoices", "shipments", "acceptances", "audit_logs", "operation_progress", "request_idempotency", "integration_callbacks", "institution_outbox", "user_sessions"];
+    const requiredTables = ["organizations", "merchants", "merchant_identity", "products", "orders", "order_items", "inventory_reservations", "contracts", "payments", "invoices", "shipments", "acceptances", "audit_logs", "operation_progress", "request_idempotency", "integration_callbacks", "institution_outbox", "user_sessions"];
     const placeholders = requiredTables.map(() => "?").join(",");
     const rows = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name IN (${placeholders})`).all(...requiredTables);
     const present = new Set(rows.map((row) => row.name));
@@ -1072,6 +1082,7 @@ const server = createServer(async (req, res) => {
       // 已被外部机构核验；必须由独立核验接口写入 verified 后才能启用交易。
       const initialVerificationStatus = productionMode ? "pending" : "verified";
       db.prepare("INSERT OR IGNORE INTO merchants VALUES (?,?,?,?,?,?,?,?)").run(merchantId, orgId, app.name, businessRole, initialVerificationStatus, initialVerificationStatus, "低", t);
+      db.prepare("INSERT OR IGNORE INTO merchant_identity(merchant_id,credit_code,legal_name,status,updated_at) VALUES (?,?,?,?,?)").run(merchantId, app.credit_code, app.name, "pending", t);
       db.prepare("UPDATE merchant_applications SET status='approved',review_note=?,reviewer=?,reviewed_at=?,updated_at=? WHERE id=?").run(String(payload.note || "后台双人复核通过"), actorFor(req, "商户审核岗"), t, t, app.id);
     } else {
       db.prepare("UPDATE merchant_applications SET status=?,review_note=?,reviewer=?,reviewed_at=?,updated_at=? WHERE id=?").run(decision === "reject" ? "rejected" : "review", String(payload.note || ""), actorFor(req, "商户审核岗"), t, t, app.id);
@@ -1095,6 +1106,12 @@ const server = createServer(async (req, res) => {
     const provider = String(payload.provider || "").trim().slice(0, 120);
     const evidenceRef = String(payload.evidence_ref || "").trim().slice(0, 240);
     if (productionMode && updates.some((item) => item.status !== "pending") && (!provider || !evidenceRef)) return error(res, 400, "生产核验结论必须提供机构名称和证据引用");
+    const suppliedCreditCode = String(payload.credit_code || "").trim().toUpperCase();
+    if (suppliedCreditCode && !/^[0-9A-Z]{18}$/.test(suppliedCreditCode)) return error(res, 400, "统一社会信用代码必须为 18 位大写字母或数字");
+    const registeredIdentity = db.prepare("SELECT credit_code FROM merchant_identity WHERE merchant_id=?").get(merchantId);
+    if (productionMode && updates.some((item) => item.status === "verified") && !suppliedCreditCode && !registeredIdentity?.credit_code) return error(res, 400, "生产核验通过必须提供统一社会信用代码，或先完成主体身份备案");
+    if (productionMode && suppliedCreditCode && registeredIdentity?.credit_code && String(registeredIdentity.credit_code).toUpperCase() !== suppliedCreditCode) return error(res, 409, "统一社会信用代码与既有主体备案不一致，禁止覆盖");
+    if (suppliedCreditCode && db.prepare("SELECT merchant_id FROM merchant_identity WHERE credit_code=? AND merchant_id<>?").get(suppliedCreditCode, merchantId)) return error(res, 409, "统一社会信用代码已绑定其他商户，禁止重复使用");
     const actor = actorFor(req, "主体核验岗");
     const t = now();
     db.exec("BEGIN");
@@ -1104,6 +1121,9 @@ const server = createServer(async (req, res) => {
         db.prepare(`UPDATE merchants SET ${column}=?,updated_at=? WHERE id=?`).run(item.status, t, merchantId);
         const verificationId = `MV-${merchantId}-${item.type}`;
         db.prepare("INSERT INTO merchant_verifications(id,merchant_id,verification_type,status,provider,evidence_ref,verified_by,verified_at,expires_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(merchant_id,verification_type) DO UPDATE SET status=excluded.status,provider=excluded.provider,evidence_ref=excluded.evidence_ref,verified_by=excluded.verified_by,verified_at=excluded.verified_at,expires_at=excluded.expires_at,updated_at=excluded.updated_at").run(verificationId, merchantId, item.type, item.status, provider || "本地演示核验", evidenceRef || `LOCAL-${item.type.toUpperCase()}`, actor, item.status === "verified" ? t : null, payload.expires_at ? String(payload.expires_at).slice(0, 40) : null, t, t);
+      }
+      if (suppliedCreditCode) {
+        db.prepare("INSERT INTO merchant_identity(merchant_id,credit_code,legal_name,status,provider,evidence_ref,verified_at,updated_at) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(merchant_id) DO UPDATE SET legal_name=excluded.legal_name,status=excluded.status,provider=excluded.provider,evidence_ref=excluded.evidence_ref,verified_at=excluded.verified_at,updated_at=excluded.updated_at").run(merchantId, suppliedCreditCode, merchant.name, updates.some((item) => item.status === "verified") ? "verified" : "pending", provider, evidenceRef, updates.some((item) => item.status === "verified") ? t : null, t);
       }
       log(actor, "VERIFY_MERCHANT", merchantId, updates.map((item) => `${item.type}:${item.status}`).join(",") + (evidenceRef ? ` · ${evidenceRef}` : ""));
       const data = db.prepare("SELECT * FROM merchants WHERE id=?").get(merchantId);
