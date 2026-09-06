@@ -137,7 +137,9 @@ if (!existsSync(file)) {
       add(false, label, "地址格式不正确");
     }
   };
-  checkHttpsOrigin("SHUZHI_ALLOWED_ORIGIN", "CORS 来源", false);
+  // server.mjs 在生产启动时要求 CORS 为精确的 HTTPS 根来源；这里提前采用相同规则，
+  // 避免配置检查先放行带路径/查询参数的来源，直到服务启动才失败。
+  checkHttpsOrigin("SHUZHI_ALLOWED_ORIGIN", "CORS 来源", true);
   checkHttpsOrigin("VITE_API_BASE", "API 根地址", true);
   for (const [, urlKey] of enabledProviders) checkHttpsOrigin(urlKey, `${urlKey} HTTPS 地址`, true);
 

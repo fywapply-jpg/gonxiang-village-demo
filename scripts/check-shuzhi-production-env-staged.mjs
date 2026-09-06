@@ -47,6 +47,7 @@ const run = (name, extra, expectedExit) => {
 
 try {
   run("未开通机构保持分阶段", "", 0);
+  run("CORS 来源不得带路径", "SHUZHI_ALLOWED_ORIGIN=https://app.example.cn/console", 1);
   run("声明支付 ready 但缺少机构凭证", "SHUZHI_PAYMENT_READY=true", 1);
   run("微信 ready 但缺少主体映射", "SHUZHI_WECHAT_AUTH_READY=true\nWECHAT_APP_ID=wx-test\nWECHAT_APP_SECRET=wechat-secret", 1);
   run("微信 ready 且主体映射完整", 'SHUZHI_WECHAT_AUTH_READY=true\nWECHAT_APP_ID=wx-test\nWECHAT_APP_SECRET=wechat-secret\nSHUZHI_WECHAT_OPENID_PRINCIPALS={"openid-test":{"id":"buyer","role":"buyer","merchant_id":"m-buyer"}}\nSHUZHI_WECHAT_ACCEPTANCE_REF=wechat-evidence-001', 0);
