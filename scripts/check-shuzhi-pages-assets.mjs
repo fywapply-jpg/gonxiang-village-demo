@@ -88,7 +88,10 @@ const scanFiles = (dir) => {
 };
 for (const file of scanFiles(demoDir)) {
   if (file.endsWith(".html") || file.endsWith(".js") || file.endsWith(".json")) {
-    if (readFileSync(file, "utf8").includes("供享村社")) failures.push(`当前 v8533 展示制品混入历史品牌：${file.slice(demoDir.length + 1)}`);
+    const source = readFileSync(file, "utf8");
+    if (source.includes("供享村社")) failures.push(`当前 v8533 展示制品混入历史品牌：${file.slice(demoDir.length + 1)}`);
+    if (source.includes("local-demo-token")) failures.push(`公开 H5 展示制品混入演示令牌：${file.slice(demoDir.length + 1)}`);
+    if (/192\.168\.|127\.0\.0\.1/.test(source)) failures.push(`公开 H5 展示制品混入局域网地址：${file.slice(demoDir.length + 1)}`);
   }
 }
 
