@@ -1394,6 +1394,63 @@ const server = createServer(async (req, res) => {
     const data = orderView(tradeMatch[1]);
     return json(res, 200, data);
   }
+  const paymentMatch = path.match(/^\/api\/v1\/trades\/([^/]+)\/pay$/);
+  if (paymentMatch && req.method === "POST") {
+    if (!authorized(req)) return error(res, 401, "需要支付授权");
+    const payload = await body(req), id = paymentMatch[1], idemKey = requestKey(req, payload);
+    if (productionMode && !idemKey) return error(res, 400, "生产托管入金必须提供 Idempotency-Key");
+    if (replayIdempotent(req, res, idemKey, payload)) return;
+    const order = db.prepare("SELECT * FROM orders WHERE id=?").get(id);
+    if (!order) return error(res, 404, "交易不存在");
+    if (!canActForOrder(req, order, "buyer")) return error(res, 403, "只有采购方或授权后台岗位可以发起托管入金");
+    if (productionMode && process.env.SHUZHI_PAYMENT_READY !== "true") return error(res, 503, "支付机构尚未完成联调，暂不接受生产托管入金");
+    const payment = db.prepare("SELECT * FROM payments WHERE order_id=? LIMIT 1").get(id);
+    if (!payment) return error(res, 404, "交易托管支付记录不存在");
+    if (!["待机构确认", "待支付", "支付失败"].includes(payment.status)) return error(res, 409, "当前资金状态不允许重复发起托管入金");
+    const amount = Number(order.amount);
+    if (!finitePositive(amount, 1e12)) return error(res, 409, "订单应付金额不合法，禁止发起托管入金");
+    const t = now();
+    if (productionMode) {
+      const principal = principalFor(req);
+      const buyerIdentity = db.prepare("SELECT credit_code FROM merchant_identity WHERE merchant_id=? AND status='verified'").get(order.buyer_id);
+      const supplierIdentity = db.prepare("SELECT credit_code FROM merchant_identity WHERE merchant_id=? AND status='verified'").get(order.supplier_id);
+      const payerCreditCode = String(payload.payer_credit_code || ((principal?.merchant_ids || []).includes(order.buyer_id) ? buyerIdentity?.credit_code : "")).trim();
+      const payeeCreditCode = String(payload.payee_credit_code || supplierIdentity?.credit_code || "").trim();
+      if (!payerCreditCode || !payeeCreditCode) return error(res, 400, "生产托管入金必须提供付款方和收款方统一社会信用代码");
+      db.exec("BEGIN");
+      try {
+        const queued = enqueueProductionInstitutionCommand({
+          provider: "payment",
+          aggregateType: "order",
+          aggregateId: id,
+          commandType: "create",
+          idempotencyKey: `PAYMENT:CREATE:${id}`,
+          command: {
+            command_id: `CMD-PAYMENT-CREATE-${id}`,
+            action: "create",
+            order_id: id,
+            payment_id: payment.id,
+            payer: merchantParty(order.buyer_id, payerCreditCode),
+            payee: merchantParty(order.supplier_id, payeeCreditCode),
+            money: { amount, currency: order.currency || "CNY" },
+            settlement_model: order.settlement_model,
+          },
+          now: t,
+        });
+        db.prepare("UPDATE payments SET status='机构待受理' WHERE id=?").run(payment.id);
+        db.prepare("UPDATE orders SET payment_status='机构待受理',updated_at=? WHERE id=?").run(t, id);
+        log(actorFor(req, "采购付款岗"), "QUEUE_PAYMENT_CREATE", id, queued.id);
+        const data = { ...orderView(id), payment_pending: true, institution_outbox: publicInstitutionCommand(queued) };
+        saveIdempotent(req, idemKey, 202, data, payload);
+        db.exec("COMMIT");
+        return json(res, 202, data);
+      } catch (cause) {
+        db.exec("ROLLBACK");
+        throw cause;
+      }
+    }
+    return error(res, 409, "本地演示请使用支付演示流程，不直接创建生产托管指令");
+  }
   const cancelMatch = path.match(/^\/api\/v1\/trades\/([^/]+)\/cancel$/);
   if (cancelMatch && req.method === "POST") {
     if (!authorized(req)) return error(res, 401, "需要交易取消授权");

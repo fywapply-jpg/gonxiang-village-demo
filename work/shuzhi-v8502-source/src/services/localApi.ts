@@ -368,3 +368,15 @@ export function settleTrade(orderId: string, instructionRef?: string) {
     data: { instruction_ref: instructionRef || `SETTLE-${orderId}-${Date.now()}` },
   });
 }
+
+/** 生产托管入金：只提交给持牌支付机构，HTTP 202 仅表示机构受理，不代表付款成功。 */
+export function createEscrowPayment(orderId: string, payerCreditCode?: string, payeeCreditCode?: string) {
+  return requestJson<any>(`/api/v1/trades/${encodeURIComponent(orderId)}/pay`, {
+    method: "POST",
+    idempotencyKey: newIdempotencyKey("payment-create"),
+    data: {
+      ...(payerCreditCode ? { payer_credit_code: payerCreditCode } : {}),
+      ...(payeeCreditCode ? { payee_credit_code: payeeCreditCode } : {}),
+    },
+  });
+}

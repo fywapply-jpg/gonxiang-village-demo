@@ -5,7 +5,7 @@ import { payMethods, requestPay } from "@/utils/pay";
 import { useAuthStore } from "@/store/auth";
 import { useUserStore } from "@/store/user";
 import { useTradeStore } from "@/store/trade";
-import { recordPlatformEvent } from "@/services/localApi";
+import { createEscrowPayment, recordPlatformEvent } from "@/services/localApi";
 const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
 const auth = useAuthStore();
 const user = useUserStore();
@@ -57,8 +57,9 @@ function pay() {
   void recordPlatformEvent("finance", "SUBMIT_PAYMENT_INTENT", { order_no: order.value.no, scene: scene.value, plan: planKey.value, amount: order.value.amount }).catch(() => {});
   if (!validAmount.value) return uni.showToast({ title: "支付金额异常，已拦截", icon: "none" });
   if (isB2B.value && !user.ensureTradeRole("B2B采购付款", "purchase")) return;
-  if (productionBuild && (usesSettlementSimulator.value || isDeferred.value)) {
-    return uni.showModal({ title: "需后台支付结算", content: "正式环境监管结算、验收付款计划和授信账期必须由后台按合同、机构产品和授权额度创建；当前未生成本地计划，也未执行扣款。", showCancel: false });
+  if (productionBuild && usesSettlementSimulator.value) return submitProductionEscrow();
+  if (productionBuild && isDeferred.value) {
+    return uni.showModal({ title: "需后台支付结算", content: "正式环境验收付款计划和授信账期必须由后台按合同、机构产品和授权额度创建；当前未生成本地计划，也未执行扣款。", showCancel: false });
   }
   if (usesSettlementSimulator.value) {
     return uni.navigateTo({ url: `/pages/finance/settle?scenario=normal&order=${encodeURIComponent(order.value.no)}` });
@@ -69,6 +70,19 @@ function pay() {
     return uni.navigateTo({ url: "/pages/register/faceauth?scene=pay" });
   }
   doPay();
+}
+async function submitProductionEscrow() {
+  if (!/^SZGS-/.test(order.value.no)) return uni.showModal({ title: "需正式订单", content: "请从后台已创建的正式订单进入托管入金，演示编号不能发起真实支付。", showCancel: false });
+  if (paying.value) return;
+  paying.value = true;
+  try {
+    await createEscrowPayment(order.value.no);
+    uni.showModal({ title: "支付指令已提交", content: "持牌支付机构已受理托管入金指令，当前不是支付成功。请等待机构回调后在订单详情查看入金状态。", showCancel: false, confirmText: "知道了" });
+  } catch (error) {
+    uni.showModal({ title: "未执行扣款", content: (error as Error)?.message || "支付机构暂不可用，未执行扣款。", showCancel: false });
+  } finally {
+    paying.value = false;
+  }
 }
 async function doPay() {
   if (paying.value) return; // 防重复提交

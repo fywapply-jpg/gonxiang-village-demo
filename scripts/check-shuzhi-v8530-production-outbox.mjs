@@ -105,6 +105,11 @@ try {
   add(mismatchedIdentity.status === 409, "机构指令主体代码错配阻断", `HTTP ${mismatchedIdentity.status}`);
   const shipment = await request(prodPort, `/api/v1/trades/${orderId}/shipments`, supplierToken, { provider: "carrier-prod", consignor: "赣南优品", consignee: "华中商贸", consignor_credit_code: "91360722MA8V85013X", consignee_credit_code: "91420100MA8V85013Y", consignor_address: "江西省赣州市寻乌县农产品仓", consignee_address: "湖北省武汉市洪山区团餐配送中心", goods: [{ product_id: "p-orange", name: "赣南脐橙", quantity: 10, unit: "箱" }] }, "outbox-logistics-000001");
   add(shipment.status === 202 && shipment.payload?.status === "待机构受理", "生产物流先建待受理运单", `HTTP ${shipment.status}`);
+  const dbPayment = new DatabaseSync(dbPath);
+  dbPayment.prepare("UPDATE payments SET status='待机构确认',paid_at=NULL WHERE order_id=?").run(orderId);
+  dbPayment.close();
+  const paymentCreate = await request(prodPort, `/api/v1/trades/${orderId}/pay`, buyerToken, { payer_credit_code: "91420100MA8V85013Y", payee_credit_code: "91360722MA8V85013X" }, "outbox-payment-create-000001");
+  add(paymentCreate.status === 202 && paymentCreate.payload?.payment_pending === true, "生产托管入金先入 Outbox", `HTTP ${paymentCreate.status}`);
   const dbAfter = new DatabaseSync(dbPath);
   dbAfter.prepare("UPDATE contracts SET status='已签署',signed_at=? WHERE order_id=?").run(t, orderId);
   dbAfter.prepare("UPDATE acceptances SET result='accepted',accepted_qty=1,accepted_at=?,evidence='生产验收回执' WHERE order_id=?").run(t, orderId);
