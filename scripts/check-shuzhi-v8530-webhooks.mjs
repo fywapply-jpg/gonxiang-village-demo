@@ -1,0 +1,63 @@
+#!/usr/bin/env node
+import { createHmac, randomUUID } from "node:crypto";
+
+const base = String(process.env.SHUZHI_TEST_BASE || "http://127.0.0.1:8787").replace(/\/$/, "");
+const orderId = process.env.SHUZHI_TEST_ORDER || "SZGS-2026-850901";
+const secrets = {
+  logistics: process.env.LOGISTICS_WEBHOOK_SECRET || "local-demo-logistics-secret",
+  payment: process.env.PAYMENT_WEBHOOK_SECRET || "local-demo-payment-secret",
+  invoice: process.env.INVOICE_WEBHOOK_SECRET || "local-demo-invoice-secret",
+  regulator: process.env.REGULATOR_WEBHOOK_SECRET || "local-demo-regulator-secret",
+};
+const checks = [];
+const add = (ok, name, detail) => { checks.push(ok); console.log(`${ok ? "PASS" : "FAIL"}  ${name}  ${detail}`); };
+const send = async (provider, payload, options = {}) => {
+  const raw = JSON.stringify(payload);
+  const timestamp = options.timestamp || Math.floor(Date.now() / 1000);
+  const eventId = options.eventId || payload.event_id || randomUUID();
+  const key = options.idempotencyKey || `webhook-${provider}-${eventId}`;
+  const signature = createHmac("sha256", secrets[provider]).update(`${timestamp}.${raw}`).digest("hex");
+  const headers = {
+    "Content-Type": "application/json",
+    "X-Webhook-Timestamp": String(timestamp),
+    "X-Webhook-Signature": options.signature || signature,
+    "X-Webhook-Id": eventId,
+    "Idempotency-Key": key,
+    ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
+  };
+  const response = await fetch(`${base}/api/v1/integrations/${provider}/webhook`, { method: "POST", headers, body: raw });
+  let body = {}; try { body = await response.json(); } catch {}
+  return { status: response.status, body, eventId, key };
+};
+
+const logisticsPayload = { event_id: `v8530-logistics-${Date.now()}`, order_id: orderId, tracking_no: "SF202608030001", status: "in_transit", temperature: 4.1 };
+const logistics = await send("logistics", logisticsPayload);
+add(logistics.status === 202, "物流签名回调", `HTTP ${logistics.status}`);
+const logisticsReplay = await send("logistics", logisticsPayload, { eventId: logistics.eventId, idempotencyKey: logistics.key });
+add(logisticsReplay.status === 200 && logisticsReplay.body?.data?.replayed === true, "物流重复回调重放", `HTTP ${logisticsReplay.status}`);
+const badSignature = await send("logistics", { ...logisticsPayload, event_id: `v8530-bad-${Date.now()}` }, { signature: "00" });
+add(badSignature.status === 401, "错误签名拦截", `HTTP ${badSignature.status}`);
+const stale = await send("regulator", { event_id: `v8530-stale-${Date.now()}`, action: "sync" }, { timestamp: Math.floor(Date.now() / 1000) - 3600 });
+add(stale.status === 401, "过期时间戳拦截", `HTTP ${stale.status}`);
+const payment = await send("payment", { event_id: `v8530-payment-${Date.now()}`, order_id: orderId, payment_id: "PAY-SZGS-850901", status: "paid", amount: 276000 });
+add(payment.status === 202, "支付入金回调", `HTTP ${payment.status}`);
+const paymentRegression = await send("payment", { event_id: `v8530-payment-regression-${Date.now()}`, order_id: orderId, payment_id: "PAY-SZGS-850901", status: "pending", amount: 276000 });
+add(paymentRegression.status === 409, "支付已确认后禁止状态回退", `HTTP ${paymentRegression.status}`);
+const paymentUnknown = await send("payment", { event_id: `v8530-payment-unknown-${Date.now()}`, order_id: orderId, payment_id: "PAY-SZGS-850901", status: "provider_new_state", amount: 276000 });
+add(paymentUnknown.status === 400, "支付未知状态拒绝落账", `HTTP ${paymentUnknown.status}`);
+const paymentMismatch = await send("payment", { event_id: `v8530-payment-mismatch-${Date.now()}`, order_id: orderId, payment_id: "PAY-SZGS-850901", status: "paid", amount: 1 });
+add(paymentMismatch.status === 409, "支付回调金额一致性校验", `HTTP ${paymentMismatch.status}`);
+let alreadyAccepted = false;
+try {
+  const trade = await fetch(`${base}/api/v1/trades/${orderId}`, { headers: { Authorization: `Bearer ${process.env.SHUZHI_TEST_TOKEN || "local-demo-token"}` } });
+  const data = await trade.json();
+  alreadyAccepted = Array.isArray(data?.data?.acceptances) && data.data.acceptances.some((item) => item.result === "accepted");
+} catch {}
+const invoice = await send("invoice", { event_id: `v8530-invoice-gate-${Date.now()}`, order_id: orderId, invoice_no: "V8530-GATE", status: "issued" });
+add(invoice.status === (alreadyAccepted ? 202 : 409), alreadyAccepted ? "验收后发票回调" : "验收前发票回调闸门", `HTTP ${invoice.status}`);
+const regulator = await send("regulator", { event_id: `v8530-regulator-${Date.now()}`, action: "reconcile", batch_no: "BATCH-V8530" });
+add(regulator.status === 202, "监管留痕回调", `HTTP ${regulator.status}`);
+
+const failures = checks.filter((ok) => !ok).length;
+console.log(`\n数智供社 v8530 第三方回调回归：${checks.length - failures} 通过，${failures} 失败`);
+process.exitCode = failures ? 1 : 0;
