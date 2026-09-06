@@ -538,7 +538,7 @@ if (productionMode) {
   if (invalidVerifiedMerchants) throw new Error(`生产库商户 ${invalidVerifiedMerchants.id} 缺少完整资质核验凭证，禁止启动；请先补齐 merchant_verifications`);
 }
 
-const headers = { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", "Access-Control-Allow-Origin": corsOrigin, "Access-Control-Allow-Headers": "Content-Type, Authorization, Idempotency-Key, X-Admin-Role, X-DEV-OPENID", "Access-Control-Allow-Methods": "GET,POST,PUT,OPTIONS" };
+const headers = { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", "Vary": "Origin", "Access-Control-Allow-Origin": corsOrigin, "Access-Control-Allow-Headers": "Content-Type, Authorization, Idempotency-Key, X-Admin-Role, X-DEV-OPENID", "Access-Control-Allow-Methods": "GET,POST,PUT,OPTIONS" };
 const json = (res, status, data) => { res.writeHead(status, headers); if (status === 204) return res.end(); res.end(JSON.stringify({ code: 0, message: "success", data })); };
 const error = (res, status, message) => { res.writeHead(status, headers); res.end(JSON.stringify({ code: Number(`${status}01`), message, data: { error: message } })); };
 class HttpError extends Error { constructor(status, message) { super(message); this.status = status; } }
@@ -1110,6 +1110,10 @@ const processIntegrationWebhook = async (provider, req, res) => {
 
 const server = createServer(async (req, res) => {
  try {
+  // 浏览器会先发 CORS 预检；生产 API 不能仅依赖浏览器隐藏响应，
+  // 还要在服务端拒绝非白名单 Origin，避免误配代理后形成跨来源写入入口。
+  const requestOrigin = String(req.headers.origin || "").trim();
+  if (productionMode && requestOrigin && requestOrigin !== corsOrigin) return error(res, 403, "请求来源不在生产 CORS 白名单");
   if (req.method === "OPTIONS") return json(res, 204, null);
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   const path = url.pathname;

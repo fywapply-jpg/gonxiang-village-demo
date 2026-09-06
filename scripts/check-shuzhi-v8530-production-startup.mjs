@@ -125,6 +125,14 @@ try {
     } catch (error) {
       add(false, "生产禁止伪造微信登录", error instanceof Error ? error.message : String(error));
     }
+    try {
+      const allowedOrigin = "https://demo.example.com";
+      const allowed = await fetch(`http://127.0.0.1:${securePort}/health`, { headers: { Origin: allowedOrigin } });
+      const denied = await fetch(`http://127.0.0.1:${securePort}/health`, { headers: { Origin: "https://evil.example.com" } });
+      add(allowed.ok && allowed.headers.get("access-control-allow-origin") === allowedOrigin && denied.status === 403, "生产 CORS 服务端来源门禁", `白名单来源 HTTP ${allowed.status}，非白名单来源 HTTP ${denied.status}`);
+    } catch (error) {
+      add(false, "生产 CORS 服务端来源门禁", error instanceof Error ? error.message : String(error));
+    }
   } catch (error) {
     add(false, "生产安全配置启动", error instanceof Error ? error.message : String(error));
   } finally {
