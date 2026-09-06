@@ -495,11 +495,11 @@ const merchantVerificationReady = (merchantId) => {
   if (!productionMode) return true;
   const identity = db.prepare("SELECT credit_code,provider,evidence_ref,verified_at FROM merchant_identity WHERE merchant_id=? AND status='verified'").get(String(merchantId));
   if (!identity || !/^[0-9A-Z]{18}$/.test(String(identity.credit_code || "").toUpperCase()) || !String(identity.provider || '').trim() || !String(identity.evidence_ref || '').trim() || !identity.verified_at) return false;
-  const result = db.prepare("SELECT COUNT(DISTINCT verification_type) AS n FROM merchant_verifications WHERE merchant_id=? AND verification_type IN ('license','bank') AND status='verified' AND TRIM(provider)<>'' AND TRIM(evidence_ref)<>''").get(String(merchantId));
+  const result = db.prepare("SELECT COUNT(DISTINCT verification_type) AS n FROM merchant_verifications WHERE merchant_id=? AND verification_type IN ('license','bank') AND status='verified' AND TRIM(provider)<>'' AND TRIM(evidence_ref)<>'' AND verified_at IS NOT NULL").get(String(merchantId));
   return Number(result?.n || 0) === 2;
 };
 if (productionMode) {
-  const invalidVerifiedMerchants = db.prepare("SELECT m.id FROM merchants m WHERE (m.license_status='verified' OR m.bank_status='verified') AND ((SELECT COUNT(DISTINCT v.verification_type) FROM merchant_verifications v WHERE v.merchant_id=m.id AND v.verification_type IN ('license','bank') AND v.status='verified') < 2 OR NOT EXISTS (SELECT 1 FROM merchant_identity i WHERE i.merchant_id=m.id AND i.status='verified' AND length(i.credit_code)=18 AND TRIM(i.provider)<>'' AND TRIM(i.evidence_ref)<>'' AND i.verified_at IS NOT NULL)) LIMIT 1").get();
+  const invalidVerifiedMerchants = db.prepare("SELECT m.id FROM merchants m WHERE (m.license_status='verified' OR m.bank_status='verified') AND ((SELECT COUNT(DISTINCT v.verification_type) FROM merchant_verifications v WHERE v.merchant_id=m.id AND v.verification_type IN ('license','bank') AND v.status='verified' AND TRIM(v.provider)<>'' AND TRIM(v.evidence_ref)<>'' AND v.verified_at IS NOT NULL) < 2 OR NOT EXISTS (SELECT 1 FROM merchant_identity i WHERE i.merchant_id=m.id AND i.status='verified' AND length(i.credit_code)=18 AND TRIM(i.provider)<>'' AND TRIM(i.evidence_ref)<>'' AND i.verified_at IS NOT NULL)) LIMIT 1").get();
   if (invalidVerifiedMerchants) throw new Error(`生产库商户 ${invalidVerifiedMerchants.id} 缺少完整资质核验凭证，禁止启动；请先补齐 merchant_verifications`);
 }
 

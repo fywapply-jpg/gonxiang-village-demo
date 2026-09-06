@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import { DatabaseSync } from "node:sqlite";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -81,10 +82,12 @@ let weak;
 let linked;
 let invalidOrigin;
 let invalidAdapter;
+let invalidVerification;
 let securePort;
 try {
   securePort = 8899 + Math.floor(Math.random() * 200);
-  const secureEnv = makeEnv(securePort, join(tempRoot, "secure.sqlite"));
+  const secureDb = join(tempRoot, "secure.sqlite");
+  const secureEnv = makeEnv(securePort, secureDb);
   secure = startChild(secureEnv);
   try {
     const ready = await waitReady(secure, securePort);
@@ -118,7 +121,32 @@ try {
     await stopChild(secure);
   }
 
-  const stagedPort = securePort + 1;
+  // A production database must not start with apparently verified merchants
+  // whose license/bank records have no institution, evidence, or verification
+  // timestamp. This mirrors merchantVerificationReady and protects startup
+  // from a false-positive COUNT(DISTINCT verification_type).
+  {
+    const db = new DatabaseSync(secureDb);
+    const t = new Date().toISOString();
+    db.prepare("INSERT INTO organizations VALUES (?,?,?,?,?,?)").run("org-invalid-verification", "资质证据缺失测试主体", "采购商", "测试", "active", t);
+    db.prepare("INSERT INTO merchants VALUES (?,?,?,?,?,?,?,?)").run("m-invalid-verification", "org-invalid-verification", "资质证据缺失测试主体", "buyer", "verified", "verified", "低", t);
+    db.prepare("INSERT INTO merchant_identity(merchant_id,credit_code,legal_name,status,provider,evidence_ref,verified_at,updated_at) VALUES (?,?,?,?,?,?,?,?)").run("m-invalid-verification", "91360000MA8V85330Q", "资质证据缺失测试主体", "verified", "测试主体核验机构", "IDENTITY-INVALID-VERIFICATION", t, t);
+    for (const type of ["license", "bank"]) {
+      db.prepare("INSERT INTO merchant_verifications(id,merchant_id,verification_type,status,provider,evidence_ref,verified_by,verified_at,expires_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)").run(`MV-INVALID-${type}`, "m-invalid-verification", type, "verified", "", "", "测试审核岗", null, null, t, t);
+    }
+    db.close();
+    const verificationPort = securePort + 1;
+    invalidVerification = startChild(makeEnv(verificationPort, secureDb));
+    const verificationResult = await Promise.race([invalidVerification.closed, wait(3000).then(() => null)]);
+    if (!verificationResult) {
+      await stopChild(invalidVerification);
+      add(false, "缺失资质证据拒绝启动", "空机构/证据/核验时间的 license、bank 记录未被生产启动门禁拒绝");
+    } else {
+      add(verificationResult.code !== 0, "缺失资质证据拒绝启动", verificationResult.code !== 0 ? "生产主体核验记录必须包含机构、证据和核验时间" : "进程异常以 0 退出");
+    }
+  }
+
+  const stagedPort = securePort + 2;
   const stagedEnv = makeEnv(stagedPort, join(tempRoot, "staged.sqlite"));
   for (const key of ["CA_WEBHOOK_SECRET", "LOGISTICS_WEBHOOK_SECRET", "PAYMENT_WEBHOOK_SECRET", "INVOICE_WEBHOOK_SECRET", "REGULATOR_WEBHOOK_SECRET"]) delete stagedEnv[key];
   staged = startChild(stagedEnv);
@@ -202,6 +230,7 @@ try {
   await stopChild(linked);
   await stopChild(invalidOrigin);
   await stopChild(invalidAdapter);
+  await stopChild(invalidVerification);
   rmSync(tempRoot, { recursive: true, force: true });
 }
 
