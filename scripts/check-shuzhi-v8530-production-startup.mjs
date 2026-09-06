@@ -161,7 +161,9 @@ try {
 
   const linkedPort = weakPort + 1;
   const linkedDb = join(tempRoot, "linked-db");
-  symlinkSync(resolve(root, "local-backend/data"), linkedDb, "dir");
+  // Use a tracked file so this guard also exercises clean CI checkouts where
+  // the ignored local SQLite data directory is not present.
+  symlinkSync(resolve(root, "local-backend/server.mjs"), linkedDb, "file");
   linked = startChild(makeEnv(linkedPort, linkedDb));
   const linkedResult = await Promise.race([linked.closed, wait(3000).then(() => null)]);
   if (!linkedResult) {
