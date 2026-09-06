@@ -1,7 +1,9 @@
 /** 数智供社本地 BFF：H5 通过 Vite 代理访问，微信端可用 VITE_API_BASE 指向局域网地址。 */
 const API_BASE = (import.meta.env.VITE_API_BASE || "").replace(/\/$/, "");
 const BUILD_API_TOKEN = import.meta.env.VITE_API_TOKEN || "";
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+// 只要目标是 HTTPS API，就按正式边界处理；这样开发服务器联调真实 API 时也不会
+// 因为 MODE=development 回退发送 local-demo-token。
+const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production" || API_BASE.startsWith("https://");
 const getApiToken = () => String(uni.getStorageSync("shuzhi-session-token") || BUILD_API_TOKEN || (productionBuild ? "" : "local-demo-token"));
 const authHeader = () => {
   const token = getApiToken();
