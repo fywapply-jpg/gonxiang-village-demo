@@ -27,6 +27,8 @@ const env = {
   INVOICE_WEBHOOK_SECRET: "invoice-secret-123456789012345678901234",
   REGULATOR_WEBHOOK_SECRET: "regulator-secret-123456789012345678901234",
   SHUZHI_PAYMENT_READY: "true",
+  SHUZHI_PAYMENT_ADAPTER_URL: "https://payment-adapter.example.com",
+  SHUZHI_PAYMENT_ADAPTER_SECRET: "payment-adapter-secret-123456789012345678901234",
 };
 const checks = [];
 const add = (ok, name, detail) => { checks.push(ok); console.log(`${ok ? "PASS" : "FAIL"}  ${name}  ${detail}`); };

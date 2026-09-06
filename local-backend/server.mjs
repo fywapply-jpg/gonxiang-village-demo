@@ -67,7 +67,13 @@ if (productionMode) {
   try { if (new URL(wechatSessionUrl).protocol !== "https:") throw new Error("not https"); } catch { throw new Error("SHUZHI_WECHAT_SESSION_URL 必须使用 HTTPS"); }
 }
 const corsOrigin = productionMode ? String(process.env.SHUZHI_ALLOWED_ORIGIN || "") : "*";
-if (productionMode && !corsOrigin) throw new Error("生产模式必须设置 SHUZHI_ALLOWED_ORIGIN");
+const validHttpsRoot = (value) => {
+  try {
+    const parsed = new URL(String(value || ""));
+    return parsed.protocol === "https:" && !parsed.username && !parsed.password && parsed.pathname === "/" && !parsed.search && !parsed.hash;
+  } catch { return false; }
+};
+if (productionMode && !validHttpsRoot(corsOrigin)) throw new Error("生产模式 SHUZHI_ALLOWED_ORIGIN 必须是无凭证、无路径、无查询参数的 HTTPS 根来源");
 const maxBodyBytes = Number(process.env.SHUZHI_MAX_BODY_BYTES || 1024 * 1024);
 if (!Number.isInteger(maxBodyBytes) || maxBodyBytes < 1024 || maxBodyBytes > 16 * 1024 * 1024) throw new Error("SHUZHI_MAX_BODY_BYTES 必须是 1KB—16MB 的整数");
 const integrationPorts = [
@@ -93,7 +99,20 @@ const integrationReadyEnv = {
   invoice: "SHUZHI_INVOICE_READY",
   regulator: "SHUZHI_REGULATOR_READY",
 };
-if (productionMode && Object.entries(integrationSecrets).some(([provider, secret]) => process.env[integrationReadyEnv[provider]] === "true" && String(secret).length < 32)) throw new Error("已 ready 的机构必须配置不少于 32 个字符的独立回调密钥");
+const integrationAdapterUrls = {
+  ca: process.env.SHUZHI_CA_ADAPTER_URL || "",
+  logistics: process.env.SHUZHI_LOGISTICS_ADAPTER_URL || "",
+  payment: process.env.SHUZHI_PAYMENT_ADAPTER_URL || "",
+  invoice: process.env.SHUZHI_INVOICE_ADAPTER_URL || "",
+  regulator: process.env.SHUZHI_REGULATOR_ADAPTER_URL || "",
+};
+if (productionMode) {
+  for (const [provider, secret] of Object.entries(integrationSecrets)) {
+    if (process.env[integrationReadyEnv[provider]] !== "true") continue;
+    if (String(secret).length < 32) throw new Error(`已 ready 的 ${provider} 机构必须配置不少于 32 个字符的独立回调密钥`);
+    if (!validHttpsRoot(integrationAdapterUrls[provider])) throw new Error(`已 ready 的 ${provider} 机构必须配置无凭证、无路径的 HTTPS 适配器根地址`);
+  }
+}
 const tradeConfig = {
   settlement_models: [
     { key: "advance", name: "预付款 + 尾款", badge: "适合定制/备产" },

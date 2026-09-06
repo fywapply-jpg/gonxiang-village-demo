@@ -79,6 +79,8 @@ let staged;
 let wechatOnly;
 let weak;
 let linked;
+let invalidOrigin;
+let invalidAdapter;
 let securePort;
 try {
   securePort = 8899 + Math.floor(Math.random() * 200);
@@ -159,7 +161,27 @@ try {
     add(weakResult.code !== 0, "弱令牌拒绝启动", weakResult.code !== 0 ? "短于 32 字符的 API 令牌已被拒绝" : `进程异常以 0 退出${output.stderr ? `：${output.stderr.trim()}` : ""}`);
   }
 
-  const linkedPort = weakPort + 1;
+  const invalidOriginPort = weakPort + 1;
+  invalidOrigin = startChild({ ...makeEnv(invalidOriginPort, join(tempRoot, "invalid-origin.sqlite")), SHUZHI_ALLOWED_ORIGIN: "http://unsafe.example.com" });
+  const invalidOriginResult = await Promise.race([invalidOrigin.closed, wait(3000).then(() => null)]);
+  if (!invalidOriginResult) {
+    await stopChild(invalidOrigin);
+    add(false, "不安全 CORS 来源拒绝启动", "HTTP 来源未被生产启动门禁拒绝");
+  } else {
+    add(invalidOriginResult.code !== 0, "不安全 CORS 来源拒绝启动", invalidOriginResult.code !== 0 ? "生产 CORS 必须使用 HTTPS 根来源" : "进程异常以 0 退出");
+  }
+
+  const invalidAdapterPort = invalidOriginPort + 1;
+  invalidAdapter = startChild({ ...makeEnv(invalidAdapterPort, join(tempRoot, "invalid-adapter.sqlite")), SHUZHI_PAYMENT_READY: "true", SHUZHI_PAYMENT_ADAPTER_URL: "http://payment-adapter.example.com", SHUZHI_PAYMENT_ADAPTER_SECRET: "payment-adapter-secret-123456789012345678901234" });
+  const invalidAdapterResult = await Promise.race([invalidAdapter.closed, wait(3000).then(() => null)]);
+  if (!invalidAdapterResult) {
+    await stopChild(invalidAdapter);
+    add(false, "READY 机构缺少 HTTPS 适配器拒绝启动", "不安全支付适配器地址未被生产启动门禁拒绝");
+  } else {
+    add(invalidAdapterResult.code !== 0, "READY 机构缺少 HTTPS 适配器拒绝启动", invalidAdapterResult.code !== 0 ? "ready 机构适配器必须使用 HTTPS 根地址" : "进程异常以 0 退出");
+  }
+
+  const linkedPort = invalidAdapterPort + 1;
   const linkedDb = join(tempRoot, "linked-db");
   // Use a tracked file so this guard also exercises clean CI checkouts where
   // the ignored local SQLite data directory is not present.
@@ -178,6 +200,8 @@ try {
   await stopChild(wechatOnly);
   await stopChild(weak);
   await stopChild(linked);
+  await stopChild(invalidOrigin);
+  await stopChild(invalidAdapter);
   rmSync(tempRoot, { recursive: true, force: true });
 }
 
