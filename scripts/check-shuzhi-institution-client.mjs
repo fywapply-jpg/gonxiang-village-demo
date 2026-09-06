@@ -20,6 +20,17 @@ const commands = {
   invoice: { ...command, action: "issue", invoice_id: "INV-ORDER-001", seller: party, buyer: { ...party, merchant_id: "m-buyer", legal_name: "测试采购企业" }, money: { amount: 100, currency: "CNY" }, items: [{ name: "测试商品", quantity: 1, unit_price: 100, tax_rate: 0.01 }] },
   regulator: { ...command, action: "submit", submission_id: "REG-ORDER-001", subject_type: "merchant", subject_id: "m-test", authority_code: "TEST-AUTH", data_minimization_version: "2026-01", evidence_refs: ["EVIDENCE-001"] },
 };
+const paymentRefundCommand = {
+  ...command,
+  action: "refund",
+  payment_id: "PAY-ORDER-001",
+  refund_id: "REF-ORDER-001",
+  provider_transaction_id: "PROVIDER-PAYMENT-001",
+  payer: party,
+  payee: { ...party, merchant_id: "m-supplier", legal_name: "测试供货企业" },
+  money: { amount: 25, currency: "CNY" },
+  reason: "测试退款",
+};
 
 try {
   createInstitutionAdapterClient({ provider: "payment", baseUrl: "http://adapter.example.cn", secret });
@@ -45,6 +56,14 @@ for (const provider of Object.keys(PROVIDER_COMMAND_PATHS)) {
   const client = createInstitutionAdapterClient({ provider, baseUrl: "https://adapter.example.cn/root/", secret, fetchImpl });
   const result = await client.send(commands[provider], { idempotencyKey: `idem-${provider}-1234567890` });
   add(result.instruction_id === "INS-1" && observed.at(-1).url === `https://adapter.example.cn${PROVIDER_COMMAND_PATHS[provider]}`, `${provider} 路径固定`, observed.at(-1).url);
+}
+
+try {
+  const client = createInstitutionAdapterClient({ provider: "payment", baseUrl: "https://adapter.example.cn", secret, fetchImpl });
+  const result = await client.send(paymentRefundCommand, { idempotencyKey: "idem-payment-refund-123456" });
+  add(result.instruction_id === "INS-1", "支付退款 DTO 主体字段", "退款指令包含付款方、收款方和退款金额，可被 worker 出站校验");
+} catch (error) {
+  add(false, "支付退款 DTO 主体字段", error instanceof Error ? error.message : String(error));
 }
 
 const last = observed.at(-1);

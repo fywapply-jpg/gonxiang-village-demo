@@ -250,6 +250,11 @@ try {
   const refund = await request(prodPort, `/api/v1/trades/${orderId}/refund`, buyerToken, { amount: 100, reason: "买方复核后申请退款" }, "outbox-payment-refund-000001");
   add(refund.status === 202 && refund.payload?.refund_pending === true, "生产退款先入 Outbox", `HTTP ${refund.status}`);
   const refundId = refund.payload?.refunds?.at(-1)?.id;
+  const refundOutboxDb = new DatabaseSync(dbPath);
+  const refundOutbox = refundOutboxDb.prepare("SELECT payload FROM institution_outbox WHERE provider='payment' AND command_type='refund' ORDER BY created_at DESC LIMIT 1").get();
+  refundOutboxDb.close();
+  const refundCommand = refundOutbox ? JSON.parse(refundOutbox.payload) : null;
+  add(Boolean(refundCommand?.payer?.credit_code && refundCommand?.payee?.credit_code && refundCommand?.money?.amount === 100), "生产退款 Outbox 主体字段完整", "退款命令包含付款方、收款方统一社会信用代码和精确金额");
   const refundCallback = await webhook(prodPort, "payment", { event_id: `outbox-payment-refund-callback-${Date.now()}`, action: "refund", refund_id: refundId, order_id: orderId, payment_id: retryPaymentId, status: "refunded", amount: 100, provider_transaction_id: "PROVIDER-REFUND-001" }, baseEnv.PAYMENT_WEBHOOK_SECRET);
   add(refundCallback.status === 202 && refundCallback.payload?.next_action?.includes("部分退回"), "生产部分退款回调落账", `HTTP ${refundCallback.status}${refundCallback.status !== 202 ? ` · ${JSON.stringify(refundCallback.payload)}` : ""}`);
   const refundOverLimit = await request(prodPort, `/api/v1/trades/${orderId}/refund`, buyerToken, { amount: 275999.99, reason: "买方再次复核后申请超额退款" }, "outbox-payment-refund-over-limit");

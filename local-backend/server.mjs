@@ -1887,6 +1887,11 @@ const server = createServer(async (req, res) => {
     if (refundedCents + refundCents > paymentCents) return error(res, 409, "累计退款金额不得超过原支付金额");
     const reason = String(payload.reason || "交易退款申请").trim().slice(0, 240);
     if (reason.length < 4) return error(res, 400, "退款原因至少需要 4 个字符");
+    const payerIdentity = db.prepare("SELECT credit_code FROM merchant_identity WHERE merchant_id=? AND status='verified'").get(order.buyer_id);
+    const payeeIdentity = db.prepare("SELECT credit_code FROM merchant_identity WHERE merchant_id=? AND status='verified'").get(order.supplier_id);
+    if (!payerIdentity?.credit_code || !payeeIdentity?.credit_code) return error(res, 409, "退款指令缺少已核验的采购方或供货方主体证据");
+    const payer = merchantParty(order.buyer_id, payerIdentity.credit_code);
+    const payee = merchantParty(order.supplier_id, payeeIdentity.credit_code);
     const refundId = `REF-${id}-${randomUUID().slice(0, 12).toUpperCase()}`;
     const t = now();
     db.exec("BEGIN");
@@ -1905,6 +1910,8 @@ const server = createServer(async (req, res) => {
           refund_id: refundId,
           payment_id: payment.id,
           provider_transaction_id: payment.provider_transaction_id,
+          payer,
+          payee,
           money: { amount, currency: order.currency || "CNY" },
           reason,
           requested_by: principal?.id || "finance",
