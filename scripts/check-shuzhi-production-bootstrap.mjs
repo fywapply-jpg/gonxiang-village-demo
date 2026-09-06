@@ -52,7 +52,8 @@ const validHttpsRoot = (value) => {
 };
 const validAbsoluteOutsideRepo = (value) => {
   const target = String(value || "").trim();
-  return isAbsolute(target) && target !== ":memory:" && !target.startsWith(`${root}/`);
+  const resolved = isAbsolute(target) ? resolve(target) : "";
+  return Boolean(resolved) && resolved !== ":memory:" && !resolved.startsWith(`${root}/`);
 };
 const values = existsSync(envFile) ? parseEnv(readFileSync(envFile, "utf8")) : {};
 

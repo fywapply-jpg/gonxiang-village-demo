@@ -134,9 +134,11 @@ if (!existsSync(file)) {
 
   const dbPath = String(values.SHUZHI_DB || "");
   const projectRoot = resolve(new URL("..", import.meta.url).pathname);
-  add(isAbsolute(dbPath) && dbPath !== ":memory:" && !dbPath.includes(`${projectRoot}/local-backend/`), "生产数据库路径", "必须是绝对路径，且不得指向仓库内演示数据库");
+  const resolvedDbPath = isAbsolute(dbPath) ? resolve(dbPath) : "";
+  add(Boolean(resolvedDbPath) && resolvedDbPath !== ":memory:" && !resolvedDbPath.startsWith(`${projectRoot}/local-backend/`), "生产数据库路径", "必须是绝对路径，且不得指向仓库内演示数据库");
   const backupPath = String(values.SHUZHI_BACKUP_DIR || "");
-  add(isAbsolute(backupPath) && backupPath !== ":memory:" && !backupPath.includes(`${projectRoot}/local-backend/`), "生产备份目录", "必须是仓库外的绝对路径");
+  const resolvedBackupPath = isAbsolute(backupPath) ? resolve(backupPath) : "";
+  add(Boolean(resolvedBackupPath) && resolvedBackupPath !== ":memory:" && !resolvedBackupPath.startsWith(`${projectRoot}/local-backend/`), "生产备份目录", "必须是仓库外的绝对路径");
   const retentionDays = Number(values.SHUZHI_BACKUP_RETENTION_DAYS);
   add(Number.isInteger(retentionDays) && retentionDays >= 7 && retentionDays <= 3650, "备份保留周期", "必须是 7—3650 天的整数");
 

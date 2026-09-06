@@ -47,7 +47,8 @@ const result = manifest.capabilities.map((capability) => {
   }
   if (capability.key === "DATABASE" && usable(values.SHUZHI_DB)) {
     const dbPath = String(values.SHUZHI_DB);
-    if (!isAbsolute(dbPath) || dbPath === ":memory:" || dbPath.includes(`${root}/local-backend/`)) missingConfig.push("SHUZHI_DB(仓库外绝对路径)");
+    const resolvedDbPath = isAbsolute(dbPath) ? resolve(dbPath) : "";
+    if (!resolvedDbPath || resolvedDbPath === ":memory:" || resolvedDbPath.startsWith(`${root}/local-backend/`)) missingConfig.push("SHUZHI_DB(仓库外绝对路径)");
   }
   const uniqueMissing = [...new Set(missingConfig)];
   const declaredReady = capability.readyEnv ? values[capability.readyEnv] === "true" : false;
