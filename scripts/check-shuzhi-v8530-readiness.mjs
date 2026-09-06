@@ -143,6 +143,21 @@ const mockPageGuardFailures = mockPageFiles.filter((path) => {
   const source = text(path);
   return !source.includes("productionBuild") || !/(正式环境|后台|production)/i.test(source);
 });
+// 防止新增页面把本地状态变更或“成功”提示带进正式包。四个例外都是
+// 明确的非业务动作：复制 DID、清理本地设置、只读支付结果，以及真正
+// 通过 localApi 写入后台的供货/采购发布页。
+const safeUnguardedActionPages = new Set([
+  "work/shuzhi-v8502-source/src/pages/mine/did.vue",
+  "work/shuzhi-v8502-source/src/pages/mine/settings.vue",
+  "work/shuzhi-v8502-source/src/pages/pay/result.vue",
+  "work/shuzhi-v8502-source/src/pages/trade/publish.vue",
+]);
+const localMutationSignals = [/setTimeout\s*\(/, /\.value\s*=\s*/, /\.status\s*=\s*/, /showToast\(\{\s*title:\s*[`\"].*(?:成功|提交|完成|已)/s];
+const unguardedActionPages = collectVueFiles("work/shuzhi-v8502-source/src/pages").filter((path) => {
+  if (safeUnguardedActionPages.has(path)) return false;
+  const source = text(path);
+  return localMutationSignals.some((pattern) => pattern.test(source)) && !source.includes("productionBuild");
+});
 const workPackage = text("work/shuzhi-v8502-source/package.json");
 const legacyCloudReadme = text("cloud-server/README.md");
 const historicalDeploymentDocs = [
@@ -209,6 +224,7 @@ add(["getOperationCatalog", "advanceOperation", "resetOperation", "getPlatformFe
 add(apiSource.includes("product-submit") ? "pass" : "fail", "商品提交幂等键", "商品上架提交不会因重复点击产生重复申请");
 add(tradeIndexSource.includes("productionBuild ? [] : villageProducts") && homeSource.includes("productionBuild ? remoteProducts.value") && homeSource.includes("productionBuild ? remoteDemands.value") ? "pass" : "fail", "生产数据不回退演示", "正式构建在后台不可用或无数据时不展示内置虚构商品、需求，避免把演示内容当成真实交易");
 add(mockPageGuardFailures.length === 0 ? "pass" : "fail", "页面 mock 生产隔离", mockPageGuardFailures.length === 0 ? `${mockPageFiles.length} 个引用 mock 的页面均具备 productionBuild 门禁` : `缺少正式环境隔离：${mockPageGuardFailures.join(", ")}`);
+add(unguardedActionPages.length === 0 ? "pass" : "fail", "前台动作门禁闭包", unguardedActionPages.length === 0 ? "业务状态变更页面均具备 productionBuild 或后台写入边界" : `存在未隔离动作：${unguardedActionPages.join(", ")}`);
 const batchSource = text("work/shuzhi-v8502-source/src/pages/trade/batch-workbench.vue");
 add(batchSource.includes("backendLinked") && batchSource.includes("backendMode.value === \"production\"") && batchSource.includes("生产后台未连接") && batchSource.includes("后台未放行") && batchSource.includes("await signTradeContract") && batchSource.includes("await settleTrade") && existsSync(resolve(root, "scripts/check-shuzhi-v8530-batch-gate.mjs")) ? "pass" : "fail", "批量工作台后台门禁", "批量核验关键节点必须先得到后台成功响应，生产后台不可用时不得推进本地状态");
 const operationSource = text("work/shuzhi-v8502-source/src/pages/operation/index.vue");
