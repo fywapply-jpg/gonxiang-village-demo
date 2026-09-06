@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
-import { mkdirSync, readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, realpathSync } from "node:fs";
+import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
@@ -16,7 +16,17 @@ import { canonicalizeInstitutionCommand } from "../institution-adapters/shared/c
 
 const here = dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT || 8787);
-const dbPath = resolve(process.env.SHUZHI_DB || resolve(here, "data/shuzhi.db"));
+const configuredDbPath = resolve(process.env.SHUZHI_DB || resolve(here, "data/shuzhi.db"));
+const canonicalPath = (target) => {
+  let cursor = target;
+  while (!existsSync(cursor)) {
+    const parent = dirname(cursor);
+    if (parent === cursor) return target;
+    cursor = parent;
+  }
+  return resolve(realpathSync(cursor), relative(cursor, target));
+};
+const dbPath = canonicalPath(configuredDbPath);
 const runtimeMode = process.env.SHUZHI_RUNTIME_MODE || "local-demo";
 const productionMode = runtimeMode === "production";
 // 平台展示版本与后端 API 发布版本分开维护：前台/交付包当前为 v8533，
@@ -40,6 +50,7 @@ const wechatSessionUrl = String(process.env.SHUZHI_WECHAT_SESSION_URL || "https:
 let wechatOpenidPrincipals = {};
 try { wechatOpenidPrincipals = JSON.parse(process.env.SHUZHI_WECHAT_OPENID_PRINCIPALS || "{}"); } catch { throw new Error("SHUZHI_WECHAT_OPENID_PRINCIPALS 必须是 JSON 对象"); }
 if (productionMode && apiToken === "local-demo-token") throw new Error("生产模式禁止使用 local-demo-token，请设置 SHUZHI_API_TOKEN");
+if (productionMode && dbPath.startsWith(`${resolve(here, "..")}/`)) throw new Error("生产模式数据库路径不得通过符号链接指向仓库目录");
 if (productionMode && Object.keys(adminTokenRoles).length === 0) throw new Error("生产模式必须设置 SHUZHI_ADMIN_TOKEN_ROLES，将独立管理员令牌映射到角色");
 if (productionMode && !wechatAuthReady && Object.keys(userTokenPrincipals).length === 0) throw new Error("微信身份认证未 ready 时，生产模式必须设置 SHUZHI_USER_TOKEN_PRINCIPALS，将临时用户会话令牌绑定到商户主体");
 if (productionMode) {

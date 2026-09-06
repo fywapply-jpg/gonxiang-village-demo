@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync, statSync } from "node:fs";
-import { isAbsolute, resolve } from "node:path";
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { dirname, isAbsolute, relative, resolve } from "node:path";
 
 const file = resolve(process.argv[2] || process.env.SHUZHI_ENV_FILE || "/etc/shuzhi-v8530.env");
 const checks = [];
@@ -22,6 +22,15 @@ const parseEnv = (text) => {
     values[match[1]] = value;
   }
   return values;
+};
+const canonicalPath = (target) => {
+  let cursor = target;
+  while (!existsSync(cursor)) {
+    const parent = dirname(cursor);
+    if (parent === cursor) return target;
+    cursor = parent;
+  }
+  return resolve(realpathSync(cursor), relative(cursor, target));
 };
 
 if (!existsSync(file)) {
@@ -134,10 +143,10 @@ if (!existsSync(file)) {
 
   const dbPath = String(values.SHUZHI_DB || "");
   const projectRoot = resolve(new URL("..", import.meta.url).pathname);
-  const resolvedDbPath = isAbsolute(dbPath) ? resolve(dbPath) : "";
+  const resolvedDbPath = isAbsolute(dbPath) ? canonicalPath(resolve(dbPath)) : "";
   add(Boolean(resolvedDbPath) && resolvedDbPath !== ":memory:" && !resolvedDbPath.startsWith(`${projectRoot}/local-backend/`), "生产数据库路径", "必须是绝对路径，且不得指向仓库内演示数据库");
   const backupPath = String(values.SHUZHI_BACKUP_DIR || "");
-  const resolvedBackupPath = isAbsolute(backupPath) ? resolve(backupPath) : "";
+  const resolvedBackupPath = isAbsolute(backupPath) ? canonicalPath(resolve(backupPath)) : "";
   add(Boolean(resolvedBackupPath) && resolvedBackupPath !== ":memory:" && !resolvedBackupPath.startsWith(`${projectRoot}/local-backend/`), "生产备份目录", "必须是仓库外的绝对路径");
   const retentionDays = Number(values.SHUZHI_BACKUP_RETENTION_DAYS);
   add(Number.isInteger(retentionDays) && retentionDays >= 7 && retentionDays <= 3650, "备份保留周期", "必须是 7—3650 天的整数");

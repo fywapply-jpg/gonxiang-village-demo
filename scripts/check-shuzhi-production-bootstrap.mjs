@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync, statSync } from "node:fs";
-import { isAbsolute, resolve } from "node:path";
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { dirname, isAbsolute, relative, resolve } from "node:path";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
 const envFile = resolve(process.argv[2] || process.env.SHUZHI_ENV_FILE || "/etc/shuzhi-v8530.env");
@@ -53,7 +53,15 @@ const validHttpsRoot = (value) => {
 const validAbsoluteOutsideRepo = (value) => {
   const target = String(value || "").trim();
   const resolved = isAbsolute(target) ? resolve(target) : "";
-  return Boolean(resolved) && resolved !== ":memory:" && !resolved.startsWith(`${root}/`);
+  if (!resolved || resolved === ":memory:") return false;
+  let cursor = resolved;
+  while (!existsSync(cursor)) {
+    const parent = dirname(cursor);
+    if (parent === cursor) return !resolved.startsWith(`${root}/`);
+    cursor = parent;
+  }
+  const canonical = resolve(realpathSync(cursor), relative(cursor, resolved));
+  return !canonical.startsWith(`${root}/`);
 };
 const values = existsSync(envFile) ? parseEnv(readFileSync(envFile, "utf8")) : {};
 

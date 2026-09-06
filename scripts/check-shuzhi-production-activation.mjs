@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync } from "node:fs";
-import { isAbsolute, resolve } from "node:path";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { dirname, isAbsolute, relative, resolve } from "node:path";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
 const args = process.argv.slice(2);
@@ -37,6 +37,15 @@ const validHttpsRoot = (value) => {
     return false;
   }
 };
+const canonicalPath = (target) => {
+  let cursor = target;
+  while (!existsSync(cursor)) {
+    const parent = dirname(cursor);
+    if (parent === cursor) return target;
+    cursor = parent;
+  }
+  return resolve(realpathSync(cursor), relative(cursor, target));
+};
 
 const values = existsSync(envFile) ? parseEnv(readFileSync(envFile, "utf8")) : {};
 const result = manifest.capabilities.map((capability) => {
@@ -47,7 +56,7 @@ const result = manifest.capabilities.map((capability) => {
   }
   if (capability.key === "DATABASE" && usable(values.SHUZHI_DB)) {
     const dbPath = String(values.SHUZHI_DB);
-    const resolvedDbPath = isAbsolute(dbPath) ? resolve(dbPath) : "";
+    const resolvedDbPath = isAbsolute(dbPath) ? canonicalPath(resolve(dbPath)) : "";
     if (!resolvedDbPath || resolvedDbPath === ":memory:" || resolvedDbPath.startsWith(`${root}/local-backend/`)) missingConfig.push("SHUZHI_DB(仓库外绝对路径)");
   }
   const uniqueMissing = [...new Set(missingConfig)];
