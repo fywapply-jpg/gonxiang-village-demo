@@ -2114,6 +2114,15 @@ const server = createServer(async (req, res) => {
     const orderedQty = Number(db.prepare("SELECT COALESCE(SUM(qty),0) AS qty FROM order_items WHERE order_id=?").get(id).qty);
     if (result === "accepted" && (!finitePositive(acceptedQty) || acceptedQty > orderedQty)) return error(res, 400, "合格验收数量必须为正数且不得超过订单数量");
     if (result === "disputed" && acceptedQty != null && (!finiteNonNegative(acceptedQty) || acceptedQty > orderedQty)) return error(res, 400, "争议验收数量不合法");
+    // 生产环境的最终验收必须建立在物流机构已确认送达的事实之上。
+    // 本地演示仍保留原有的离线跑通能力；真实交易不能跳过发运、签收再进入开票/结算。
+    if (productionMode) {
+      const shipmentSummary = db.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN status='已送达' THEN 1 ELSE 0 END) AS delivered, SUM(CASE WHEN status='异常' THEN 1 ELSE 0 END) AS exceptions FROM shipments WHERE order_id=?").get(id);
+      const shipmentTotal = Number(shipmentSummary?.total || 0);
+      const delivered = Number(shipmentSummary?.delivered || 0);
+      const exceptions = Number(shipmentSummary?.exceptions || 0);
+      if (!shipmentTotal || delivered !== shipmentTotal || exceptions > 0) return error(res, 409, "所有运单须经物流机构确认已送达且无异常后才能验收");
+    }
     const acceptanceId = `ACC-${randomUUID()}`, t = now();
     const acceptanceActor = productionMode ? actorFor(req, "采购验收岗") : String(payload.receiver || "采购验收岗");
     db.prepare("INSERT INTO acceptances VALUES (?,?,?,?,?,?,?,?)").run(acceptanceId, id, acceptanceActor.slice(0, 120), result, acceptedQty, String(payload.evidence || "复磅/抽检/签收证据").slice(0, 500), t, result === "disputed" ? String(payload.dispute_note || "").slice(0, 500) : null);

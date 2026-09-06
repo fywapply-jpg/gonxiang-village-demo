@@ -107,6 +107,8 @@ try {
   db.prepare("UPDATE contracts SET status='待双方签署',signed_at=NULL WHERE id='CA-SZGS-850901'").run();
   db.prepare("UPDATE orders SET contract_status='待双方签署' WHERE id='SZGS-2026-850901'").run();
   db.prepare("UPDATE invoices SET invoice_no=NULL,status='待开具',issued_at=NULL WHERE order_id='SZGS-2026-850901'").run();
+  // 清理演示种子运单，确保本回归只验证本次生产发运的送达门禁。
+  db.prepare("DELETE FROM shipments WHERE order_id='SZGS-2026-850901'").run();
   db.close();
   productionServer = start(prodPort);
   await ready(productionServer, prodPort);
@@ -121,6 +123,12 @@ try {
   add(mismatchedIdentity.status === 409, "机构指令主体代码错配阻断", `HTTP ${mismatchedIdentity.status}`);
   const shipment = await request(prodPort, `/api/v1/trades/${orderId}/shipments`, supplierToken, { provider: "carrier-prod", consignor: "赣南优品", consignee: "华中商贸", consignor_credit_code: "91360722MA8V85013X", consignee_credit_code: "91420100MA8V85013Y", consignor_address: "江西省赣州市寻乌县农产品仓", consignee_address: "湖北省武汉市洪山区团餐配送中心", goods: [{ product_id: "p-orange", name: "赣南脐橙", quantity: 10, unit: "箱" }] }, "outbox-logistics-000001");
   add(shipment.status === 202 && shipment.payload?.status === "待机构受理", "生产物流先建待受理运单", `HTTP ${shipment.status}`);
+  const acceptanceBeforeDelivery = await request(prodPort, `/api/v1/trades/${orderId}/accept`, buyerToken, { result: "accepted", accepted_qty: 1, evidence: "尚未送达的验收尝试" }, "outbox-accept-before-delivery");
+  add(acceptanceBeforeDelivery.status === 409, "生产未送达禁止提前验收", `HTTP ${acceptanceBeforeDelivery.status}`);
+  const deliveredCallback = await webhook(prodPort, "logistics", { event_id: `outbox-logistics-delivered-${Date.now()}`, order_id: orderId, tracking_no: "OUTBOX-TRK-001", status: "delivered", temperature: 4.1, evidence: "第三方物流签收回单" }, baseEnv.LOGISTICS_WEBHOOK_SECRET);
+  add(deliveredCallback.status === 202 && deliveredCallback.payload?.next_action?.includes("验收"), "物流送达回调推进验收节点", `HTTP ${deliveredCallback.status}${deliveredCallback.status !== 202 ? ` · ${JSON.stringify(deliveredCallback.payload)}` : ""}`);
+  const acceptanceAfterDelivery = await request(prodPort, `/api/v1/trades/${orderId}/accept`, buyerToken, { result: "accepted", accepted_qty: 1, evidence: "复磅/抽检/签收证据" }, "outbox-accept-after-delivery");
+  add(acceptanceAfterDelivery.status === 201, "生产送达后才允许验收", `HTTP ${acceptanceAfterDelivery.status}${acceptanceAfterDelivery.status !== 201 ? ` · ${JSON.stringify(acceptanceAfterDelivery.payload)}` : ""}`);
   const regulatorySubmission = await request(prodPort, "/api/v1/regulatory/submissions", auditToken, { action: "submit", subject_type: "merchant", subject_id: "m-supplier", authority_code: "AQSIQ-TEST", data_minimization_version: "2026-01", evidence_refs: ["MERCHANT-LICENSE-TEST", "PRODUCT-QUALITY-TEST"] }, "outbox-regulator-submit-000001");
   const regulatoryId = regulatorySubmission.payload?.id;
   add(regulatorySubmission.status === 202 && regulatorySubmission.payload?.institution_outbox?.provider === "regulator", "生产监管提交先入 Outbox", `HTTP ${regulatorySubmission.status}`);
