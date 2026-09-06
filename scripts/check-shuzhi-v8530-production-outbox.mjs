@@ -136,6 +136,10 @@ try {
   const dbRefund = new DatabaseSync(dbPath);
   dbRefund.prepare("UPDATE payments SET status='已入金待验收',provider_transaction_id=? WHERE id=?").run("PROVIDER-DEPOSIT-001", retryPaymentId);
   dbRefund.close();
+  const unknownPaymentAction = await webhook(prodPort, "payment", { event_id: `outbox-payment-unknown-action-${Date.now()}`, action: "capture", order_id: orderId, payment_id: retryPaymentId, status: "paid", amount: 276000, provider_transaction_id: "PROVIDER-TX-UNKNOWN-ACTION" }, baseEnv.PAYMENT_WEBHOOK_SECRET);
+  add(unknownPaymentAction.status === 400, "生产支付回调拒绝未知 action", `HTTP ${unknownPaymentAction.status}`);
+  const failedRelease = await webhook(prodPort, "payment", { event_id: `outbox-payment-release-failed-${Date.now()}`, action: "release", order_id: orderId, payment_id: retryPaymentId, status: "failed", amount: 276000, provider_transaction_id: "PROVIDER-RELEASE-FAILED" }, baseEnv.PAYMENT_WEBHOOK_SECRET);
+  add(failedRelease.status === 409, "分账失败不得覆盖托管入金账本", `HTTP ${failedRelease.status}`);
   const refund = await request(prodPort, `/api/v1/trades/${orderId}/refund`, buyerToken, { amount: 100, reason: "买方复核后申请退款" }, "outbox-payment-refund-000001");
   add(refund.status === 202 && refund.payload?.refund_pending === true, "生产退款先入 Outbox", `HTTP ${refund.status}`);
   const refundId = refund.payload?.refunds?.at(-1)?.id;

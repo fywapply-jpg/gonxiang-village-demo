@@ -791,6 +791,7 @@ const processIntegrationWebhook = async (provider, req, res) => {
         const refundSuccessStates = new Set(["refunded", "refund_success", "success", "succeeded", "已退款", "退款成功"]);
         const refundPendingStates = new Set(["pending", "processing", "refund_pending", "refund_processing", "待确认", "退款待受理", "退款处理中"]);
         const refundFailedStates = new Set(["failed", "failure", "refund_failed", "rejected", "cancelled", "canceled", "支付失败", "退款失败"]);
+        if (action && !["deposit", "release", "refund"].includes(action)) throw new HttpError(400, "支付回调 action 不在允许范围");
         if (!paymentState && action !== "refund") throw new HttpError(400, "支付回调状态不在允许范围");
         if (action === "refund" && ![...refundSuccessStates, ...refundPendingStates, ...refundFailedStates].includes(rawPaymentStatus)) throw new HttpError(400, "退款回调状态不在允许范围");
         const paymentId = String(payload.payment_id || "").trim();
@@ -842,6 +843,8 @@ const processIntegrationWebhook = async (provider, req, res) => {
             db.prepare("UPDATE orders SET payment_status='退款处理中',updated_at=? WHERE id=?").run(t, orderId);
             nextAction = "退款机构处理中，等待最终回执";
           }
+        } else if (action === "release" && paymentState !== "paid") {
+          throw new HttpError(409, "分账机构未确认成功，禁止按入金失败覆盖托管账本；请等待分账重试或进入人工复核");
         } else if (action === "release" && paymentState === "paid") {
           if (!paidStates.has(payment.status)) throw new HttpError(409, "分账回调前托管资金尚未进入可分账状态");
           const contract = db.prepare("SELECT id,status FROM contracts WHERE order_id=? ORDER BY id LIMIT 1").get(orderId);
