@@ -23,36 +23,42 @@ function submit() {
 
 <template>
   <view class="sg-page">
-    <block v-if="!submitted">
-      <view class="mainbank" @tap="viewBid">
-        <view class="mb-badge">{{ bank.short }}</view>
-        <view class="mb-i"><text class="mb-t">本笔由「{{ bank.name }}」主办行承接</text><text class="mb-s">经银行竞标择优 · 授信/放款/回款/风控行内闭环 · 参考利率 {{ bank.rate }}</text></view>
-        <text class="mb-go">竞标详情 ›</text>
-      </view>
-      <view class="sg-card">
-        <text class="t">{{ name }} · 融资申请</text>
-        <view class="fi"><text class="lb">融资金额</text><input class="ip" type="number" v-model="amount" placeholder="请输入（万元）" /></view>
-        <view class="fi"><text class="lb">关联订单</text><text class="val">O240701 赣南脐橙 ¥138,000</text></view>
-        <view class="fi"><text class="lb">还款方式</text><text class="val">随借随还</text></view>
-        <view class="upload">📎 上传营业执照 / 经营资质</view>
-      </view>
-      <view class="privacy">🔒 资料经国密加密传输，仅用于持牌机构授信审核（数据可用不可见）</view>
-      <view class="bar"><view class="bar-btn" @tap="submit">提交申请</view></view>
-    </block>
-
-    <view v-else class="done">
-      <text class="ok-ic">✅</text>
-      <text class="ok-t">申请已提交</text>
-      <text class="ok-s">已同步至合作持牌金融机构，审批结果将通过微信订阅消息通知您</text>
-      <view class="prog sg-card">
-        <view class="ps"><view class="pd on">✓</view><text>在线申请</text></view>
-        <view class="pl on"></view>
-        <view class="ps"><view class="pd on doing">·</view><text>机构审核中</text></view>
-        <view class="pl"></view>
-        <view class="ps"><view class="pd">3</view><text>签约放款</text></view>
-      </view>
-      <view class="bar-btn ghost" @tap="uni.navigateBack()">返回</view>
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">暂无后台融资档案</text>
+      <text class="production-empty-text">正式环境的主办行、关联订单、授信额度和还款方案必须由合作银行/持牌机构及后台返回。本页面不展示本地订单号、金额或利率，也不会提交本地融资申请。</text>
     </view>
+    <block v-else>
+      <block v-if="!submitted">
+        <view class="mainbank" @tap="viewBid">
+          <view class="mb-badge">{{ bank.short }}</view>
+          <view class="mb-i"><text class="mb-t">本笔由「{{ bank.name }}」主办行承接</text><text class="mb-s">经银行竞标择优 · 授信/放款/回款/风控行内闭环 · 参考利率 {{ bank.rate }}</text></view>
+          <text class="mb-go">竞标详情 ›</text>
+        </view>
+        <view class="sg-card">
+          <text class="t">{{ name }} · 融资申请</text>
+          <view class="fi"><text class="lb">融资金额</text><input class="ip" type="number" v-model="amount" placeholder="请输入（万元）" /></view>
+          <view class="fi"><text class="lb">关联订单</text><text class="val">O240701 赣南脐橙 ¥138,000</text></view>
+          <view class="fi"><text class="lb">还款方式</text><text class="val">随借随还</text></view>
+          <view class="upload">📎 上传营业执照 / 经营资质</view>
+        </view>
+        <view class="privacy">🔒 资料经国密加密传输，仅用于持牌机构授信审核（数据可用不可见）</view>
+        <view class="bar"><view class="bar-btn" @tap="submit">提交申请</view></view>
+      </block>
+
+      <view v-else class="done">
+        <text class="ok-ic">✅</text>
+        <text class="ok-t">申请已提交</text>
+        <text class="ok-s">已同步至合作持牌金融机构，审批结果将通过微信订阅消息通知您</text>
+        <view class="prog sg-card">
+          <view class="ps"><view class="pd on">✓</view><text>在线申请</text></view>
+          <view class="pl on"></view>
+          <view class="ps"><view class="pd on doing">·</view><text>机构审核中</text></view>
+          <view class="pl"></view>
+          <view class="ps"><view class="pd">3</view><text>签约放款</text></view>
+        </view>
+        <view class="bar-btn ghost" @tap="uni.navigateBack()">返回</view>
+      </view>
+    </block>
   </view>
 </template>
 
@@ -84,4 +90,7 @@ function submit() {
 .pd.doing { background: $sg-gold; }
 .pl { flex: 1; height: 4rpx; background: $sg-border; margin: 0 6rpx 26rpx; }
 .pl.on { background: $sg-primary; }
+.production-empty { margin: 48rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>

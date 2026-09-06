@@ -250,6 +250,8 @@ add(loanLifeSource.includes("v-if=\"productionBuild\" class=\"production-empty\"
 const settlementPageSource = text("work/shuzhi-v8502-source/src/pages/finance/settle.vue");
 add(settlementPageSource.includes("v-if=\"productionBuild\" class=\"production-empty\"") && settlementPageSource.includes("暂无后台结算流水") && settlementPageSource.includes("<template v-else>") ? "pass" : "fail", "结算演示隔离", "正式环境不展示固定演示订单、账户或资金台账，真实结算只读后台与持牌机构回执");
 const agricultureSettlementSource = text("work/shuzhi-v8502-source/src/pages/agri/settle.vue");
+const agriDetailSource = text("work/shuzhi-v8502-source/src/pages/agri/detail.vue");
+const financeApplySource = text("work/shuzhi-v8502-source/src/pages/finance/apply.vue");
 const premiumSource = text("work/shuzhi-v8502-source/src/pages/cert/premium.vue");
 const priceSource = text("work/shuzhi-v8502-source/src/pages/home/price.vue");
 const paymentResultSource = text("work/shuzhi-v8502-source/src/pages/pay/result.vue");
@@ -259,6 +261,8 @@ const adminRegionSource = text("work/shuzhi-v8502-source/src/pages/admin/region.
 const adminPermissionSource = text("work/shuzhi-v8502-source/src/pages/admin/permission.vue");
 const didSource = text("work/shuzhi-v8502-source/src/pages/mine/did.vue");
 add(agricultureSettlementSource.includes("v-if=\"productionBuild\" class=\"production-empty\"") && agricultureSettlementSource.includes("暂无后台履约结算档案") && agricultureSettlementSource.includes("<template v-else>") ? "pass" : "fail", "订单农业结算演示隔离", "正式环境不展示固定合同、价格、理赔或农户收益，必须读取后台履约和机构回执");
+add(agriDetailSource.includes("v-if=\"productionBuild\" class=\"production-empty\"") && agriDetailSource.includes("暂无后台农资商品档案") && agriDetailSource.includes("<template v-else>") && agriDetailSource.includes("不会根据 URL 参数生成订单") ? "pass" : "fail", "农资详情演示隔离", "正式环境不展示深链带入的静态农资名称、价格、库存或资质，农资下单只能使用后台审核 SKU");
+add(financeApplySource.includes("v-if=\"productionBuild\" class=\"production-empty\"") && financeApplySource.includes("暂无后台融资档案") && financeApplySource.includes("<block v-else>") && financeApplySource.includes("不展示本地订单号、金额或利率") ? "pass" : "fail", "融资申请演示隔离", "正式环境不展示固定主办行、订单金额或利率，融资申请必须等待后台和持牌机构档案");
 add(premiumSource.includes("v-if=\"productionBuild\" class=\"production-empty\"") && premiumSource.includes("暂无后台信用收益档案") && premiumSource.includes("<template v-else>") ? "pass" : "fail", "信用收益演示隔离", "正式环境不展示固定商户评分、收购价或收益对比，必须读取后台风控和认证回执");
 add(priceSource.includes("v-if=\"productionBuild\" class=\"production-empty\"") && priceSource.includes("暂无实时行情接口") && priceSource.includes("<template v-else>") ? "pass" : "fail", "行情样例隔离", "正式环境不展示过期静态行情，也不据此生成采购或报价");
 add(paymentResultSource.includes("const productionBuild") && paymentResultSource.includes("支付结果待后台回执") && paymentResultSource.includes("正式环境不会根据页面参数") && paymentResultSource.includes("<template v-else>") ? "pass" : "fail", "支付结果参数防伪", "正式环境不信任 URL 的 ok、amount 或 trade 参数，支付成功只能来自后台和持牌机构回执");

@@ -24,28 +24,34 @@ function buy(group: boolean) {
 
 <template>
   <view class="sg-page">
-    <view class="hero"><text class="he">{{ p.emoji }}</text></view>
-    <view class="sg-card">
-      <text class="nm">{{ p.name }}</text>
-      <view class="pr"><text class="sg-price big">¥{{ p.price }}</text><text class="u">/{{ p.unit }}</text>
-        <text v-if="p.groupPrice" class="gp">拼团 ¥{{ p.groupPrice }}</text></view>
-      <view class="r"><text class="k">品牌</text><text class="v">{{ p.brand }}</text></view>
-      <view class="r"><text class="k">规格</text><text class="v">{{ p.spec }}</text></view>
-      <view class="r"><text class="k">品类</text><text class="v">{{ p.cat }}</text></view>
-      <view class="r"><text class="k">溯源</text><text class="v" :class="{ ok: p.traceable }">{{ p.traceable ? '✔ 农资一物一码全链路溯源' : '—' }}</text></view>
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">暂无后台农资商品档案</text>
+      <text class="production-empty-text">正式环境的农资名称、价格、库存、资质、溯源码和可下单状态必须由后台审核 SKU 实时返回。本页面不展示本地演示商品，也不会根据 URL 参数生成订单。</text>
     </view>
-    <view class="sg-card qty">
-      <text>采购数量</text>
-      <view class="stepper">
-        <text class="sb" @tap="qty > 1 && qty--">−</text>
-        <text class="qn">{{ qty }}</text>
-        <text class="sb" @tap="qty++">＋</text>
+    <template v-else>
+      <view class="hero"><text class="he">{{ p.emoji }}</text></view>
+      <view class="sg-card">
+        <text class="nm">{{ p.name }}</text>
+        <view class="pr"><text class="sg-price big">¥{{ p.price }}</text><text class="u">/{{ p.unit }}</text>
+          <text v-if="p.groupPrice" class="gp">拼团 ¥{{ p.groupPrice }}</text></view>
+        <view class="r"><text class="k">品牌</text><text class="v">{{ p.brand }}</text></view>
+        <view class="r"><text class="k">规格</text><text class="v">{{ p.spec }}</text></view>
+        <view class="r"><text class="k">品类</text><text class="v">{{ p.cat }}</text></view>
+        <view class="r"><text class="k">溯源</text><text class="v" :class="{ ok: p.traceable }">{{ p.traceable ? '✔ 农资一物一码全链路溯源' : '—' }}</text></view>
       </view>
-    </view>
-    <view class="bar">
-      <view v-if="p.groupPrice" class="bar-btn ghost" @tap="buy(true)">拼单集采</view>
-      <view class="bar-btn" @tap="buy(false)">立即下单</view>
-    </view>
+      <view class="sg-card qty">
+        <text>采购数量</text>
+        <view class="stepper">
+          <text class="sb" @tap="qty > 1 && qty--">−</text>
+          <text class="qn">{{ qty }}</text>
+          <text class="sb" @tap="qty++">＋</text>
+        </view>
+      </view>
+      <view class="bar">
+        <view v-if="p.groupPrice" class="bar-btn ghost" @tap="buy(true)">拼单集采</view>
+        <view class="bar-btn" @tap="buy(false)">立即下单</view>
+      </view>
+    </template>
   </view>
 </template>
 
@@ -68,4 +74,7 @@ function buy(group: boolean) {
 .bar { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; display: flex; gap: 20rpx; padding: 18rpx 24rpx calc(18rpx + env(safe-area-inset-bottom)); box-shadow: 0 -4rpx 20rpx rgba(0,0,0,0.05); }
 .bar-btn { flex: 1; text-align: center; padding: 24rpx 0; border-radius: 999rpx; font-size: 30rpx; font-weight: 700; background: linear-gradient(135deg, $sg-primary, $sg-primary-deep); color: #fff; }
 .bar-btn.ghost { flex: 0 0 42%; background: $sg-gold-light; color: $sg-gold; }
+.production-empty { margin: 48rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>
