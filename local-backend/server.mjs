@@ -309,6 +309,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS payments (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, payer TEXT NOT NULL, payee TEXT NOT NULL, amount REAL NOT NULL, channel TEXT NOT NULL, status TEXT NOT NULL, paid_at TEXT, provider_transaction_id TEXT, FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS payment_refunds (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, payment_id TEXT NOT NULL, amount REAL NOT NULL, reason TEXT NOT NULL, status TEXT NOT NULL, provider_ref TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY (order_id) REFERENCES orders(id), FOREIGN KEY (payment_id) REFERENCES payments(id));
   CREATE TABLE IF NOT EXISTS settlement_records (id TEXT PRIMARY KEY, order_id TEXT NOT NULL UNIQUE, amount REAL NOT NULL, platform_fee REAL NOT NULL DEFAULT 0, status TEXT NOT NULL, instruction_ref TEXT NOT NULL, settled_at TEXT, created_at TEXT NOT NULL, platform_fee_collection_status TEXT NOT NULL DEFAULT 'pending_collection', platform_fee_collection_ref TEXT NOT NULL DEFAULT '', FOREIGN KEY (order_id) REFERENCES orders(id));
+  CREATE TABLE IF NOT EXISTS platform_fee_collections (id TEXT PRIMARY KEY, order_id TEXT NOT NULL UNIQUE, settlement_id TEXT NOT NULL UNIQUE, payer_type TEXT NOT NULL, payer_merchant_id TEXT, payer_name TEXT NOT NULL, payer_credit_code TEXT NOT NULL, service_contract_ref TEXT NOT NULL, invoice_ref TEXT NOT NULL, provider TEXT NOT NULL, provider_transaction_id TEXT NOT NULL UNIQUE, amount REAL NOT NULL, currency TEXT NOT NULL DEFAULT 'CNY', status TEXT NOT NULL, evidence_ref TEXT NOT NULL, collected_at TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY (order_id) REFERENCES orders(id), FOREIGN KEY (settlement_id) REFERENCES settlement_records(id), FOREIGN KEY (payer_merchant_id) REFERENCES merchants(id));
   CREATE TABLE IF NOT EXISTS fulfillment_events (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id TEXT NOT NULL, step INTEGER NOT NULL, title TEXT NOT NULL, evidence TEXT NOT NULL, actor TEXT NOT NULL, created_at TEXT NOT NULL, FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS invoices (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, invoice_no TEXT, amount REAL NOT NULL, status TEXT NOT NULL, issued_at TEXT, invoice_type TEXT NOT NULL DEFAULT '', tax_category_code TEXT NOT NULL DEFAULT '', tax_rate REAL, seller_credit_code TEXT, buyer_credit_code TEXT, FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS shipments (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, provider TEXT NOT NULL, tracking_no TEXT NOT NULL, carrier_name TEXT, vehicle_no TEXT, temperature REAL, status TEXT NOT NULL, departed_at TEXT, arrived_at TEXT, evidence TEXT, updated_at TEXT NOT NULL, consignor_address TEXT NOT NULL DEFAULT '', consignee_address TEXT NOT NULL DEFAULT '', FOREIGN KEY (order_id) REFERENCES orders(id));
@@ -651,10 +652,34 @@ const saveIdempotent = (req, key, status, data, payload) => {
   const path = new URL(req.url, `http://${req.headers.host || "localhost"}`).pathname;
   db.prepare("INSERT OR IGNORE INTO request_idempotency(idempotency_key,principal_id,method,path,request_hash,response_status,response_data,created_at) VALUES (?,?,?,?,?,?,?,?)").run(key, principal?.id || "anonymous", req.method, path, requestHash(payload), status, JSON.stringify(data), now());
 };
+const maskCreditCode = (value) => {
+  const code = String(value || "");
+  return code.length > 8 ? `${code.slice(0, 4)}${"*".repeat(code.length - 8)}${code.slice(-4)}` : code ? "****" : "";
+};
+const platformFeeCollectionView = (row) => row ? ({
+  id: row.id,
+  order_id: row.order_id,
+  settlement_id: row.settlement_id,
+  payer_type: row.payer_type,
+  payer_merchant_id: row.payer_merchant_id,
+  payer_name: row.payer_name,
+  payer_credit_code_masked: maskCreditCode(row.payer_credit_code),
+  service_contract_ref: row.service_contract_ref,
+  invoice_ref: row.invoice_ref,
+  provider: row.provider,
+  provider_transaction_id: row.provider_transaction_id,
+  amount: Number(row.amount),
+  currency: row.currency,
+  status: row.status,
+  evidence_ref: row.evidence_ref,
+  collected_at: row.collected_at,
+  created_at: row.created_at,
+  updated_at: row.updated_at,
+}) : null;
 const orderView = (id) => {
   const order = db.prepare(`SELECT o.*, b.name buyer_name, s.name supplier_name FROM orders o JOIN merchants b ON b.id=o.buyer_id JOIN merchants s ON s.id=o.supplier_id WHERE o.id=?`).get(id);
   if (!order) return null;
-  return { ...order, items: db.prepare("SELECT oi.*,p.unit FROM order_items oi JOIN products p ON p.id=oi.product_id WHERE oi.order_id=?").all(id), inventory_reservations: db.prepare("SELECT id,product_id,qty,status,reserved_at,released_at,release_reason FROM inventory_reservations WHERE order_id=? ORDER BY id").all(id), events: db.prepare("SELECT * FROM fulfillment_events WHERE order_id=? ORDER BY step").all(id), contracts: db.prepare("SELECT * FROM contracts WHERE order_id=?").all(id).map((contract) => ({ ...contract, signatures: db.prepare("SELECT party,signer_id,signer_name,certificate_ref,signed_at FROM contract_signatures WHERE contract_id=? ORDER BY party").all(contract.id) })), payments: db.prepare("SELECT * FROM payments WHERE order_id=? ORDER BY rowid").all(id), refunds: db.prepare("SELECT * FROM payment_refunds WHERE order_id=? ORDER BY created_at").all(id), invoices: db.prepare("SELECT * FROM invoices WHERE order_id=?").all(id), shipments: db.prepare("SELECT * FROM shipments WHERE order_id=? ORDER BY updated_at DESC").all(id), acceptances: db.prepare("SELECT * FROM acceptances WHERE order_id=? ORDER BY accepted_at DESC").all(id).map((acceptance) => ({ ...acceptance, items: db.prepare("SELECT ai.*,oi.product_id,oi.name,oi.qty AS ordered_qty,p.unit FROM acceptance_items ai JOIN order_items oi ON oi.id=ai.order_item_id JOIN products p ON p.id=oi.product_id WHERE ai.acceptance_id=? ORDER BY ai.order_item_id").all(acceptance.id) })), delivery_constraint: db.prepare("SELECT * FROM order_delivery_constraints WHERE order_id=?").get(id) || null, settlement: db.prepare("SELECT * FROM settlement_records WHERE order_id=?").get(id) || null };
+  return { ...order, items: db.prepare("SELECT oi.*,p.unit FROM order_items oi JOIN products p ON p.id=oi.product_id WHERE oi.order_id=?").all(id), inventory_reservations: db.prepare("SELECT id,product_id,qty,status,reserved_at,released_at,release_reason FROM inventory_reservations WHERE order_id=? ORDER BY id").all(id), events: db.prepare("SELECT * FROM fulfillment_events WHERE order_id=? ORDER BY step").all(id), contracts: db.prepare("SELECT * FROM contracts WHERE order_id=?").all(id).map((contract) => ({ ...contract, signatures: db.prepare("SELECT party,signer_id,signer_name,certificate_ref,signed_at FROM contract_signatures WHERE contract_id=? ORDER BY party").all(contract.id) })), payments: db.prepare("SELECT * FROM payments WHERE order_id=? ORDER BY rowid").all(id), refunds: db.prepare("SELECT * FROM payment_refunds WHERE order_id=? ORDER BY created_at").all(id), invoices: db.prepare("SELECT * FROM invoices WHERE order_id=?").all(id), shipments: db.prepare("SELECT * FROM shipments WHERE order_id=? ORDER BY updated_at DESC").all(id), acceptances: db.prepare("SELECT * FROM acceptances WHERE order_id=? ORDER BY accepted_at DESC").all(id).map((acceptance) => ({ ...acceptance, items: db.prepare("SELECT ai.*,oi.product_id,oi.name,oi.qty AS ordered_qty,p.unit FROM acceptance_items ai JOIN order_items oi ON oi.id=ai.order_item_id JOIN products p ON p.id=oi.product_id WHERE ai.acceptance_id=? ORDER BY ai.order_item_id").all(acceptance.id) })), delivery_constraint: db.prepare("SELECT * FROM order_delivery_constraints WHERE order_id=?").get(id) || null, settlement: db.prepare("SELECT * FROM settlement_records WHERE order_id=?").get(id) || null, platform_fee_collection: platformFeeCollectionView(db.prepare("SELECT * FROM platform_fee_collections WHERE order_id=?").get(id)) };
 };
 const releaseOrderInventory = (orderId, reason) => {
   const reservations = db.prepare("SELECT id,product_id,qty FROM inventory_reservations WHERE order_id=? AND status='reserved'").all(orderId);
@@ -695,15 +720,17 @@ const tradeLedger = (id) => {
   // “有发票记录”不等于“发票流已完成”：待开具、待验真或缺少签发时间都不能显示四流通过。
   const invoiceGate = order.invoices.length > 0 && order.invoices.every((invoice) => invoice.status === "已开具" && Boolean(invoice.issued_at));
   const paymentReady = order.payments.some((payment) => ["已入金待验收", "待验收分账", "机构已确认（验收后分账）", "已支付", "已分账"].includes(payment.status));
+  const feeCollection = order.platform_fee_collection;
   return {
     order: { id: order.id, scene: order.scene, status: order.status, amount: order.amount, buyer: order.buyer_name, supplier: order.supplier_name },
     settlement: order.settlement,
     platform_fee_collection: order.settlement ? {
-      amount: Number(order.settlement.platform_fee || 0),
+      ...(feeCollection || {}),
+      amount: feeCollection ? Number(feeCollection.amount) : Number(order.settlement.platform_fee || 0),
       basis: Number(order.settlement.platform_fee_base || 0),
-      status: String(order.settlement.platform_fee_collection_status || "pending_collection"),
-      evidence_ref: String(order.settlement.platform_fee_collection_ref || ""),
-      recognized_as_revenue: String(order.settlement.platform_fee_collection_status || "") === "collected",
+      status: feeCollection?.status || String(order.settlement.platform_fee_collection_status || "pending_collection"),
+      evidence_ref: feeCollection?.evidence_ref || String(order.settlement.platform_fee_collection_ref || ""),
+      recognized_as_revenue: (feeCollection?.status || String(order.settlement.platform_fee_collection_status || "")) === "collected",
     } : null,
     four_flows: {
       contract: order.contracts,
@@ -1088,7 +1115,7 @@ const server = createServer(async (req, res) => {
   const path = url.pathname;
   if (path === "/health" || path === "/health/live") return json(res, 200, { status: "ok", database: "sqlite", dbPath: productionMode ? undefined : dbPath, version: healthVersion, platform_version: platformVersion, api_version: apiReleaseVersion, runtime_mode: runtimeMode, reserved_ports: integrationPorts });
   if (path === "/health/ready") {
-    const requiredTables = ["organizations", "merchants", "merchant_identity", "products", "orders", "order_items", "inventory_reservations", "contracts", "payments", "payment_refunds", "invoices", "shipments", "acceptances", "acceptance_items", "merchant_service_areas", "order_delivery_constraints", "regulatory_submissions", "audit_logs", "operation_progress", "request_idempotency", "integration_callbacks", "institution_outbox", "user_sessions"];
+    const requiredTables = ["organizations", "merchants", "merchant_identity", "products", "orders", "order_items", "inventory_reservations", "contracts", "payments", "payment_refunds", "invoices", "shipments", "acceptances", "acceptance_items", "merchant_service_areas", "order_delivery_constraints", "regulatory_submissions", "audit_logs", "operation_progress", "request_idempotency", "integration_callbacks", "institution_outbox", "user_sessions", "platform_fee_collections"];
     const placeholders = requiredTables.map(() => "?").join(",");
     const rows = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name IN (${placeholders})`).all(...requiredTables);
     const present = new Set(rows.map((row) => row.name));
@@ -1947,6 +1974,7 @@ const server = createServer(async (req, res) => {
         }
       }
       db.prepare("DELETE FROM request_idempotency WHERE path LIKE ?").run(`/api/v1/trades/${id}/%`);
+      db.prepare("DELETE FROM platform_fee_collections WHERE order_id=?").run(id);
       db.prepare("DELETE FROM settlement_records WHERE order_id=?").run(id);
       db.prepare("DELETE FROM acceptance_items WHERE acceptance_id IN (SELECT id FROM acceptances WHERE order_id=?)").run(id);
       db.prepare("DELETE FROM acceptances WHERE order_id=?").run(id);
@@ -1972,6 +2000,71 @@ const server = createServer(async (req, res) => {
     if (!canAccessOrder(req, order)) return error(res, 403, "无权查看该交易台账");
     const data = tradeLedger(ledgerMatch[1]);
     return json(res, 200, data);
+  }
+  const platformFeeReceiptMatch = path.match(/^\/api\/v1\/trades\/([^/]+)\/platform-fee\/receipt$/);
+  if (platformFeeReceiptMatch && req.method === "POST") {
+    if (!authorized(req)) return error(res, 401, "需要平台服务费收款授权");
+    if (!hasAdminPermission(req, "finance", true)) return error(res, 403, "只有财务结算岗位可以登记平台服务费收款");
+    const payload = await body(req), orderId = platformFeeReceiptMatch[1], idemKey = requestKey(req, payload);
+    if (productionMode && !idemKey) return error(res, 400, "生产平台服务费收款必须提供 Idempotency-Key");
+    if (replayIdempotent(req, res, idemKey, payload)) return;
+    if (productionMode && process.env.SHUZHI_PAYMENT_READY !== "true") return error(res, 503, "支付机构尚未完成联调，暂不接受平台服务费收款登记");
+    const order = db.prepare("SELECT * FROM orders WHERE id=?").get(orderId);
+    if (!order) return error(res, 404, "交易不存在");
+    const settlement = db.prepare("SELECT * FROM settlement_records WHERE order_id=? LIMIT 1").get(orderId);
+    if (!settlement || settlement.status !== "settled") return error(res, 409, "货款尚未完成四流三账关账，不能登记平台服务费收款");
+    if (Number(settlement.platform_fee || 0) <= 0) return error(res, 409, "该交易没有可收取的平台技术服务费");
+    if (db.prepare("SELECT id FROM platform_fee_collections WHERE order_id=? LIMIT 1").get(orderId)) return error(res, 409, "该交易的平台服务费已经登记收款，禁止重复入账");
+    const amount = Number(payload.amount);
+    const expectedAmount = Number(settlement.platform_fee);
+    moneyCents(amount, "平台服务费收款金额");
+    moneyCents(expectedAmount, "平台服务费应收金额");
+    if (Math.abs(amount - expectedAmount) > 0.000001) return error(res, 409, "平台服务费收款金额必须与结算应收金额逐分一致");
+    const payerType = String(payload.payer_type || "").trim().toLowerCase();
+    if (!["buyer", "supplier", "other"].includes(payerType)) return error(res, 400, "平台服务费付款方必须为 buyer、supplier 或 other");
+    const serviceContractRef = String(payload.service_contract_ref || "").trim();
+    const invoiceRef = String(payload.invoice_ref || "").trim();
+    const provider = String(payload.provider || "").trim().toLowerCase();
+    const providerTransactionId = String(payload.provider_transaction_id || "").trim();
+    const evidenceRef = String(payload.evidence_ref || "").trim();
+    if (serviceContractRef.length < 3 || serviceContractRef.length > 240 || invoiceRef.length < 3 || invoiceRef.length > 240 || evidenceRef.length < 3 || evidenceRef.length > 240) return error(res, 400, "平台服务费必须提供独立服务合同、发票和收款证据引用");
+    if (!["bank", "licensed_payment"].includes(provider) || providerTransactionId.length < 3 || providerTransactionId.length > 180) return error(res, 400, "平台服务费收款机构或流水号不合法");
+    if (db.prepare("SELECT id,order_id FROM platform_fee_collections WHERE provider_transaction_id=? LIMIT 1").get(providerTransactionId)) return error(res, 409, "平台服务费机构流水号已绑定其他交易，禁止重复入账");
+    let payerMerchantId = null;
+    let payerName = String(payload.payer_name || "").trim();
+    let payerCreditCode = String(payload.payer_credit_code || "").trim();
+    if (["buyer", "supplier"].includes(payerType)) {
+      const expectedMerchantId = payerType === "buyer" ? order.buyer_id : order.supplier_id;
+      payerMerchantId = String(payload.payer_merchant_id || expectedMerchantId).trim();
+      if (payerMerchantId !== expectedMerchantId) return error(res, 409, "平台服务费付款主体与订单角色不一致");
+      const identity = db.prepare("SELECT credit_code FROM merchant_identity WHERE merchant_id=? AND status='verified'").get(expectedMerchantId);
+      const party = merchantParty(expectedMerchantId, payerCreditCode || identity?.credit_code);
+      payerName = party.legal_name;
+      payerCreditCode = party.credit_code;
+    } else {
+      payerMerchantId = String(payload.payer_merchant_id || "").trim();
+      if (!payerMerchantId) return error(res, 400, "other 付款方必须提供已备案商户主体");
+      const identity = db.prepare("SELECT credit_code FROM merchant_identity WHERE merchant_id=? AND status='verified'").get(payerMerchantId);
+      const party = merchantParty(payerMerchantId, payerCreditCode || identity?.credit_code);
+      payerName = party.legal_name;
+      payerCreditCode = party.credit_code;
+    }
+    const t = now();
+    const collectionId = `PFC-${orderId}-${randomUUID().slice(0, 12).toUpperCase()}`;
+    db.exec("BEGIN");
+    try {
+      db.prepare("INSERT INTO platform_fee_collections(id,order_id,settlement_id,payer_type,payer_merchant_id,payer_name,payer_credit_code,service_contract_ref,invoice_ref,provider,provider_transaction_id,amount,currency,status,evidence_ref,collected_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(collectionId, orderId, settlement.id, payerType, payerMerchantId, payerName, payerCreditCode, serviceContractRef, invoiceRef, provider, providerTransactionId, amount, "CNY", "collected", evidenceRef, t, t, t);
+      db.prepare("UPDATE settlement_records SET platform_fee_collection_status='collected',platform_fee_collection_ref=? WHERE id=?").run(providerTransactionId, settlement.id);
+      log(actorFor(req, "财务结算岗"), "RECORD_PLATFORM_FEE_COLLECTION", orderId, `${collectionId} · ${providerTransactionId} · ¥${amount}`);
+      const data = tradeLedger(orderId);
+      saveIdempotent(req, idemKey, 201, data, payload);
+      db.exec("COMMIT");
+      return json(res, 201, data);
+    } catch (cause) {
+      db.exec("ROLLBACK");
+      if (cause?.code === "SQLITE_CONSTRAINT_UNIQUE" || /UNIQUE constraint failed: platform_fee_collections\./i.test(String(cause?.message || ""))) return error(res, 409, "平台服务费收款回执已被其他并发请求登记，禁止重复入账");
+      throw cause;
+    }
   }
   if (path === "/api/v1/products" && req.method === "GET") {
     const list = db.prepare("SELECT p.*,m.name merchant_name FROM products p JOIN merchants m ON m.id=p.merchant_id WHERE p.quality_status IN ('passed','approved') ORDER BY p.name").all();
