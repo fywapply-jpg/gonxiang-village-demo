@@ -83,6 +83,8 @@ function chain() { uni.showModal({ title: "种植数据上链", showCancel: fals
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty"><text class="production-empty-title">暂无后台数字农事项目</text><text class="production-empty-text">正式环境只展示后台返回的地块、农事记录、设备和验收证据；本地种植档案不会混入生产数据。</text></view>
+    <template v-else>
     <view class="hd">
       <text class="hd-t">数字种植项目运营台</text>
       <text class="hd-s">{{ farm.name }} · {{ farm.area }}</text>
@@ -200,6 +202,7 @@ function chain() { uni.showModal({ title: "种植数据上链", showCancel: fals
     </view>
 
     <view class="chain-btn" @tap="chain">🔗 种植数据已上链存证 · 点击验真</view>
+    </template>
   </view>
 </template>
 

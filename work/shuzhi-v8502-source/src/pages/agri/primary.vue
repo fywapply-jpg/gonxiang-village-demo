@@ -67,6 +67,8 @@ function order() {
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty"><text class="production-empty-title">暂无后台农资生产档案</text><text class="production-empty-text">正式环境只展示后台审核的农资、作业和验收档案；本地农资生产案例不会混入真实项目。</text></view>
+    <template v-else>
     <view class="hero">
       <text class="ht">🏭 产地初加工中心</text>
       <text class="hs">最初一公里，减损又增值。分拣分级、净菜切配、冷藏保鲜——就地把毛菜变好货，直配中央厨房，不再贱卖原字号。</text>
@@ -147,6 +149,7 @@ function order() {
     <view class="tip">🔗 产地初加工是"最初一公里"的增值与减损：把分拣分级、清洗切配、预冷冷藏就地做掉，毛菜不再原字号贱卖、损耗大降，净菜直配中央厨房砍掉批发倒手。分级让好货卖好价、次品不浪费，倒逼农户把品质做稳——这正是"同品类、不同品质、不同收益"的落点。</view>
 
     <view class="bar"><view class="bar-btn" @tap="order">按「{{ lv.name }}」下单 · 一批 {{ TON }} 吨多挣 ¥{{ batchGain }} 万</view></view>
+    </template>
   </view>
 </template>
 

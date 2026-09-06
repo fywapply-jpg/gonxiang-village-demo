@@ -39,6 +39,8 @@ function settleModal() {
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty"><text class="production-empty-title">暂无后台跨境订单</text><text class="production-empty-text">正式环境只展示海关、商检、国际物流、结汇和退税机构回执；本地跨境案例不会混入生产交易。</text></view>
+    <template v-else>
     <view class="hd">
       <text class="hd-t">出口订单全流程</text>
       <text class="hd-s">询盘 → 报价签约 → 报关商检 → 跨境冷链 → 结汇 → 退税 → 海外仓</text>
@@ -79,6 +81,7 @@ function settleModal() {
     </view>
 
     <view class="tip">🔗 出口全链单证、物流、结汇上链存证；依托五大枢纽 + 海关单一窗口 + 100 个海外仓，打通"买全球、卖全球"。</view>
+    </template>
   </view>
 </template>
 

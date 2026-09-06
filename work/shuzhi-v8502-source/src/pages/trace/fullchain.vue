@@ -77,6 +77,8 @@ function toCert() { uni.navigateTo({ url: "/pages/cert/index" }); }
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty"><text class="production-empty-title">暂无后台溯源批次</text><text class="production-empty-text">正式环境只展示后台及链上返回的批次、检测、物流和召回证据；本地全链案例不会混入生产数据。</text></view>
+    <template v-else>
     <view class="hero">
       <view class="h-top">
         <text class="he">{{ ds.emoji }}</text>
@@ -123,6 +125,7 @@ function toCert() { uni.navigateTo({ url: "/pages/cert/index" }); }
     </view>
 
     <view class="tip">🔗 {{ isMeat ? '一畜一码耳标、防疫免疫、检疫合格证、定点屠宰两章两证、冷链温控——每一环由官方兽医/屠宰厂/合作社上链存证，一码贯通「怎么养→打什么疫苗→谁检疫→哪宰的→卖给谁」，病害可倒查、可召回。' : '农资投入、农事打卡、检测报告、冷链温控、到铺号签收——每一环由对应主体上链存证，一码贯通「种什么→施什么→怎么运→卖给谁」，出问题可倒查、可召回。' }}</view>
+    </template>
   </view>
 </template>
 

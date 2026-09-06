@@ -72,6 +72,26 @@ text {
   font-size: 26rpx;
   padding: 14rpx 30rpx;
 }
+.production-empty {
+  margin: 48rpx 24rpx;
+  padding: 34rpx 28rpx;
+  border: 2rpx solid #d8e7de;
+  border-radius: 22rpx;
+  background: #f7fbf8;
+}
+.production-empty-title {
+  display: block;
+  color: #145d3c;
+  font-size: 32rpx;
+  font-weight: 900;
+}
+.production-empty-text {
+  display: block;
+  margin-top: 16rpx;
+  color: #5e7167;
+  font-size: 24rpx;
+  line-height: 1.7;
+}
 /* 金融合规统一标识：放款/资金业务由持牌机构办理 */
 .fin-lic {
   margin: 20rpx 24rpx 30rpx;

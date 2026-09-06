@@ -79,6 +79,8 @@ function standard() {
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty"><text class="production-empty-title">暂无后台订单农业合同</text><text class="production-empty-text">正式环境只展示后台返回的真实合同、农资预算、价格和农事任务；本地订单农业案例不会混入生产履约。</text></view>
+    <template v-else>
     <!-- 头部 -->
     <view class="hd">
       <text class="hd-t">订单农业 · 以销定产</text>
@@ -168,6 +170,7 @@ function standard() {
     </view>
 
     <view class="tip">🔗 合约条款、农资发放、农事打卡、履约记录全程上链，作为订单贷授信与保底收购依据</view>
+    </template>
   </view>
 </template>
 

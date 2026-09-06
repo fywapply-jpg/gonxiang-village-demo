@@ -45,6 +45,8 @@ function report() {
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty"><text class="production-empty-title">暂无后台溯源档案</text><text class="production-empty-text">正式环境只展示后台或链上返回的授权批次、区块和检测证据；本地溯源案例不会混入生产数据。</text></view>
+    <template v-else>
     <view class="head">
       <text class="he">{{ b.emoji }}</text>
       <view class="hi"><text class="hn">{{ b.product }}</text><text class="hb">{{ b.batch }}</text>
@@ -104,6 +106,7 @@ function report() {
       <view class="act" @tap="poster">🖼️ 溯源海报</view>
       <view class="act warn" @tap="report">⚠️ 问题举报</view>
     </view>
+    </template>
   </view>
 </template>
 

@@ -23,6 +23,8 @@ function claim(t: any) {
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty"><text class="production-empty-title">暂无后台补贴记录</text><text class="production-empty-text">正式环境的补贴标准、履约数量和拨付状态必须由后台及财政回执返回；本地补贴案例不会混入生产数据。</text></view>
+    <template v-else>
     <view class="hd">
       <text class="hd-t">保供补贴申领</text>
       <text class="hd-s">履约完成 → 在线申领 → 财政审核 → 拨付对公账户</text>
@@ -41,6 +43,7 @@ function claim(t: any) {
     </view>
 
     <view class="tip">🔗 保供任务履约数据、补贴申领与拨付记录全程上链，财政专项资金专款专用、可追溯审计</view>
+    </template>
   </view>
 </template>
 

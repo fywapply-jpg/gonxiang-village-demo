@@ -39,6 +39,8 @@ function joinGroup(g: any) {
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty"><text class="production-empty-title">暂无后台社区团购</text><text class="production-empty-text">正式环境只展示后台团长、商品、库存、收款和履约状态；本地团购样例不会生成真实订单。</text></view>
+    <template v-else>
     <view class="hd">
       <view class="hd-top"><text class="hd-t">🛒 社区团购</text><text class="b2c">B2C · 面向社区居民</text></view>
       <text class="hd-s">{{ leader.name }} · {{ leader.captain }}</text>
@@ -88,6 +90,7 @@ function joinGroup(g: any) {
     </view>
 
     <view class="tip">🔗 产地直供、团长代提，社区最后一公里；成团价低于超市，货源全链路溯源。</view>
+    </template>
   </view>
 </template>
 

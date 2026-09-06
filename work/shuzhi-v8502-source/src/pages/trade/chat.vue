@@ -57,6 +57,8 @@ function toOrder() { uni.navigateTo({ url: "/pages/trade/demand-detail" }); }
 
 <template>
   <view class="chat">
+    <view v-if="productionBuild" class="production-empty"><text class="production-empty-title">暂无后台交易会话</text><text class="production-empty-text">正式环境只展示已授权主体之间的后台会话、报价版本和订单状态；本地议价消息不会混入真实交易。</text></view>
+    <template v-else>
     <view class="tip">与「{{ to }}」议价洽谈 · 报价全程留存、成交上链</view>
     <view class="goods">
       <text class="g-n">🍊 {{ item.name }}</text>
@@ -85,6 +87,7 @@ function toOrder() { uni.navigateTo({ url: "/pages/trade/demand-detail" }); }
       <input class="ip" v-model="input" placeholder="输入消息…" confirm-type="send" @confirm="send" />
       <view class="send" @tap="send">发送</view>
     </view>
+    </template>
   </view>
 </template>
 

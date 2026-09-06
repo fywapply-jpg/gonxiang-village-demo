@@ -47,6 +47,8 @@ function join(n: string) {
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty"><text class="production-empty-title">暂无后台应急保供数据</text><text class="production-empty-text">正式环境只展示后台备案主体、储备、调度和应急响应状态；本地保供样例不会混入生产指挥台。</text></view>
+    <template v-else>
     <view class="hero" :class="{ active: emergency }">
       <text class="ht">{{ emergency ? "🔴 应急响应中" : "🆘 应急保供专区" }}</text>
       <text class="hs">政策保供 · 统仓统配 · 平价直供 · 全国一张网调度</text>
@@ -118,6 +120,7 @@ function join(n: string) {
       <view class="btn" @tap="join(it.name)">一键对接</view>
     </view>
     <view class="tip">应急保供订单享绿色通道、优先冷链运力与保供补贴</view>
+    </template>
   </view>
 </template>
 

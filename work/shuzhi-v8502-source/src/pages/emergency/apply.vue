@@ -57,6 +57,8 @@ function finish() { uni.setStorageSync("bgFiled", "approved"); uni.navigateBack(
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty"><text class="production-empty-title">暂无后台应急备案</text><text class="production-empty-text">正式环境只展示后台审核通过的保供主体、产能和备案进度；本地申请资料不会混入生产名录。</text></view>
+    <template v-else>
     <view v-if="!submitted" class="steps">
       <view class="s" v-for="(s, i) in steps" :key="s">
         <view class="s-dot" :class="{ on: step >= i + 1 }">{{ step > i + 1 ? '✓' : i + 1 }}</view>
@@ -138,6 +140,7 @@ function finish() { uni.setStorageSync("bgFiled", "approved"); uni.navigateBack(
       <text class="d-tip">预计 1-2 个工作日完成审核，结果经微信订阅消息通知；通过后自动纳入名录、上链存证</text>
       <view class="d-btn" @tap="finish">提交备案申请</view>
     </view>
+    </template>
   </view>
 </template>
 

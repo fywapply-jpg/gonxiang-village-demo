@@ -39,6 +39,8 @@ function advance() {
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty"><text class="production-empty-title">暂无后台应急任务</text><text class="production-empty-text">正式环境只展示后台征召令、调拨、签收和财政结算状态；本地应急任务不会推进或展示为真实任务。</text></view>
+    <template v-else>
     <!-- 征召令 -->
     <view class="order">
       <view class="o-top"><text class="o-tag">🔴 应急征召令</text><text class="o-lv">{{ order.level }}</text></view>
@@ -78,6 +80,7 @@ function advance() {
       <view v-else-if="cur < steps.length" class="bar-btn" @tap="advance">推进到「{{ steps[cur] }}」下一步</view>
       <view v-else class="bar-btn done">✅ 保供任务已完成</view>
     </view>
+    </template>
   </view>
 </template>
 

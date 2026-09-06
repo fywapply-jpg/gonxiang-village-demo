@@ -96,6 +96,8 @@ function point() {
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty"><text class="production-empty-title">暂无后台回收订单</text><text class="production-empty-text">正式环境只展示后台返回的回收主体、称重、结算和追溯证据；本地回收案例不会混入生产数据。</text></view>
+    <template v-else>
     <view class="hero">
       <text class="ht">♻️ 再生资源回收 · 绿色循环</text>
       <text class="hs">农膜、农药包装、秸秆——一村一网点应收尽收，全程可追溯、资源化再利用。回收换钱、换积分、换信用、换碳汇。</text>
@@ -174,6 +176,7 @@ function point() {
     </view>
 
     <view class="tip">🔗 再生资源回收是供销社的传统主业与绿色使命：把散落田间的农膜、农药瓶、秸秆一村一点应收尽收，扫码建台账、去向全追溯，杜绝白色污染与农残乱排。回收既换钱、换积分、换信用，又通过秸秆利用与减污形成碳汇——让"绿色"变成看得见的收益，倒逼肥药双减、良性循环。</view>
+    </template>
   </view>
 </template>
 

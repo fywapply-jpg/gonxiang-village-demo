@@ -88,6 +88,8 @@ function runFlow() { running.value = true; cur.value = 0; const t = setInterval(
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty"><text class="production-empty-title">暂无后台期货订单</text><text class="production-empty-text">正式环境的年单、保证金、套期保值和交割状态必须由持牌机构与后台返回；本地测算不会作为真实订单展示。</text></view>
+    <template v-else>
     <view class="hd">
       <text class="hd-t">农产品期货年单</text>
       <text class="hd-s">平台撮合 · 锁量锁价 · 分批交割 · 风险对冲</text>
@@ -192,6 +194,7 @@ function runFlow() { running.value = true; cur.value = 0; const t = setInterval(
     </view>
 
     <view class="tip">🔒 期货年单为"现货远期履约"合约，非交易所标准期货合约；套期保值在持牌期货公司/交易所进行，平台仅撮合与风控，不代客理财、不碰资金。</view>
+    </template>
   </view>
 </template>
 

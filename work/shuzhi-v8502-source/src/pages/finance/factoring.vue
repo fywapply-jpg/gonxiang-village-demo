@@ -50,6 +50,8 @@ function apply(a: any) {
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty"><text class="production-empty-title">暂无后台保理档案</text><text class="production-empty-text">正式环境只展示持牌保理机构返回的应收账款、确权、授信和放款状态；本地保理案例不会混入生产数据。</text></view>
+    <template v-else>
     <view class="hero">
       <text class="ht">应收账款保理</text>
       <text class="hs">转让应收账款 · 提前回款 · 缓解账期压力</text>
@@ -104,6 +106,7 @@ function apply(a: any) {
     </view>
 
     <view class="tip">🔗 平台归集合同、验收、发票、对账和转让通知等证据，辅助识别重复融资与虚假贸易，但不作融资承诺；保理合同、放款、回款和追索由依法开展业务的机构办理，平台不触碰资金。</view>
+    </template>
   </view>
 </template>
 

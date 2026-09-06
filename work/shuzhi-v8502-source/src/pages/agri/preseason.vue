@@ -49,6 +49,8 @@ function toFutures() { uni.navigateTo({ url: "/pages/agri/futures" }); }
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty"><text class="production-empty-title">暂无后台产能项目</text><text class="production-empty-text">正式环境的预订数量、定金、合同和履约计划必须由后台生成并由持牌机构确认；本地预订案例不会混入生产项目。</text></view>
+    <template v-else>
     <view class="hd">
       <text class="hd-t">跨年度订单农业 · 今年定明年</text>
       <text class="hd-s">以销定产 · 提前一季锁定明年产能 · 先有销路再种</text>
@@ -104,6 +106,7 @@ function toFutures() { uni.navigateTo({ url: "/pages/agri/futures" }); }
     <view class="bar">
       <view class="bar-btn" :class="{ done: booking }" @tap="book">{{ booking ? '✔ 已认购明年产能' : '认购明年产能 · 锁量锁价' }}</view>
     </view>
+    </template>
   </view>
 </template>
 

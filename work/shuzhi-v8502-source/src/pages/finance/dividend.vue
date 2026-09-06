@@ -10,6 +10,8 @@ function withdraw() {
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty"><text class="production-empty-title">暂无后台收益档案</text><text class="production-empty-text">正式环境的收益、分配和提现状态必须由后台及持牌机构回执返回；本地收益样例不会展示为真实余额。</text></view>
+    <template v-else>
     <view class="hero">
       <text class="hl">全民分红 · 累计收益（元）</text>
       <text class="amt">{{ d.total.toFixed(2) }}</text>
@@ -31,6 +33,7 @@ function withdraw() {
     <view class="tip">🔗 分红资金按规则自动发放至链上账户，全程可追溯。</view>
     <view class="tip">⚠️ 合规说明：分红来源于<text style="font-weight:700">平台经营盈余按章分配</text>，金额随经营情况浮动；<text style="font-weight:700">不承诺固定收益、不保本、非投资理财产品，也不构成任何存款或集资</text>。</view>
     <view class="fin-lic">🏛️ 分红发放、提现等资金业务由持牌支付/金融机构办理，平台不吸收存款、不放贷、不触碰资金、不设资金池。</view>
+    </template>
   </view>
 </template>
 
