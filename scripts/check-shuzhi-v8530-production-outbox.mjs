@@ -214,10 +214,12 @@ try {
   dbInvoiceMissingNoRestore.prepare("UPDATE invoices SET status='待开具',invoice_no=NULL,issued_at=NULL WHERE order_id=?").run(orderId);
   dbInvoiceMissingNoRestore.prepare("UPDATE orders SET invoice_status='待开票' WHERE id=?").run(orderId);
   dbInvoiceMissingNoRestore.close();
-  const invoiceCallback = await webhook(prodPort, "invoice", { event_id: `outbox-invoice-callback-${Date.now()}`, order_id: orderId, invoice_no: "PROD-INVOICE-CALLBACK-001", status: "verified", amount: 276000 }, baseEnv.INVOICE_WEBHOOK_SECRET);
-  add(invoiceCallback.status === 202, "发票验真回调落账", `HTTP ${invoiceCallback.status}`);
+  const invoiceCallback = await webhook(prodPort, "invoice", { event_id: `outbox-invoice-pending-${Date.now()}`, order_id: orderId, invoice_no: "PROD-INVOICE-CALLBACK-001", status: "pending", amount: 276000 }, baseEnv.INVOICE_WEBHOOK_SECRET);
+  add(invoiceCallback.status === 202, "发票待验真回调落账", `HTTP ${invoiceCallback.status}`);
   const invoiceOverwriteCallback = await webhook(prodPort, "invoice", { event_id: `outbox-invoice-overwrite-${Date.now()}`, order_id: orderId, invoice_no: "PROD-INVOICE-CALLBACK-002", status: "verified", amount: 276000 }, baseEnv.INVOICE_WEBHOOK_SECRET);
-  add(invoiceOverwriteCallback.status === 409, "已开具发票号码禁止回调替换", `HTTP ${invoiceOverwriteCallback.status}`);
+  add(invoiceOverwriteCallback.status === 409, "发票机构号码禁止回调替换", `HTTP ${invoiceOverwriteCallback.status}`);
+  const invoiceVerifyCallback = await webhook(prodPort, "invoice", { event_id: `outbox-invoice-verify-${Date.now()}`, order_id: orderId, invoice_no: "PROD-INVOICE-CALLBACK-001", status: "verified", amount: 276000 }, baseEnv.INVOICE_WEBHOOK_SECRET);
+  add(invoiceVerifyCallback.status === 202, "同号码发票验真回调落账", `HTTP ${invoiceVerifyCallback.status}`);
   const dbInvoiceCallbackRestore = new DatabaseSync(dbPath);
   dbInvoiceCallbackRestore.prepare("UPDATE invoices SET status='待开具',invoice_no=NULL,issued_at=NULL WHERE order_id=?").run(orderId);
   dbInvoiceCallbackRestore.prepare("UPDATE orders SET invoice_status='待开票' WHERE id=?").run(orderId);
