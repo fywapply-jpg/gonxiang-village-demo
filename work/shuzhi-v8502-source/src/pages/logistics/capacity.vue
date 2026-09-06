@@ -19,6 +19,11 @@ function bid(j: any) {
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">暂无后台运力竞价档案</text>
+      <text class="production-empty-text">正式环境的线路、货物、预算、承运主体和最优报价必须由后台物流服务实时返回。本页面不展示本地运力或价格样例，也不会提交本地报价。</text>
+    </view>
+    <template v-else>
     <view class="hd">
       <text class="hd-t">冷链运力竞价</text>
       <text class="hd-s">货主发单 · 承运方竞价 · 全程温控定位上链 · 价优者得</text>
@@ -43,6 +48,7 @@ function bid(j: any) {
       </view>
     </view>
     <view class="tip">🔗 中标后生成运单，冷链温湿度、GPS 轨迹全程上链，异常自动告警</view>
+    </template>
   </view>
 </template>
 
@@ -63,4 +69,7 @@ function bid(j: any) {
 .bid-btn { padding: 16rpx 36rpx; border-radius: 999rpx; background: $sg-blue; color: #fff; font-size: 26rpx; font-weight: 600; }
 .bid-btn.won { background: $sg-primary; }
 .tip { margin: 24rpx; font-size: 22rpx; color: $sg-text-3; line-height: 1.6; }
+.production-empty { margin: 48rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>

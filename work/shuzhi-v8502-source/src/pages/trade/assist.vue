@@ -64,6 +64,11 @@ function order() {
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">暂无后台消费帮扶档案</text>
+      <text class="production-empty-text">正式环境的帮扶县名录、认证、采购金额、带动户数和分配账本必须由后台依据生效合同、验收、发票和持牌结算回执返回。本页面不展示本地帮扶金额或成效样例。</text>
+    </view>
+    <template v-else>
     <view class="hero">
       <text class="ht">🤝 消费帮扶 · 乡村振兴</text>
       <text class="hs">供销社是消费帮扶主渠道——把脱贫地区、乡村振兴重点帮扶县的好货，直供机关企事业单位。以购代捐、以买代帮，带动脱贫户稳定增收。</text>
@@ -138,6 +143,7 @@ function order() {
     </view>
 
     <view class="tip">🔗 消费帮扶是供销社的政治责任与主业担当:机关企事业单位食堂预留比例采购、工会福利以购代帮,把脱贫地区和乡村振兴重点帮扶县的农产品稳定包销出去。全程扫码溯源防"贴牌假帮扶"、共赢分账保证钱真到脱贫户、成效上链阳光公示——让每一笔采购都真金白银带动增收、巩固脱贫成果。</view>
+    </template>
   </view>
 </template>
 
@@ -206,4 +212,7 @@ function order() {
 .lk-d { font-size: 19rpx; color: $sg-text-3; margin-top: 2rpx; }
 .lk-go { font-size: 30rpx; color: $sg-text-3; }
 .tip { margin: 20rpx 24rpx 30rpx; font-size: 21rpx; color: $sg-text-3; line-height: 1.6; }
+.production-empty { margin: 48rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>

@@ -86,6 +86,11 @@ function merchantMachine() { uni.navigateTo({ url: "/pages/agri/machinery-mercha
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">暂无后台农机调度档案</text>
+      <text class="production-empty-text">正式环境的作业单、报价、机手资质、机具状态、服务半径和收入必须由后台调度服务实时返回。本页面不展示本地机手、价格或作业单样例，也不会创建本地派单。</text>
+    </view>
+    <template v-else>
     <view class="hero">
       <text class="ht">🚜 共享农机 · 跨区作业调度</text>
       <text class="hs">按需叫机、机手抢单、跨区调度——让农机不空跑、农时不耽误。作业全程北斗监管、亩数自动核、验收合格才结算。</text>
@@ -197,6 +202,7 @@ function merchantMachine() { uni.navigateTo({ url: "/pages/agri/machinery-mercha
     </view>
 
     <view class="tip">🔗 共享农机是农业社会化服务的重要一环:把分散的农机具聚成一张调度网,农户按需叫机、机手就近抢单、平台组织跨区作业,解决"有机没活干、有活没机用"和农时紧张。作业全程北斗定位、亩数自动核算、监管账户结算,平台只做撮合调度、收服务费,不碰资金、不赚差价。</view>
+    </template>
   </view>
 </template>
 
@@ -288,4 +294,7 @@ function merchantMachine() { uni.navigateTo({ url: "/pages/agri/machinery-mercha
 .lk-d { font-size: 19rpx; color: $sg-text-3; margin-top: 2rpx; }
 .lk-go { font-size: 30rpx; color: $sg-text-3; }
 .tip { margin: 20rpx 24rpx 30rpx; font-size: 21rpx; color: $sg-text-3; line-height: 1.6; }
+.production-empty { margin: 48rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>

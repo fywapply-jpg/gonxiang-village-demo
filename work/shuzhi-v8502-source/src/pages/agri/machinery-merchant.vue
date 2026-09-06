@@ -335,6 +335,11 @@ function nav(url: string) { uni.navigateTo({ url }); }
 
 <template>
   <view class="sg-page merchant-machine">
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">暂无后台机具资产档案</text>
+      <text class="production-empty-text">正式环境的机具库存、序列号、权属、保险、人员匹配、订单和召回状态必须由后台资产服务返回。本页面不展示本地资产、价格或订单样例，也不会修改本地库存。</text>
+    </view>
+    <template v-else>
     <view class="hero">
       <view class="hero-row"><text class="hero-k">数智供社 v8533 · 农机具商家端</text><text class="role">已认证商家</text></view>
       <text class="hero-t">农机具全生命周期管理</text>
@@ -526,6 +531,7 @@ function nav(url: string) { uni.navigateTo({ url }); }
     </block>
 
     <view class="boundary">办理边界：本页面用于商家内部经营管理与平台风控联动。实际经营中，设备登记、检验、补贴、认证和无人机实名等事项，应按设备类别和所在地要求，由相应主管机关或依法授权机构办理。</view>
+    </template>
   </view>
 </template>
 
@@ -571,4 +577,7 @@ function nav(url: string) { uni.navigateTo({ url }); }
 .service-machine{display:block;font-size:25rpx;font-weight:800;margin-top:15rpx}.service-issue{display:block;font-size:21rpx;color:#566c61;line-height:1.5;margin-top:6rpx}.service-meta{display:flex;gap:16rpx;margin-top:12rpx}.service-meta text{font-size:19rpx;color:#6b7c73}.service-foot{display:flex;align-items:center;gap:12rpx;border-top:1rpx solid #edf1ef;margin-top:14rpx;padding-top:13rpx}.service-foot text:first-child{flex:1;font-size:18rpx;color:#829088;line-height:1.4}.service-foot text:last-child{font-size:20rpx;padding:10rpx 13rpx;background:#167952;color:#fff;border-radius:9rpx}
 .recall{margin:20rpx 22rpx;background:#fff3f0;border:1rpx solid #efd0c9;padding:20rpx;border-radius:16rpx}.recall>text{display:block;font-size:26rpx;font-weight:800;color:#a13b2f}.recall>view{display:flex;align-items:center;gap:7rpx;margin-top:14rpx}.recall>view text{font-size:17rpx;color:#6f554f}.recall>view text:nth-child(1),.recall>view text:nth-child(4),.recall>view text:nth-child(7){width:28rpx;height:28rpx;line-height:28rpx;text-align:center;background:#c85c4d;color:#fff;border-radius:50%}
 .boundary{margin:28rpx 22rpx 0;padding:18rpx;background:#e9efec;border-radius:13rpx;font-size:20rpx;line-height:1.65;color:#65756d}
+.production-empty { margin: 48rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>

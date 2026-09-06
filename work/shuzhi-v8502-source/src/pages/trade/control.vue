@@ -210,6 +210,11 @@ function go(url: string) {
 
 <template>
   <view class="sg-page control-page">
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">暂无后台交易总控档案</text>
+      <text class="production-empty-text">正式环境的交易身份、18 步节点、资金状态和风控证据必须由后台按真实订单、合同、物流、发票与结算回执返回。本页面不展示本地身份、订单金额或资金样例，也不会在前台推进状态。</text>
+    </view>
+    <template v-else>
     <view class="hero">
       <text class="hero-k">数智供社 v8533 · B2B交易底座</text>
       <text class="hero-t">交易准入与资金总控台</text>
@@ -346,6 +351,7 @@ function go(url: string) {
       <view class="link" @tap="go('/pages/aftersale/dispute')"><text>⚖️</text><view><text class="link-t">质量争议判责</text><text class="link-s">证据调取、责任认定、冻结退款</text></view><text class="link-go">›</text></view>
       <view class="link" @tap="go('/pages/finance/fourflow')"><text>🔗</text><view><text class="link-t">四流合一风控</text><text class="link-s">合同流、货物流、资金流、发票流交叉核验</text></view><text class="link-go">›</text></view>
     </view>
+    </template>
   </view>
 </template>
 
@@ -434,4 +440,7 @@ function go(url: string) {
 .link-t { font-size: 25rpx; font-weight: 700; }
 .link-s { font-size: 20rpx; color: $sg-text-3; margin-top: 3rpx; }
 .link-go { color: $sg-text-3; font-size: 30rpx; }
+.production-empty { margin: 48rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>
