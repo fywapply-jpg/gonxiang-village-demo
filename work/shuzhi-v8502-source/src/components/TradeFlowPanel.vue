@@ -4,6 +4,7 @@ import { getTradeConfig } from "@/services/localApi";
 
 const props = defineProps<{ side: "supply" | "demand" }>();
 type PlanKey = "advance" | "custody" | "cod" | "credit";
+const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production" || String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 
 const step = ref(-1);
 const planKey = ref<PlanKey>("custody");
@@ -47,7 +48,7 @@ const plans = ref([
     pay: "示例：验收合格次日起30天，到期日精确到日期", risk: "先核买方额度、期限和增信；平台不是放贷人，也不承诺兜底回款",
   },
 ]);
-const amounts = ref([
+const amounts = ref(productionBuild ? [] : [
   { n: "货物价款", v: "¥275,644", note: "本单验收合格商品净额，计入订单金额" },
   { n: "合同服务费用", v: "¥356", note: "包装、物流、检测等按实际服务逐项列示，计入订单金额" },
   { n: "平台技术服务", v: "¥11,025.76", note: "验收合格商品净额 ¥275,644 × 4%，结算时单独列示，不计入订单金额" },
@@ -57,7 +58,7 @@ onMounted(async () => {
   try {
     const config = await getTradeConfig();
     if (Array.isArray(config.settlement_models) && config.settlement_models.length) plans.value = config.settlement_models;
-    if (Array.isArray(config.amount_items) && config.amount_items.length) amounts.value = config.amount_items;
+    if (!productionBuild && Array.isArray(config.amount_items) && config.amount_items.length) amounts.value = config.amount_items;
   } catch { /* 前台保留本地默认配置，后台不可用时仍可本地联调 */ }
 });
 
@@ -112,7 +113,8 @@ onUnmounted(() => { if (timer) clearInterval(timer); });
     </scroll-view>
     <view v-if="planKey === 'credit'" class="credit-compact">需机构授信审批</view>
 
-    <view class="amount-box">
+    <view v-if="productionBuild" class="production-amount-empty">订单金额、服务费和平台技术服务费以后台正式订单明细及机构回执为准</view>
+    <view v-else class="amount-box">
       <view class="amount-head"><text>订单金额拆开算</text><text>应付 ¥276,000 · 平台费另计</text></view>
       <view v-for="item in amounts" :key="item.n" class="amount-row">
         <text>{{ item.n }}</text><text>{{ item.v }}</text><text>{{ item.note }}</text>
@@ -156,6 +158,7 @@ onUnmounted(() => { if (timer) clearInterval(timer); });
 .buyer .plan-chip.on { background: #2b6cb0; }
 .plan-chip.on text:last-child { color: rgba(255,255,255,.82); }
 .credit-compact { margin: 0 22rpx 18rpx; padding: 12rpx 16rpx; border-radius: 12rpx; color: #8a5a16; background: #fff8e8; border: 2rpx solid #f0dcae; font-size: 18rpx; }
+.production-amount-empty { margin: 0 22rpx 22rpx; padding: 18rpx; border-radius: 16rpx; color: #667085; background: #f7faf8; border: 2rpx solid #dfebe3; font-size: 18rpx; line-height: 1.5; }
 .term-example { display: flex; flex-wrap: wrap; gap: 7rpx; margin-top: 12rpx; padding: 12rpx; border-radius: 10rpx; background: #fff; }
 .term-example text { font-size: 17rpx; color: #5f5849; }
 .term-example text:first-child { width: 100%; color: #9a6410; font-weight: 800; }

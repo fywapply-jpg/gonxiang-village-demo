@@ -118,6 +118,14 @@ const tradeConfig = {
     validation: { require_sum_100: true, require_contract_ref: true, require_acceptance_ref: true, require_invoice_ref: true, require_settlement_ref: true },
   },
 };
+const publicTradeConfig = () => productionMode
+  ? {
+    ...tradeConfig,
+    // 正式环境不向公开配置接口返回本地演示订单金额；真实金额只能来自订单聚合和机构回执。
+    amount_items: [],
+    amount_source: "后台订单明细与机构回执",
+  }
+  : tradeConfig;
 
 // 四大业务域的统一工作流规则。页面可以展示更细的运营说明，但能否推进、
 // 当前环节和证据留痕必须由后端裁决，避免前台单独修改进度。
@@ -1036,7 +1044,7 @@ const server = createServer(async (req, res) => {
     const principal = principalFor(req);
     return json(res, 200, { id: principal.id, name: principal.name, type: principal.type, role: principal.role, merchant_ids: principal.merchant_ids, permissions: principal.type === "user" ? ["trade.read.own", `trade.${principal.role}.act`] : ["trade.read", "trade.write", "admin.read"] });
   }
-  if (path === "/api/v1/trade-config" && req.method === "GET") return json(res, 200, tradeConfig);
+  if (path === "/api/v1/trade-config" && req.method === "GET") return json(res, 200, publicTradeConfig());
   if (path === "/api/v1/operations/catalog" && req.method === "GET") {
     if (!authorized(req)) return error(res, 401, "需要业务查看授权");
     const modules = operationWorkflowRules.map((item) => operationView(item.key)).map((item) => privileged(req) ? item : { ...item, events: [] });
