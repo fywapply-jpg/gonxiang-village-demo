@@ -11,9 +11,26 @@ import { resolve } from "node:path";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
 const read = (file) => readFileSync(resolve(root, file), "utf8");
+const readIfPresent = (file) => {
+  try {
+    return read(file);
+  } catch (error) {
+    if (error?.code === "ENOENT") return "";
+    throw error;
+  }
+};
 const api = read("work/shuzhi-v8502-source/src/services/localApi.ts");
 const local = read("local-backend/server.mjs");
-const cloud = read("cloud-server/src/server.ts") + "\n" + read("cloud-server/src/b2b-routes.ts") + "\n" + read("cloud-server/src/b2b-workflow-routes.ts") + "\n" + read("cloud-server/src/commerce-routes.ts") + "\n" + read("cloud-server/src/merchant-product-routes.ts");
+// cloud-server is a historical, optional tree. Some local checkouts retain
+// extra source files that are intentionally not part of the v8533 release;
+// a clean CI checkout must still be able to verify the current API boundary.
+const cloud = [
+  "cloud-server/src/server.ts",
+  "cloud-server/src/b2b-routes.ts",
+  "cloud-server/src/b2b-workflow-routes.ts",
+  "cloud-server/src/commerce-routes.ts",
+  "cloud-server/src/merchant-product-routes.ts",
+].map(readIfPresent).join("\n");
 
 const checks = [];
 const add = (level, name, detail) => checks.push({ level, name, detail });
