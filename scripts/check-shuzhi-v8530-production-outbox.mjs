@@ -78,6 +78,11 @@ const request = async (port, path, token, body, key) => {
   let payload = {}; try { payload = await response.json(); } catch {}
   return { status: response.status, payload: payload?.data || payload };
 };
+const getJson = async (port, path, token) => {
+  const response = await fetch(`http://127.0.0.1:${port}${path}`, { headers: { Authorization: `Bearer ${token}` } });
+  let payload = {}; try { payload = await response.json(); } catch {}
+  return { status: response.status, payload: payload?.data || payload };
+};
 const webhook = async (port, provider, payload, secret, idempotencyKey = `production-${payload.event_id}`) => {
   const normalizedPayload = { provider, ...payload };
   const raw = JSON.stringify(normalizedPayload);
@@ -200,6 +205,14 @@ try {
   add(partialAcceptance.status === 400, "生产部分数量不得直接标记合格", `HTTP ${partialAcceptance.status}`);
   const acceptanceAfterDelivery = await request(prodPort, `/api/v1/trades/${orderId}/accept`, buyerToken, { result: "accepted", accepted_items: fullAcceptanceItems, evidence: "复磅/抽检/签收证据" }, "outbox-accept-after-delivery");
   add(acceptanceAfterDelivery.status === 201, "生产送达后才允许验收", `HTTP ${acceptanceAfterDelivery.status}${acceptanceAfterDelivery.status !== 201 ? ` · ${JSON.stringify(acceptanceAfterDelivery.payload)}` : ""}`);
+  const dbInvoiceMissingNo = new DatabaseSync(dbPath);
+  dbInvoiceMissingNo.prepare("UPDATE invoices SET status='已开具',invoice_no='',issued_at=?,amount=276000 WHERE order_id=?").run(t, orderId);
+  dbInvoiceMissingNo.close();
+  const ledgerMissingInvoiceNo = await getJson(prodPort, `/api/v1/trades/${orderId}/ledger`, buyerToken);
+  add(ledgerMissingInvoiceNo.status === 200 && ledgerMissingInvoiceNo.payload?.reconciliation?.acceptance_invoice_gate === false, "账本缺少发票号码不得显示四流通过", `HTTP ${ledgerMissingInvoiceNo.status}`);
+  const dbInvoiceMissingNoRestore = new DatabaseSync(dbPath);
+  dbInvoiceMissingNoRestore.prepare("UPDATE invoices SET status='待开具',invoice_no=NULL,issued_at=NULL WHERE order_id=?").run(orderId);
+  dbInvoiceMissingNoRestore.close();
   const dbInvoiceMismatch = new DatabaseSync(dbPath);
   dbInvoiceMismatch.prepare("UPDATE invoices SET amount=amount+1 WHERE order_id=?").run(orderId);
   dbInvoiceMismatch.close();

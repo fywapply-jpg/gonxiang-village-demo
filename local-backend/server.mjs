@@ -718,7 +718,7 @@ const tradeLedger = (id) => {
   if (!order) return null;
   const contractOrderMatch = order.contracts.length > 0 && order.contracts.every((contract) => String(contract.order_id) === String(order.id));
   // “有发票记录”不等于“发票流已完成”：待开具、待验真或缺少签发时间都不能显示四流通过。
-  const invoiceGate = order.invoices.length > 0 && order.invoices.every((invoice) => invoice.status === "已开具" && Boolean(invoice.issued_at));
+  const invoiceGate = order.invoices.length > 0 && order.invoices.every((invoice) => invoice.status === "已开具" && Boolean(invoice.issued_at) && String(invoice.invoice_no || "").trim() !== "");
   const paymentReady = order.payments.some((payment) => ["已入金待验收", "待验收分账", "机构已确认（验收后分账）", "已支付", "已分账"].includes(payment.status));
   const feeCollection = order.platform_fee_collection;
   return {
