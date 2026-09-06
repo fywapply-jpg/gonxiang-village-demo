@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -78,6 +78,7 @@ let secure;
 let staged;
 let wechatOnly;
 let weak;
+let linked;
 let securePort;
 try {
   securePort = 8899 + Math.floor(Math.random() * 200);
@@ -157,11 +158,24 @@ try {
     const output = weak.output();
     add(weakResult.code !== 0, "弱令牌拒绝启动", weakResult.code !== 0 ? "短于 32 字符的 API 令牌已被拒绝" : `进程异常以 0 退出${output.stderr ? `：${output.stderr.trim()}` : ""}`);
   }
+
+  const linkedPort = weakPort + 1;
+  const linkedDb = join(tempRoot, "linked-db");
+  symlinkSync(resolve(root, "local-backend/data"), linkedDb, "dir");
+  linked = startChild(makeEnv(linkedPort, linkedDb));
+  const linkedResult = await Promise.race([linked.closed, wait(3000).then(() => null)]);
+  if (!linkedResult) {
+    await stopChild(linked);
+    add(false, "符号链接数据库拒绝启动", "指向仓库演示目录的数据库路径未被拒绝");
+  } else {
+    add(linkedResult.code !== 0, "符号链接数据库拒绝启动", linkedResult.code !== 0 ? "生产数据库符号链接已被拒绝" : "进程异常以 0 退出");
+  }
 } finally {
   await stopChild(secure);
   await stopChild(staged);
   await stopChild(wechatOnly);
   await stopChild(weak);
+  await stopChild(linked);
   rmSync(tempRoot, { recursive: true, force: true });
 }
 
