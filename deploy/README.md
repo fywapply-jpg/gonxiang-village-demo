@@ -5,6 +5,7 @@
 ```text
 shuzhi-v8530.env.example
 shuzhi-v8530.service
+shuzhi-v8530-institution-worker.service
 nginx-shuzhi-api-v8530.conf.example
 ```
 
@@ -19,5 +20,6 @@ nginx-shuzhi-api-v8530.conf.example
 3. 使用 `scripts/render-shuzhi-nginx.mjs` 渲染 API-only Nginx 配置，避免 API 域名误返回历史前台页面。
 4. 运行 `npm run check:shuzhi-production-env`，所有字段通过后再启动 `shuzhi-v8530.service`。
 5. 完成微信及各机构签名、幂等、对账和恢复演练后，才把对应 `SHUZHI_*_READY` 开关改为 `true`。
+6. API 服务和 `shuzhi-v8530-institution-worker.service` 必须同时启用；前者接收业务和回调，后者从事务性 Outbox 投递 CA、支付、物流、发票和监管指令。两者必须使用同一生产数据库文件和同一受限环境文件。
 
 生产环境不得使用 `local-backend/` 下的演示数据库、`CHANGE_ME` 占位值或旧版本 service/nginx 文件。

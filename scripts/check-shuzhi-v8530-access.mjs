@@ -17,11 +17,19 @@ add(tradeConfigResponse.status === 200 && allocationPolicy?.ordinary_b2b?.enable
 const capabilities = await request("/api/v1/platform/capabilities", { token: "" });
 const capabilityVersion = capabilities.payload?.data?.version || capabilities.payload?.data?.platform_version;
 add(capabilities.status === 200 && capabilityVersion === "v8533", "后台版本能力清单", capabilities.status === 200 ? (capabilityVersion || "缺少平台版本") : `HTTP ${capabilities.status}`);
+const anonymousAdmin = await request("/api/v1/admin/integrations", { token: "", headers: { "X-Admin-Role": "super" } });
+add(anonymousAdmin.status === 401, "后台匿名与伪造角色拦截", `HTTP ${anonymousAdmin.status}`);
+const institutionOutbox = await request("/api/v1/admin/institution-outbox", { headers: { "X-Admin-Role": "super" } });
+add(institutionOutbox.status === 200 && institutionOutbox.payload?.data?.overview && Array.isArray(institutionOutbox.payload?.data?.commands), "机构指令后台可观测", `HTTP ${institutionOutbox.status}`);
 for (const path of ["/api/v1/trades", "/api/v1/trades/SZGS-2026-850901", "/api/v1/trades/SZGS-2026-850901/ledger"]) { const anon = await request(path, { token: "" }); const auth = await request(path); add(anon.status === 401, `匿名拦截 ${path}`, `HTTP ${anon.status}`); add(auth.status === 200, `授权访问 ${path}`, `HTTP ${auth.status}`); }
 const malformed = await request("/api/v1/platform/events", { method: "POST", body: "not-json", headers: { "Content-Type": "application/json", "Idempotency-Key": "bad-json-v8530" } });
 add(malformed.status === 400, "非法 JSON 隔离", `HTTP ${malformed.status}`);
 const oversized = await fetch(`${base}/api/v1/platform/events`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Idempotency-Key": "oversized-v8530" }, body: JSON.stringify({ feature_key: "trade", action: "oversized", payload: { value: "x".repeat(2 * 1024 * 1024) } }) });
 add(oversized.status === 413, "超大请求拦截", `HTTP ${oversized.status}`);
+const collisionKey = `payload-collision-${Date.now()}`;
+const collisionFirst = await request("/api/v1/platform/events", { method: "POST", headers: { "Idempotency-Key": collisionKey }, body: { feature_key: "trade", action: "first", payload: { amount: 100 } } });
+const collisionSecond = await request("/api/v1/platform/events", { method: "POST", headers: { "Idempotency-Key": collisionKey }, body: { feature_key: "trade", action: "changed", payload: { amount: 999 } } });
+add(collisionFirst.status === 201 && collisionSecond.status === 409, "幂等键绑定请求内容", `首次=${collisionFirst.status} 变更内容=${collisionSecond.status}`);
 const invalidProduct = await request("/api/v1/products", { method: "POST", body: { merchant_id: "m-supplier", name: "非法测试商品", category: "水果", price: -1, stock: 0 } });
 add(invalidProduct.status === 400, "商品金额与库存校验", `HTTP ${invalidProduct.status}`);
 const invalidMediaName = `媒体事务回滚-${Date.now()}`;

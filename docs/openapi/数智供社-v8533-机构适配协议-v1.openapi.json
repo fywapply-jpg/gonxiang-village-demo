@@ -75,9 +75,9 @@
         "tags": ["ProviderCallbacks"],
         "operationId": "receiveProviderCallback",
         "summary": "接收机构结果回调",
-        "description": "签名原文为 timestamp + '.' + 原始 JSON 请求体。事件号与幂等键在机构域内唯一；重复成功事件只返回原结果，不重复落账。当前 v8530 已实现 logistics、payment、invoice、regulator；CA 回调须在具体服务商接入时补齐。",
+        "description": "签名原文为 timestamp + '.' + 原始 JSON 请求体。事件号与幂等键在机构域内唯一；重复成功事件只返回原结果，不重复落账。当前 v8530 已实现 CA、logistics、payment、invoice、regulator 的统一回调边界；具体服务商字段转换仍需独立适配器。",
         "x-shuzhi-direction": "adapter-to-platform",
-        "x-shuzhi-current-implementation": ["logistics", "payment", "invoice", "regulator"],
+        "x-shuzhi-current-implementation": ["ca", "logistics", "payment", "invoice", "regulator"],
         "security": [{ "WebhookTimestamp": [], "WebhookSignature": [], "WebhookEventId": [] }],
         "parameters": [
           { "name": "provider", "in": "path", "required": true, "schema": { "type": "string", "enum": ["ca", "payment", "logistics", "invoice", "regulator"] } },

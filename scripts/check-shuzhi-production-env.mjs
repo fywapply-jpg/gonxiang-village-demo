@@ -57,6 +57,17 @@ if (!existsSync(file)) {
     ["SHUZHI_WECHAT_OPENID_PRINCIPALS"],
     ["SHUZHI_ALLOWED_ORIGIN"],
     ["VITE_API_BASE"],
+    ["SHUZHI_CA_ADAPTER_URL"],
+    ["SHUZHI_CA_ADAPTER_SECRET"],
+    ["SHUZHI_PAYMENT_ADAPTER_URL"],
+    ["SHUZHI_PAYMENT_ADAPTER_SECRET"],
+    ["SHUZHI_LOGISTICS_ADAPTER_URL"],
+    ["SHUZHI_LOGISTICS_ADAPTER_SECRET"],
+    ["SHUZHI_INVOICE_ADAPTER_URL"],
+    ["SHUZHI_INVOICE_ADAPTER_SECRET"],
+    ["SHUZHI_REGULATOR_ADAPTER_URL"],
+    ["SHUZHI_REGULATOR_ADAPTER_SECRET"],
+    ["CA_WEBHOOK_SECRET"],
     ["LOGISTICS_WEBHOOK_SECRET"],
     ["PAYMENT_WEBHOOK_SECRET"],
     ["INVOICE_WEBHOOK_SECRET"],
@@ -94,12 +105,14 @@ if (!existsSync(file)) {
   const apiToken = String(values.SHUZHI_API_TOKEN || "");
   const adminTokens = Object.keys(adminRoles);
   const userTokens = Object.keys(userPrincipals);
-  const webhookKeys = ["LOGISTICS_WEBHOOK_SECRET", "PAYMENT_WEBHOOK_SECRET", "INVOICE_WEBHOOK_SECRET", "REGULATOR_WEBHOOK_SECRET"];
+  const webhookKeys = ["CA_WEBHOOK_SECRET", "LOGISTICS_WEBHOOK_SECRET", "PAYMENT_WEBHOOK_SECRET", "INVOICE_WEBHOOK_SECRET", "REGULATOR_WEBHOOK_SECRET"];
+  const adapterSecretKeys = ["SHUZHI_CA_ADAPTER_SECRET", "SHUZHI_PAYMENT_ADAPTER_SECRET", "SHUZHI_LOGISTICS_ADAPTER_SECRET", "SHUZHI_INVOICE_ADAPTER_SECRET", "SHUZHI_REGULATOR_ADAPTER_SECRET"];
   const webhookValues = webhookKeys.map((key) => String(values[key] || ""));
+  const adapterSecretValues = adapterSecretKeys.map((key) => String(values[key] || ""));
   const tokenValues = [apiToken, ...adminTokens, ...userTokens, ...webhookValues].filter(Boolean);
   add(apiToken.length >= 32 && [...adminTokens, ...userTokens].every((token) => token.length >= 24), "令牌长度", "内部令牌至少 32 字符，岗位和用户令牌至少 24 字符");
-  add(webhookValues.every((secret) => secret.length >= 32), "回调密钥长度", "物流、支付、发票和监管回调密钥均至少 32 字符");
-  add(new Set(tokenValues).size === tokenValues.length, "秘密不复用", "内部令牌、岗位令牌、用户令牌和四类回调密钥均互不相同");
+  add(webhookValues.every((secret) => secret.length >= 32) && adapterSecretValues.every((secret) => secret.length >= 32), "机构密钥长度", "五类出站与五类回调密钥均至少 32 字符");
+  add(new Set([...tokenValues, ...adapterSecretValues]).size === [...tokenValues, ...adapterSecretValues].length, "秘密不复用", "内部令牌、岗位令牌、用户令牌、出站密钥和回调密钥均互不相同");
 
   const checkHttpsOrigin = (key, label, requireRoot = false) => {
     try {
@@ -112,6 +125,7 @@ if (!existsSync(file)) {
   };
   checkHttpsOrigin("SHUZHI_ALLOWED_ORIGIN", "CORS 来源", false);
   checkHttpsOrigin("VITE_API_BASE", "API 根地址", true);
+  for (const key of ["SHUZHI_CA_ADAPTER_URL", "SHUZHI_PAYMENT_ADAPTER_URL", "SHUZHI_LOGISTICS_ADAPTER_URL", "SHUZHI_INVOICE_ADAPTER_URL", "SHUZHI_REGULATOR_ADAPTER_URL"]) checkHttpsOrigin(key, `${key} HTTPS 地址`, true);
 
   const dbPath = String(values.SHUZHI_DB || "");
   const projectRoot = resolve(new URL("..", import.meta.url).pathname);

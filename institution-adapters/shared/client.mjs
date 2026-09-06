@@ -16,10 +16,10 @@ export class InstitutionAdapterError extends Error {
   }
 }
 
-const canonicalJson = (value) => {
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+export const canonicalizeInstitutionCommand = (value) => {
+  if (Array.isArray(value)) return `[${value.map(canonicalizeInstitutionCommand).join(",")}]`;
   if (value && typeof value === "object") {
-    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(",")}}`;
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalizeInstitutionCommand(value[key])}`).join(",")}}`;
   }
   let encoded;
   try { encoded = JSON.stringify(value); } catch { throw new InstitutionAdapterError("INVALID_COMMAND", "机构命令包含不可序列化字段"); }
@@ -54,7 +54,7 @@ export const createInstitutionAdapterClient = ({ provider, baseUrl, secret, time
       validateCommand(command);
       const key = String(idempotencyKey || "").trim();
       if (key.length < 16 || key.length > 128) throw new InstitutionAdapterError("INVALID_IDEMPOTENCY_KEY", "Idempotency-Key 长度必须为 16—128 个字符");
-      const raw = canonicalJson(command);
+      const raw = canonicalizeInstitutionCommand(command);
       const timestamp = Math.floor(Date.now() / 1000);
       const signature = createHmac("sha256", secret).update(`${timestamp}.${raw}`).digest("hex");
       const controller = new AbortController();

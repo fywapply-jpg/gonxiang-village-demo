@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 import { createHmac, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 
 const base = String(process.env.SHUZHI_TEST_BASE || "http://127.0.0.1:8787").replace(/\/$/, "");
 const orderId = process.env.SHUZHI_TEST_ORDER || "SZGS-2026-850901";
 const secrets = {
+  ca: process.env.CA_WEBHOOK_SECRET || "local-demo-ca-secret",
   logistics: process.env.LOGISTICS_WEBHOOK_SECRET || "local-demo-logistics-secret",
   payment: process.env.PAYMENT_WEBHOOK_SECRET || "local-demo-payment-secret",
   invoice: process.env.INVOICE_WEBHOOK_SECRET || "local-demo-invoice-secret",
@@ -31,6 +33,12 @@ const send = async (provider, payload, options = {}) => {
 };
 
 const logisticsPayload = { event_id: `v8530-logistics-${Date.now()}`, order_id: orderId, tracking_no: "SF202608030001", status: "in_transit", temperature: 4.1 };
+const caDigest = createHash("sha256").update(`CA-SZGS-850901:${orderId}:0x850901ca…c4`).digest("hex");
+const caPayload = { event_id: `v8530-ca-${Date.now()}`, order_id: orderId, contract_id: "CA-SZGS-850901", party: "buyer", signer_id: "m-buyer", certificate_ref: "CA-BUYER-DEMO", contract_digest: caDigest, status: "signed" };
+const ca = await send("ca", caPayload);
+add(ca.status === 202, "CA签署回调", `HTTP ${ca.status}`);
+const caReplay = await send("ca", caPayload, { eventId: ca.eventId, idempotencyKey: ca.key });
+add(caReplay.status === 200 && caReplay.body?.data?.replayed === true, "CA重复回调重放", `HTTP ${caReplay.status}`);
 const logistics = await send("logistics", logisticsPayload);
 add(logistics.status === 202, "物流签名回调", `HTTP ${logistics.status}`);
 const logisticsReplay = await send("logistics", logisticsPayload, { eventId: logistics.eventId, idempotencyKey: logistics.key });

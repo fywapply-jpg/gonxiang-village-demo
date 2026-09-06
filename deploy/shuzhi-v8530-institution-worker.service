@@ -1,0 +1,29 @@
+[Unit]
+Description=数智供社 v8530 institution outbox worker
+After=network.target shuzhi-v8530.service
+Requires=shuzhi-v8530.service
+
+[Service]
+Type=simple
+User=shuzhi
+Group=shuzhi
+WorkingDirectory=/opt/shuzhi-v8530
+EnvironmentFile=/etc/shuzhi-v8530.env
+ExecStartPre=/usr/bin/node /opt/shuzhi-v8530/scripts/check-shuzhi-v8530-readiness.mjs --production
+ExecStart=/usr/bin/node /opt/shuzhi-v8530/scripts/run-shuzhi-institution-worker.mjs
+Restart=always
+RestartSec=3
+UMask=027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectControlGroups=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/var/lib/shuzhi-v8530 /var/backups/shuzhi-v8530
+
+[Install]
+WantedBy=multi-user.target

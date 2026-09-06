@@ -75,6 +75,7 @@ try {
       [supplierToken]: { id: "supplier-user", name: "供货经办人", role: "supplier", merchant_id: "m-supplier" },
     }),
     SHUZHI_ALLOWED_ORIGIN: "https://app.example.com", VITE_API_BASE: "https://api.example.com",
+    CA_WEBHOOK_SECRET: "role-ca-secret-123456789012345678901234",
     LOGISTICS_WEBHOOK_SECRET: "role-logistics-secret-123456789012345678901234",
     PAYMENT_WEBHOOK_SECRET: "role-payment-secret-1234567890123456789012345",
     INVOICE_WEBHOOK_SECRET: "role-invoice-secret-12345678901234567890123456",

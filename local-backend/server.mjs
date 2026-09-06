@@ -4,6 +4,15 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import {
+  enqueueInstitutionCommand,
+  ensureInstitutionOutboxSchema,
+  institutionOutboxOverview,
+  InstitutionOutboxError,
+  publicInstitutionCommand,
+  requeueDeadInstitutionCommand,
+} from "../institution-adapters/shared/outbox.mjs";
+import { canonicalizeInstitutionCommand } from "../institution-adapters/shared/client.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT || 8787);
@@ -60,12 +69,13 @@ const integrationPorts = [
 const webhookReplayWindowSeconds = Number(process.env.SHUZHI_WEBHOOK_REPLAY_WINDOW_SECONDS || 300);
 if (!Number.isInteger(webhookReplayWindowSeconds) || webhookReplayWindowSeconds < 30 || webhookReplayWindowSeconds > 900) throw new Error("SHUZHI_WEBHOOK_REPLAY_WINDOW_SECONDS 必须是 30—900 秒的整数");
 const integrationSecrets = {
+  ca: process.env.CA_WEBHOOK_SECRET || (productionMode ? "" : "local-demo-ca-secret"),
   logistics: process.env.LOGISTICS_WEBHOOK_SECRET || (productionMode ? "" : "local-demo-logistics-secret"),
   payment: process.env.PAYMENT_WEBHOOK_SECRET || (productionMode ? "" : "local-demo-payment-secret"),
   invoice: process.env.INVOICE_WEBHOOK_SECRET || (productionMode ? "" : "local-demo-invoice-secret"),
   regulator: process.env.REGULATOR_WEBHOOK_SECRET || (productionMode ? "" : "local-demo-regulator-secret"),
 };
-if (productionMode && Object.values(integrationSecrets).some((secret) => String(secret).length < 32)) throw new Error("生产模式必须为物流、支付、发票和监管回调配置不少于 32 个字符的独立密钥");
+if (productionMode && Object.values(integrationSecrets).some((secret) => String(secret).length < 32)) throw new Error("生产模式必须为 CA、物流、支付、发票和监管回调配置不少于 32 个字符的独立密钥");
 const tradeConfig = {
   settlement_models: [
     { key: "advance", name: "预付款 + 尾款", badge: "适合定制/备产" },
@@ -203,12 +213,14 @@ const adminRole = (req) => {
   return Object.prototype.hasOwnProperty.call(adminRoleRules, key) ? key : "super";
 };
 const hasAdminPermission = (req, module, write = false) => {
+  const principal = principalFor(req);
+  if (!principal || !["admin", "demo"].includes(principal.type)) return false;
   const permission = adminPermissionMatrix[adminRole(req)]?.[module] || "none";
   return permission === "full" || (!write && permission === "read");
 };
 mkdirSync(dirname(dbPath), { recursive: true });
 const db = new DatabaseSync(dbPath);
-db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
+db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
 db.exec(`
   CREATE TABLE IF NOT EXISTS organizations (id TEXT PRIMARY KEY, name TEXT NOT NULL, type TEXT NOT NULL, region TEXT, status TEXT NOT NULL DEFAULT 'active', created_at TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS merchants (id TEXT PRIMARY KEY, organization_id TEXT NOT NULL, name TEXT NOT NULL, role TEXT NOT NULL, license_status TEXT NOT NULL, bank_status TEXT NOT NULL, risk_level TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY (organization_id) REFERENCES organizations(id));
@@ -236,10 +248,11 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS operation_progress (module_key TEXT PRIMARY KEY, domain TEXT NOT NULL, step INTEGER NOT NULL DEFAULT -1, status TEXT NOT NULL DEFAULT 'ready', updated_at TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS operation_events (id INTEGER PRIMARY KEY AUTOINCREMENT, module_key TEXT NOT NULL, domain TEXT NOT NULL, step INTEGER NOT NULL, title TEXT NOT NULL, evidence TEXT NOT NULL, actor TEXT NOT NULL, result TEXT NOT NULL, created_at TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS business_events (id INTEGER PRIMARY KEY AUTOINCREMENT, feature_key TEXT NOT NULL, domain TEXT NOT NULL, action TEXT NOT NULL, actor TEXT NOT NULL, payload TEXT NOT NULL DEFAULT '{}', status TEXT NOT NULL DEFAULT 'accepted', idempotency_key TEXT UNIQUE, created_at TEXT NOT NULL);
-  CREATE TABLE IF NOT EXISTS request_idempotency (idempotency_key TEXT PRIMARY KEY, principal_id TEXT NOT NULL, method TEXT NOT NULL, path TEXT NOT NULL, response_status INTEGER NOT NULL, response_data TEXT NOT NULL, created_at TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS request_idempotency (idempotency_key TEXT PRIMARY KEY, principal_id TEXT NOT NULL, method TEXT NOT NULL, path TEXT NOT NULL, request_hash TEXT, response_status INTEGER NOT NULL, response_data TEXT NOT NULL, created_at TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS user_sessions (token_hash TEXT PRIMARY KEY, principal_json TEXT NOT NULL, expires_at TEXT NOT NULL, created_at TEXT NOT NULL, revoked_at TEXT);
   CREATE TABLE IF NOT EXISTS integration_callbacks (id INTEGER PRIMARY KEY AUTOINCREMENT, provider TEXT NOT NULL, event_id TEXT NOT NULL, idempotency_key TEXT NOT NULL UNIQUE, signature TEXT NOT NULL, payload TEXT NOT NULL, status TEXT NOT NULL, received_at TEXT NOT NULL, processed_at TEXT, UNIQUE(provider,event_id));
 `);
+ensureInstitutionOutboxSchema(db);
 // v8533 结算审计迁移：把平台技术服务费的计费基数与费额一起落库，
 // 避免只保存费额而无法证明“商品净额×费率”的口径。旧库安全补列，不改变历史结算记录。
 if (!db.prepare("PRAGMA table_info(settlement_records)").all().some((column) => column.name === "platform_fee_base")) {
@@ -249,6 +262,11 @@ if (!db.prepare("PRAGMA table_info(settlement_records)").all().some((column) => 
 // supplier; new applications explicitly record the selected business role.
 if (!db.prepare("PRAGMA table_info(merchant_applications)").all().some((column) => column.name === "business_role")) {
   db.exec("ALTER TABLE merchant_applications ADD COLUMN business_role TEXT NOT NULL DEFAULT 'supplier'");
+}
+// 幂等键必须同时绑定请求体；否则同一主体在同一路径误用旧键并更换金额、数量或决定时，
+// 服务端会返回旧响应，掩盖真实冲突。旧记录保留 NULL 以兼容升级，新请求全部写入 SHA-256。
+if (!db.prepare("PRAGMA table_info(request_idempotency)").all().some((column) => column.name === "request_hash")) {
+  db.exec("ALTER TABLE request_idempotency ADD COLUMN request_hash TEXT");
 }
 
 const now = () => new Date().toISOString();
@@ -509,20 +527,22 @@ const canActForOrder = (req, order, side) => {
   return Boolean(order && principal && allowedRoles.includes(principal.role) && (principal.merchant_ids || []).includes(side === "buyer" ? order.buyer_id : order.supplier_id));
 };
 const requestKey = (req, payload = {}) => String(req.headers["idempotency-key"] || payload.idempotency_key || "").trim();
-const replayIdempotent = (req, res, key) => {
+const requestHash = (payload) => createHash("sha256").update(canonicalizeInstitutionCommand(payload || {})).digest("hex");
+const replayIdempotent = (req, res, key, payload) => {
   if (!key) return false;
   const principal = principalFor(req);
   const row = db.prepare("SELECT * FROM request_idempotency WHERE idempotency_key=?").get(key);
   if (!row) return false;
   if (row.principal_id !== principal?.id || row.method !== req.method || row.path !== new URL(req.url, `http://${req.headers.host || "localhost"}`).pathname) { error(res, 409, "幂等键已被其他请求占用"); return true; }
+  if (!row.request_hash || row.request_hash !== requestHash(payload)) { error(res, 409, "幂等键对应的请求内容已发生变化或无法安全复用"); return true; }
   json(res, row.response_status, JSON.parse(row.response_data));
   return true;
 };
-const saveIdempotent = (req, key, status, data) => {
+const saveIdempotent = (req, key, status, data, payload) => {
   if (!key) return;
   const principal = principalFor(req);
   const path = new URL(req.url, `http://${req.headers.host || "localhost"}`).pathname;
-  db.prepare("INSERT OR IGNORE INTO request_idempotency(idempotency_key,principal_id,method,path,response_status,response_data,created_at) VALUES (?,?,?,?,?,?,?)").run(key, principal?.id || "anonymous", req.method, path, status, JSON.stringify(data), now());
+  db.prepare("INSERT OR IGNORE INTO request_idempotency(idempotency_key,principal_id,method,path,request_hash,response_status,response_data,created_at) VALUES (?,?,?,?,?,?,?,?)").run(key, principal?.id || "anonymous", req.method, path, requestHash(payload), status, JSON.stringify(data), now());
 };
 const orderView = (id) => {
   const order = db.prepare(`SELECT o.*, b.name buyer_name, s.name supplier_name FROM orders o JOIN merchants b ON b.id=o.buyer_id JOIN merchants s ON s.id=o.supplier_id WHERE o.id=?`).get(id);
@@ -601,6 +621,11 @@ const finiteNonNegative = (value, max = Number.MAX_SAFE_INTEGER) => Number.isFin
 const normalizeWebhookStatus = (provider, value) => {
   const incoming = String(value || "").trim().toLowerCase();
   const maps = {
+    ca: new Map([
+      ["signed", "signed"], ["completed", "signed"], ["success", "signed"], ["已签署", "signed"], ["已完成", "signed"],
+      ["pending", "pending"], ["processing", "pending"], ["待签署", "pending"], ["处理中", "pending"],
+      ["failed", "failed"], ["rejected", "failed"], ["cancelled", "failed"], ["canceled", "failed"], ["签署失败", "failed"],
+    ]),
     logistics: new Map([
       ["in_transit", "运输中"], ["shipped", "运输中"], ["运输中", "运输中"], ["出库", "运输中"],
       ["delivered", "已送达"], ["arrived", "已送达"], ["signed", "已送达"], ["已签收", "已送达"], ["已送达", "已送达"],
@@ -638,8 +663,32 @@ const featureView = (item) => ({
   last_event_at: db.prepare("SELECT MAX(created_at) AS t FROM business_events WHERE feature_key=?").get(item.key).t || null,
 });
 const businessEventView = (row) => ({ ...row, payload: JSON.parse(row.payload || "{}") });
+const institutionCallbackUrl = (provider) => {
+  const base = String(process.env.VITE_API_BASE || "").trim().replace(/\/+$/, "");
+  try {
+    const url = new URL(base);
+    if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash || url.pathname !== "/") throw new Error("invalid");
+  } catch { throw new HttpError(503, "生产机构回调地址未配置有效的 HTTPS API 根地址"); }
+  return `${base}/api/v1/integrations/${provider}/webhook`;
+};
+const merchantParty = (merchantId, creditCode) => {
+  const row = db.prepare("SELECT m.id,m.name,o.name organization_name FROM merchants m JOIN organizations o ON o.id=m.organization_id WHERE m.id=?").get(merchantId);
+  const code = String(creditCode || "").trim();
+  if (!row || !code) throw new HttpError(400, "机构指令缺少交易主体统一社会信用代码");
+  if (!/^[0-9A-Z]{15,18}$/i.test(code)) throw new HttpError(400, "统一社会信用代码格式不正确");
+  return { merchant_id: row.id, legal_name: row.organization_name || row.name, credit_code: code };
+};
+const enqueueProductionInstitutionCommand = (input) => enqueueInstitutionCommand(db, {
+  ...input,
+  command: {
+    command_id: input.command.command_id,
+    occurred_at: input.command.occurred_at || now(),
+    callback_url: institutionCallbackUrl(input.provider),
+    ...input.command,
+  },
+});
 const processIntegrationWebhook = async (provider, req, res) => {
-  const readinessEnv = { logistics: "SHUZHI_LOGISTICS_READY", payment: "SHUZHI_PAYMENT_READY", invoice: "SHUZHI_INVOICE_READY", regulator: "SHUZHI_REGULATOR_READY" };
+  const readinessEnv = { ca: "SHUZHI_CA_READY", logistics: "SHUZHI_LOGISTICS_READY", payment: "SHUZHI_PAYMENT_READY", invoice: "SHUZHI_INVOICE_READY", regulator: "SHUZHI_REGULATOR_READY" };
   if (productionMode && process.env[readinessEnv[provider]] !== "true") throw new HttpError(503, `${provider} 机构联调尚未完成，暂不接收生产回调`);
   const raw = await rawBody(req);
   verifyWebhook(provider, req, raw);
@@ -658,17 +707,43 @@ const processIntegrationWebhook = async (provider, req, res) => {
     if (provider !== "regulator") {
       const order = orderId ? db.prepare("SELECT * FROM orders WHERE id=?").get(orderId) : null;
       if (!order) throw new HttpError(404, "回调关联的交易不存在");
-      if (provider === "logistics") {
+      if (provider === "ca") {
+        const contractId = String(payload.contract_id || "").trim();
+        const party = String(payload.party || "").trim();
+        const certificateRef = String(payload.certificate_ref || "").trim();
+        const digest = String(payload.contract_digest || "").trim().toLowerCase();
+        const status = normalizeWebhookStatus("ca", payload.status);
+        if (!contractId || !["buyer", "supplier"].includes(party) || !certificateRef || !digest || !status) throw new HttpError(400, "CA回调字段或状态不完整");
+        const contract = db.prepare("SELECT * FROM contracts WHERE id=? AND order_id=? LIMIT 1").get(contractId, orderId);
+        if (!contract) throw new HttpError(404, "回调关联的合同不存在");
+        const expectedDigest = createHash("sha256").update(`${contract.id}:${orderId}:${contract.hash}`).digest("hex");
+        if (digest !== expectedDigest) throw new HttpError(409, "CA回调合同摘要与平台记录不一致");
+        if (db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(orderId)) throw new HttpError(409, "交易已结算，禁止CA回调覆盖账本");
+        if (status === "failed") {
+          db.prepare("UPDATE contracts SET status='签署失败' WHERE id=? AND status<>'已签署'").run(contract.id);
+          db.prepare("UPDATE orders SET contract_status='签署失败',updated_at=? WHERE id=? AND contract_status<>'已签署'").run(t, orderId);
+          nextAction = "CA签署失败，需由授权签约人复核后重新发起";
+        } else if (status === "signed") {
+          const existingSignature = db.prepare("SELECT * FROM contract_signatures WHERE contract_id=? AND party=?").get(contract.id, party);
+          if (existingSignature && (existingSignature.certificate_ref !== certificateRef || existingSignature.signer_id !== String(payload.signer_id || "ca-provider"))) throw new HttpError(409, "该签署方已有不同的CA签署证据");
+          if (!existingSignature) db.prepare("INSERT INTO contract_signatures(contract_id,order_id,party,signer_id,signer_name,certificate_ref,signed_at) VALUES (?,?,?,?,?,?,?)").run(contract.id, orderId, party, String(payload.signer_id || "ca-provider"), String(payload.signer_name || "CA机构回传签署人").slice(0, 120), certificateRef, t);
+          const count = Number(db.prepare("SELECT COUNT(*) AS n FROM contract_signatures WHERE contract_id=? AND party IN ('buyer','supplier')").get(contract.id).n);
+          const signed = count >= 2;
+          db.prepare("UPDATE contracts SET status=?,signed_at=CASE WHEN ? THEN COALESCE(signed_at,?) ELSE signed_at END WHERE id=?").run(signed ? "已签署" : "待双方签署", signed ? 1 : 0, t, contract.id);
+          db.prepare("UPDATE orders SET contract_status=?,updated_at=? WHERE id=?").run(signed ? "已签署" : "待双方签署", t, orderId);
+          nextAction = signed ? "双方CA签署已完成，可进入支付条件确认" : "已记录一方CA签署，等待另一方签署";
+        }
+      } else if (provider === "logistics") {
         const trackingNo = String(payload.tracking_no || "").trim();
         if (!trackingNo) throw new HttpError(400, "物流回调缺少 tracking_no");
-        const shipment = db.prepare("SELECT * FROM shipments WHERE order_id=? AND tracking_no=? LIMIT 1").get(orderId, trackingNo);
+        const shipment = db.prepare("SELECT * FROM shipments WHERE order_id=? AND (tracking_no=? OR tracking_no LIKE 'PENDING-%') ORDER BY updated_at DESC LIMIT 1").get(orderId, trackingNo);
         if (!shipment) throw new HttpError(404, "回调关联的运单不存在");
         const status = normalizeWebhookStatus("logistics", payload.status);
         if (!status) throw new HttpError(400, "物流回调状态不在允许范围");
         if (db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(orderId)) throw new HttpError(409, "交易已完成结算，禁止物流回调覆盖履约账本");
         if (shipment.status === "已送达" && status !== "已送达") throw new HttpError(409, "运单已送达，禁止回调回退覆盖");
         const arrivedAt = status === "已送达" ? t : shipment.arrived_at;
-        db.prepare("UPDATE shipments SET status=?,temperature=?,arrived_at=?,evidence=?,updated_at=? WHERE id=?").run(status, payload.temperature == null ? shipment.temperature : Number(payload.temperature), arrivedAt, String(payload.evidence || "第三方物流签名回传"), t, shipment.id);
+        db.prepare("UPDATE shipments SET tracking_no=?,status=?,temperature=?,arrived_at=?,evidence=?,updated_at=? WHERE id=?").run(trackingNo, status, payload.temperature == null ? shipment.temperature : Number(payload.temperature), arrivedAt, String(payload.evidence || "第三方物流签名回传"), t, shipment.id);
         if (status === "已送达") db.prepare("UPDATE orders SET fulfillment_step=CASE WHEN fulfillment_step<8 THEN 8 ELSE fulfillment_step END,updated_at=? WHERE id=?").run(t, orderId);
         nextAction = status === "已送达" ? "待采购方复磅、抽检并验收" : "继续跟踪物流状态";
       } else if (provider === "payment") {
@@ -677,6 +752,8 @@ const processIntegrationWebhook = async (provider, req, res) => {
         const paymentId = String(payload.payment_id || "").trim();
         const payment = db.prepare("SELECT * FROM payments WHERE order_id=? AND (?='' OR id=?) LIMIT 1").get(orderId, paymentId, paymentId);
         if (!payment) throw new HttpError(404, "回调关联的托管支付记录不存在");
+        if (productionMode && payload.amount === undefined) throw new HttpError(400, "生产支付回调必须提供 amount 用于资金核对");
+        if (productionMode && !String(payload.provider_transaction_id || "").trim()) throw new HttpError(400, "生产支付回调必须提供机构交易号");
         if (payload.amount !== undefined && (!finitePositive(payload.amount, 1e12) || Math.abs(Number(payload.amount) - Number(payment.amount)) > 0.01)) throw new HttpError(409, "支付回调金额与托管记录不一致");
         if (db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(orderId)) throw new HttpError(409, "交易已完成结算，禁止支付回调覆盖账本");
         const paidStates = new Set(["已入金待验收", "待验收分账", "机构已确认（验收后分账）", "已支付"]);
@@ -684,11 +761,29 @@ const processIntegrationWebhook = async (provider, req, res) => {
         if (payment.status === "已分账") throw new HttpError(409, "支付记录已分账，禁止回调覆盖账本");
         if (paidStates.has(payment.status) && paymentState !== "paid") throw new HttpError(409, "资金已确认，禁止支付回调回退状态");
         if (failedStates.has(payment.status) && paymentState !== "failed") throw new HttpError(409, "支付已终止，必须新建支付单后重试");
+        const releaseRequested = String(payload.action || "").trim().toLowerCase() === "release";
+        if (releaseRequested && paymentState === "paid") {
+          if (!paidStates.has(payment.status)) throw new HttpError(409, "分账回调前托管资金尚未进入可分账状态");
+          const contract = db.prepare("SELECT id,status FROM contracts WHERE order_id=? ORDER BY id LIMIT 1").get(orderId);
+          const accepted = db.prepare("SELECT id FROM acceptances WHERE order_id=? AND result='accepted' LIMIT 1").get(orderId);
+          const invoice = db.prepare("SELECT id,amount,status FROM invoices WHERE order_id=? AND status='已开具' LIMIT 1").get(orderId);
+          if (!contract || contract.status !== "已签署" || !accepted || !invoice || Math.abs(Number(invoice.amount) - Number(payment.amount)) > 0.01) throw new HttpError(409, "合同、验收和发票条件未齐备，禁止机构分账回调落账");
+          const feeCalc = platformFeeForOrder(orderId, Number(payment.amount));
+          const instructionRef = String(payload.provider_transaction_id || payload.instruction_ref || eventId).trim().slice(0, 180);
+          if (db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(orderId)) throw new HttpError(409, "交易已经存在分账记录，禁止重复分账");
+          db.prepare("INSERT INTO settlement_records(id,order_id,amount,platform_fee,platform_fee_base,status,instruction_ref,settled_at,created_at) VALUES (?,?,?,?,?,?,?,?,?)").run(instructionRef, orderId, Number(payment.amount), feeCalc.fee, feeCalc.base, "settled", instructionRef, t, t);
+          db.prepare("UPDATE payments SET status='已分账',paid_at=COALESCE(paid_at,?) WHERE id=?").run(t, payment.id);
+          db.prepare("UPDATE orders SET status='已完成',payment_status='已分账',fulfillment_step=CASE WHEN fulfillment_step<11 THEN 11 ELSE fulfillment_step END,updated_at=? WHERE id=?").run(t, orderId);
+          db.prepare("INSERT INTO fulfillment_events(order_id,step,title,evidence,actor,created_at) VALUES (?,?,?,?,?,?)").run(orderId, 10, "机构条件分账结算", instructionRef, `integration-payment:${payload.provider_transaction_id || eventId}`, t);
+          db.prepare("INSERT INTO fulfillment_events(order_id,step,title,evidence,actor,created_at) VALUES (?,?,?,?,?,?)").run(orderId, 11, "四流三账对账关账", `RECON-${instructionRef}`, `integration-payment:${payload.provider_transaction_id || eventId}`, t);
+          nextAction = "机构分账已确认，交易已完成四流三账关账";
+        } else {
         const paid = paymentState === "paid";
         const nextPaymentStatus = paid ? (paidStates.has(payment.status) ? payment.status : "已入金待验收") : paymentState === "failed" ? "支付失败" : "机构待确认";
         db.prepare("UPDATE payments SET status=?,paid_at=? WHERE id=?").run(nextPaymentStatus, paid ? (payment.paid_at || t) : payment.paid_at, payment.id);
         db.prepare("UPDATE orders SET payment_status=?,updated_at=? WHERE id=?").run(paid ? "机构已确认（验收后分账）" : nextPaymentStatus === "支付失败" ? "支付失败" : "机构待确认", t, orderId);
         nextAction = paid ? "资金已入托管，验收合格后才能分账" : nextPaymentStatus === "支付失败" ? "支付失败，请按机构退款/重试流程处理" : "等待支付机构最终确认";
+        }
       } else if (provider === "invoice") {
         const invoiceNo = String(payload.invoice_no || "").trim();
         if (!invoiceNo) throw new HttpError(400, "发票回调缺少 invoice_no");
@@ -726,7 +821,7 @@ const server = createServer(async (req, res) => {
   const path = url.pathname;
   if (path === "/health" || path === "/health/live") return json(res, 200, { status: "ok", database: "sqlite", dbPath: productionMode ? undefined : dbPath, version: healthVersion, platform_version: platformVersion, api_version: apiReleaseVersion, runtime_mode: runtimeMode, reserved_ports: integrationPorts });
   if (path === "/health/ready") {
-    const requiredTables = ["organizations", "merchants", "products", "orders", "order_items", "inventory_reservations", "contracts", "payments", "invoices", "shipments", "acceptances", "audit_logs", "operation_progress", "request_idempotency", "integration_callbacks", "user_sessions"];
+    const requiredTables = ["organizations", "merchants", "products", "orders", "order_items", "inventory_reservations", "contracts", "payments", "invoices", "shipments", "acceptances", "audit_logs", "operation_progress", "request_idempotency", "integration_callbacks", "institution_outbox", "user_sessions"];
     const placeholders = requiredTables.map(() => "?").join(",");
     const rows = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name IN (${placeholders})`).all(...requiredTables);
     const present = new Set(rows.map((row) => row.name));
@@ -822,7 +917,7 @@ const server = createServer(async (req, res) => {
     const payload = await body(req);
     const idemKey = requestKey(req, payload);
     if (productionMode && !idemKey) return error(res, 400, "生产写请求必须提供 Idempotency-Key");
-    if (replayIdempotent(req, res, idemKey)) return;
+    if (replayIdempotent(req, res, idemKey, payload)) return;
     const featureKey = String(payload.feature_key || "");
     const feature = platformFeatureRules.find((item) => item.key === featureKey);
     const action = String(payload.action || "").trim();
@@ -838,10 +933,10 @@ const server = createServer(async (req, res) => {
     const result = db.prepare("INSERT INTO business_events(feature_key,domain,action,actor,payload,status,idempotency_key,created_at) VALUES (?,?,?,?,?,?,?,?)").run(featureKey, feature.domain, action, actor, JSON.stringify(payload.payload || {}), "accepted", idempotencyKey, t);
     log(actor, "PLATFORM_EVENT", featureKey, `${action}${payload.reference_id ? ` · ${payload.reference_id}` : ""}`);
     const data = businessEventView(db.prepare("SELECT * FROM business_events WHERE id=?").get(result.lastInsertRowid));
-    saveIdempotent(req, idemKey, 201, data);
+    saveIdempotent(req, idemKey, 201, data, payload);
     return json(res, 201, data);
   }
-  const webhookMatch = path.match(/^\/api\/v1\/integrations\/(logistics|payment|invoice|regulator)\/webhook$/);
+  const webhookMatch = path.match(/^\/api\/v1\/integrations\/(ca|logistics|payment|invoice|regulator)\/webhook$/);
   if (webhookMatch && req.method === "POST") return await processIntegrationWebhook(webhookMatch[1], req, res);
   const operationMatch = path.match(/^\/api\/v1\/operations\/([^/]+)$/);
   if (operationMatch && req.method === "GET") {
@@ -856,7 +951,7 @@ const server = createServer(async (req, res) => {
     const [, moduleKey, action] = operationAdvanceMatch;
     const payload = await body(req), idemKey = requestKey(req, payload);
     if (productionMode && !idemKey) return error(res, 400, "生产业务工作流必须提供 Idempotency-Key");
-    if (replayIdempotent(req, res, idemKey)) return;
+    if (replayIdempotent(req, res, idemKey, payload)) return;
     const rule = operationWorkflowRules.find((item) => item.key === moduleKey);
     if (!rule) return error(res, 404, "业务模块不存在");
     const current = db.prepare("SELECT * FROM operation_progress WHERE module_key=?").get(moduleKey) || { step: -1 };
@@ -875,7 +970,7 @@ const server = createServer(async (req, res) => {
     db.prepare("INSERT INTO operation_events(module_key,domain,step,title,evidence,actor,result,created_at) VALUES (?,?,?,?,?,?,?,?)").run(moduleKey, rule.domain, next, rule.steps[next], evidence, operationActor, "环节已完成，证据已归档", t);
     log(operationActor, "ADVANCE_OPERATION", moduleKey, `${rule.steps[next]} · ${evidence}`);
     const data = operationView(moduleKey);
-    saveIdempotent(req, idemKey, 200, data);
+    saveIdempotent(req, idemKey, 200, data, payload);
     return json(res, 200, data);
   }
   if (path.startsWith("/api/v1/admin") && !authorized(req)) return error(res, 401, "需要管理员授权");
@@ -903,7 +998,7 @@ const server = createServer(async (req, res) => {
     if (!canAccessMerchant(req, areaMatch[1])) return error(res, 403, "无权维护该商户服务区域");
     const payload = await body(req), idemKey = requestKey(req, payload);
     if (productionMode && !idemKey) return error(res, 400, "生产服务区域维护必须提供 Idempotency-Key");
-    if (replayIdempotent(req, res, idemKey)) return;
+    if (replayIdempotent(req, res, idemKey, payload)) return;
     const merchant = db.prepare("SELECT id FROM merchants WHERE id=?").get(areaMatch[1]);
     if (!merchant) return error(res, 404, "商户不存在");
     const lat = Number(payload.center_lat), lng = Number(payload.center_lng), radius = Number(payload.radius_km), maxDailyOrders = Number(payload.max_daily_orders || 0);
@@ -912,7 +1007,7 @@ const server = createServer(async (req, res) => {
     db.prepare("INSERT INTO merchant_service_areas VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET center_lat=excluded.center_lat,center_lng=excluded.center_lng,radius_km=excluded.radius_km,regions=excluded.regions,delivery_modes=excluded.delivery_modes,max_daily_orders=excluded.max_daily_orders,status='active',updated_at=excluded.updated_at").run(`AREA-${merchant.id}`, merchant.id, String(payload.area_type || "radius"), lat, lng, radius, JSON.stringify(payload.regions || []), JSON.stringify(payload.delivery_modes || []), maxDailyOrders, "active", t);
     log(actorFor(req, "服务区域管理员"), "UPDATE_SERVICE_AREA", merchant.id, `半径${radius}km`);
     const data = serviceAreaView(merchant.id);
-    saveIdempotent(req, idemKey, 200, data);
+    saveIdempotent(req, idemKey, 200, data, payload);
     return json(res, 200, data);
   }
   const dispatchMatch = path.match(/^\/api\/v1\/trades\/([^/]+)\/dispatch-check$/);
@@ -932,7 +1027,7 @@ const server = createServer(async (req, res) => {
     const payload = await body(req);
     const idemKey = requestKey(req, payload);
     if (productionMode && !idemKey) return error(res, 400, "生产入驻申请必须提供 Idempotency-Key");
-    if (replayIdempotent(req, res, idemKey)) return;
+    if (replayIdempotent(req, res, idemKey, payload)) return;
     const required = ["entity_type", "name", "credit_code", "legal_name"];
     if (required.some((key) => !String(payload[key] || "").trim())) return error(res, 400, "主体名称、统一社会信用代码和法人不能为空");
     if (!/^[0-9A-Z]{18}$/i.test(String(payload.credit_code).trim())) return error(res, 400, "统一社会信用代码格式不正确");
@@ -946,7 +1041,7 @@ const server = createServer(async (req, res) => {
     db.prepare("INSERT INTO merchant_applications VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(id, String(payload.entity_type), String(payload.name).trim(), creditCode, String(payload.legal_name).trim(), String(payload.legal_id_masked || ""), String(payload.address || ""), String(payload.scope || ""), String(payload.capital || ""), JSON.stringify(payload.documents || []), "pending", null, null, t, null, null, t, businessRole);
     log("merchant-applicant", "SUBMIT_APPLICATION", id, "商户入驻申请已提交，等待后台审核");
     const data = applicationView(id);
-    saveIdempotent(req, idemKey, 201, data);
+    saveIdempotent(req, idemKey, 201, data, payload);
     return json(res, 201, data);
   }
   const applicationMatch = path.match(/^\/api\/v1\/merchant-applications\/([^/]+)$/);
@@ -963,7 +1058,7 @@ const server = createServer(async (req, res) => {
     if (!hasAdminPermission(req, "audit", true)) return error(res, 403, "当前管理员角色无商户审核操作权限");
     const payload = await body(req), decision = String(payload.decision || ""), idemKey = requestKey(req, payload);
     if (productionMode && !idemKey) return error(res, 400, "生产商户审核必须提供 Idempotency-Key");
-    if (replayIdempotent(req, res, idemKey)) return;
+    if (replayIdempotent(req, res, idemKey, payload)) return;
     const app = db.prepare("SELECT * FROM merchant_applications WHERE id=?").get(reviewMatch[1]);
     if (!app) return error(res, 404, "入驻申请不存在");
     if (!["pending", "review"].includes(app.status)) return error(res, 409, "该入驻申请已完成审核，不能重复改变结论");
@@ -983,7 +1078,7 @@ const server = createServer(async (req, res) => {
     }
     log(actorFor(req, "商户审核岗"), `REVIEW_APPLICATION_${decision.toUpperCase()}`, app.id, String(payload.note || "").slice(0, 160));
     const data = applicationView(app.id);
-    saveIdempotent(req, idemKey, 200, data);
+    saveIdempotent(req, idemKey, 200, data, payload);
     return json(res, 200, data);
   }
   const verificationMatch = path.match(/^\/api\/v1\/admin\/merchants\/([^/]+)\/verification$/);
@@ -991,7 +1086,7 @@ const server = createServer(async (req, res) => {
     if (!hasAdminPermission(req, "audit", true)) return error(res, 403, "当前管理员角色无主体核验操作权限");
     const payload = await body(req), merchantId = verificationMatch[1], idemKey = requestKey(req, payload);
     if (productionMode && !idemKey) return error(res, 400, "生产主体核验必须提供 Idempotency-Key");
-    if (replayIdempotent(req, res, idemKey)) return;
+    if (replayIdempotent(req, res, idemKey, payload)) return;
     const merchant = db.prepare("SELECT * FROM merchants WHERE id=?").get(merchantId);
     if (!merchant) return error(res, 404, "商户不存在");
     const types = ["license", "bank"];
@@ -1012,7 +1107,7 @@ const server = createServer(async (req, res) => {
       }
       log(actor, "VERIFY_MERCHANT", merchantId, updates.map((item) => `${item.type}:${item.status}`).join(",") + (evidenceRef ? ` · ${evidenceRef}` : ""));
       const data = db.prepare("SELECT * FROM merchants WHERE id=?").get(merchantId);
-      saveIdempotent(req, idemKey, 200, data);
+      saveIdempotent(req, idemKey, 200, data, payload);
       db.exec("COMMIT");
       return json(res, 200, data);
     } catch (cause) {
@@ -1025,7 +1120,7 @@ const server = createServer(async (req, res) => {
     if (!hasAdminPermission(req, "merchant", true)) return error(res, 403, "当前管理员角色无商户启用权限");
     const payload = await body(req), idemKey = requestKey(req, payload);
     if (productionMode && !idemKey) return error(res, 400, "生产商户启用必须提供 Idempotency-Key");
-    if (replayIdempotent(req, res, idemKey)) return;
+    if (replayIdempotent(req, res, idemKey, payload)) return;
     const app = db.prepare("SELECT * FROM merchant_applications WHERE id=?").get(activateMatch[1]);
     if (!app) return error(res, 404, "入驻申请不存在");
     if (app.status !== "approved") return error(res, 409, "只有审核通过的主体才能启动业务");
@@ -1036,14 +1131,14 @@ const server = createServer(async (req, res) => {
     db.prepare("UPDATE merchant_applications SET status='active',activated_at=?,updated_at=? WHERE id=?").run(t, t, app.id);
     log(actorFor(req, "商户运营岗"), "ACTIVATE_MERCHANT", app.id, "商户业务资格已启用");
     const data = applicationView(app.id);
-    saveIdempotent(req, idemKey, 200, data);
+    saveIdempotent(req, idemKey, 200, data, payload);
     return json(res, 200, data);
   }
   if (path === "/api/v1/purchase-demands" && req.method === "POST") {
     if (!authorized(req)) return error(res, 401, "需要采购需求发布授权");
     const payload = await body(req), idemKey = requestKey(req, payload);
     if (productionMode && !idemKey) return error(res, 400, "生产采购需求必须提供 Idempotency-Key");
-    if (replayIdempotent(req, res, idemKey)) return;
+    if (replayIdempotent(req, res, idemKey, payload)) return;
     const principal = principalFor(req);
     if (!privileged(req) && !["buyer", "agri"].includes(String(principal?.role || ""))) return error(res, 403, "只有采购主体可以发布采购需求");
     const buyerId = String(payload.buyer_id || (principal?.merchant_ids || [])[0] || "").trim();
@@ -1064,7 +1159,7 @@ const server = createServer(async (req, res) => {
     db.prepare("INSERT INTO purchase_demands(id,buyer_id,title,category,qty,unit,budget_max,destination,delivery_window,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").run(demandId, buyerId, title, category, qty, unit, budgetMax, destination, deliveryWindow, "open", t, t);
     log(actorFor(req, "采购需求岗"), "CREATE_PURCHASE_DEMAND", demandId, `${buyer.name} · ${title} · ${qty}${unit}`);
     const data = demandView(demandId);
-    saveIdempotent(req, idemKey, 201, data);
+    saveIdempotent(req, idemKey, 201, data, payload);
     return json(res, 201, data);
   }
   if (path === "/api/v1/purchase-demands" && req.method === "GET") {
@@ -1091,7 +1186,7 @@ const server = createServer(async (req, res) => {
     if (!authorized(req)) return error(res, 401, "需要供货报价授权");
     const payload = await body(req), idemKey = requestKey(req, payload);
     if (productionMode && !idemKey) return error(res, 400, "生产报价必须提供 Idempotency-Key");
-    if (replayIdempotent(req, res, idemKey)) return;
+    if (replayIdempotent(req, res, idemKey, payload)) return;
     const principal = principalFor(req);
     const demand = db.prepare("SELECT d.*,b.name buyer_name FROM purchase_demands d JOIN merchants b ON b.id=d.buyer_id WHERE d.id=?").get(demandQuoteMatch[1]);
     if (!demand) return error(res, 404, "采购需求不存在");
@@ -1121,7 +1216,7 @@ const server = createServer(async (req, res) => {
       db.prepare("UPDATE purchase_demands SET status='quoting',updated_at=? WHERE id=?").run(t, demand.id);
       log(actorFor(req, "供货报价岗"), "SUBMIT_DEMAND_QUOTE", quoteId, `${demand.id} · ${product.name} · ${qty}${product.unit} · ${amount}`);
       const data = quoteView(quoteId);
-      saveIdempotent(req, idemKey, 201, data);
+      saveIdempotent(req, idemKey, 201, data, payload);
       db.exec("COMMIT");
       return json(res, 201, data);
     } catch (cause) {
@@ -1134,7 +1229,7 @@ const server = createServer(async (req, res) => {
     if (!authorized(req)) return error(res, 401, "需要采购方确认报价授权");
     const payload = await body(req), idemKey = requestKey(req, payload);
     if (productionMode && !idemKey) return error(res, 400, "生产报价确认必须提供 Idempotency-Key");
-    if (replayIdempotent(req, res, idemKey)) return;
+    if (replayIdempotent(req, res, idemKey, payload)) return;
     const quote = quoteView(quoteAcceptMatch[1]);
     if (!quote) return error(res, 404, "报价不存在");
     if (!privileged(req) && !canAccessMerchant(req, quote.buyer_id)) return error(res, 403, "只有该采购主体可以确认报价");
@@ -1154,7 +1249,7 @@ const server = createServer(async (req, res) => {
       db.prepare("UPDATE purchase_demands SET updated_at=? WHERE id=?").run(t, quote.demand_id);
       log(actorFor(req, "采购确认岗"), "ACCEPT_DEMAND_QUOTE", quote.id, `${quote.demand_id} · ${quote.supplier_name} · 等待生成正式订单`);
       const data = quoteView(quote.id);
-      saveIdempotent(req, idemKey, 200, data);
+      saveIdempotent(req, idemKey, 200, data, payload);
       db.exec("COMMIT");
       return json(res, 200, data);
     } catch (cause) {
@@ -1166,7 +1261,7 @@ const server = createServer(async (req, res) => {
     if (!authorized(req)) return error(res, 401, "需要交易创建授权");
     const payload = await body(req), idemKey = requestKey(req, payload);
     if (productionMode && !idemKey) return error(res, 400, "生产订单创建必须提供 Idempotency-Key");
-    if (replayIdempotent(req, res, idemKey)) return;
+    if (replayIdempotent(req, res, idemKey, payload)) return;
     const principal = principalFor(req);
     const quoteId = String(payload.quote_id || "").trim();
     const acceptedQuote = quoteId ? quoteView(quoteId) : null;
@@ -1244,7 +1339,7 @@ const server = createServer(async (req, res) => {
       }
       log(principal?.id || "交易创建岗", "CREATE_TRADE", orderId, `${normalized.length}项商品 · 商品净额 ${goodsNet} · 服务费用 ${serviceAmount} · ${invoiceType}`);
       const data = orderView(orderId);
-      saveIdempotent(req, idemKey, 201, data);
+      saveIdempotent(req, idemKey, 201, data, payload);
       db.exec("COMMIT");
       return json(res, 201, data);
     } catch (cause) {
@@ -1274,7 +1369,7 @@ const server = createServer(async (req, res) => {
     if (!authorized(req)) return error(res, 401, "需要交易取消授权");
     const payload = await body(req), id = cancelMatch[1], idemKey = requestKey(req, payload);
     if (productionMode && !idemKey) return error(res, 400, "生产取消订单必须提供 Idempotency-Key");
-    if (replayIdempotent(req, res, idemKey)) return;
+    if (replayIdempotent(req, res, idemKey, payload)) return;
     const order = db.prepare("SELECT * FROM orders WHERE id=?").get(id);
     if (!order) return error(res, 404, "交易不存在");
     if (!canAccessOrder(req, order)) return error(res, 403, "无权取消该交易");
@@ -1292,7 +1387,7 @@ const server = createServer(async (req, res) => {
       db.prepare("INSERT INTO fulfillment_events(order_id,step,title,evidence,actor,created_at) VALUES (?,?,?,?,?,?)").run(id, Number(order.fulfillment_step), "订单取消与库存释放", `CANCEL-${id.slice(-8)} · 释放${released}项库存 · ${reason}`, actorFor(req), t);
       log(actorFor(req), "CANCEL_TRADE", id, `释放${released}项库存 · ${reason}`);
       const data = orderView(id);
-      saveIdempotent(req, idemKey, 200, data);
+      saveIdempotent(req, idemKey, 200, data, payload);
       db.exec("COMMIT");
       return json(res, 200, data);
     } catch (cause) {
@@ -1359,7 +1454,7 @@ const server = createServer(async (req, res) => {
     const payload = await body(req);
     const idemKey = requestKey(req, payload);
     if (productionMode && !idemKey) return error(res, 400, "生产商品提交必须提供 Idempotency-Key");
-    if (replayIdempotent(req, res, idemKey)) return;
+    if (replayIdempotent(req, res, idemKey, payload)) return;
     if (!["merchant_id", "name", "category", "price", "stock"].every((key) => payload[key] !== undefined && String(payload[key]).trim() !== "")) return error(res, 400, "商品名称、品类、价格、库存和商户不能为空");
     const merchant = db.prepare("SELECT * FROM merchants WHERE id=? AND license_status='verified' AND bank_status='verified'").get(String(payload.merchant_id));
     if (!merchant || !merchantVerificationReady(merchant.id)) return error(res, 403, "商户未完成资质和对公账户核验");
@@ -1377,7 +1472,7 @@ const server = createServer(async (req, res) => {
       media.forEach((item, index) => mediaStmt.run(id, String(item.media_type || "image"), String(item.url || ""), index + 1, "pending"));
       log(merchant.id, "SUBMIT_PRODUCT", id, "商品及图文/视频资料已提交上架审核");
       const data = { id, status: "pending_review" };
-      saveIdempotent(req, idemKey, 201, data);
+      saveIdempotent(req, idemKey, 201, data, payload);
       db.exec("COMMIT");
       return json(res, 201, data);
     } catch (cause) {
@@ -1390,7 +1485,7 @@ const server = createServer(async (req, res) => {
     if (!hasAdminPermission(req, "audit", true)) return error(res, 403, "当前管理员角色无商品审核操作权限");
     const payload = await body(req), decision = String(payload.decision || ""), idemKey = requestKey(req, payload);
     if (productionMode && !idemKey) return error(res, 400, "生产商品审核必须提供 Idempotency-Key");
-    if (replayIdempotent(req, res, idemKey)) return;
+    if (replayIdempotent(req, res, idemKey, payload)) return;
     if (!["approve", "reject"].includes(decision)) return error(res, 400, "上架审核决定不合法");
     const product = db.prepare("SELECT * FROM products WHERE id=?").get(productReviewMatch[1]);
     if (!product) return error(res, 404, "商品不存在");
@@ -1398,7 +1493,7 @@ const server = createServer(async (req, res) => {
     db.prepare("UPDATE product_media SET status=? WHERE product_id=?").run(decision === "approve" ? "approved" : "rejected", product.id);
     log(actorFor(req, "商品审核岗"), `REVIEW_PRODUCT_${decision.toUpperCase()}`, product.id, String(payload.note || "").slice(0, 160));
     const data = { id: product.id, status: decision === "approve" ? "approved" : "rejected" };
-    saveIdempotent(req, idemKey, 200, data);
+    saveIdempotent(req, idemKey, 200, data, payload);
     return json(res, 200, data);
   }
   const contractSignMatch = path.match(/^\/api\/v1\/trades\/([^/]+)\/contract\/sign$/);
@@ -1406,7 +1501,7 @@ const server = createServer(async (req, res) => {
     if (!authorized(req)) return error(res, 401, "需要合同签署授权");
     const payload = await body(req), orderId = contractSignMatch[1], idemKey = requestKey(req, payload);
     if (productionMode && !idemKey) return error(res, 400, "生产合同签署必须提供 Idempotency-Key");
-    if (replayIdempotent(req, res, idemKey)) return;
+    if (replayIdempotent(req, res, idemKey, payload)) return;
     const order = db.prepare("SELECT * FROM orders WHERE id=?").get(orderId);
     if (!order) return error(res, 404, "交易不存在");
     const party = String(payload.party || "").trim();
@@ -1419,8 +1514,40 @@ const server = createServer(async (req, res) => {
     if (existing) return error(res, 409, "该签署方已完成签署，禁止重复签章");
     const principal = principalFor(req);
     const certificateRef = String(payload.certificate_ref || (productionMode ? "" : `LOCAL-CA-${party.toUpperCase()}`)).trim();
-    if (!certificateRef) return error(res, 400, "必须提供企业 CA 证书引用");
+    if (!certificateRef && !productionMode) return error(res, 400, "必须提供企业 CA 证书引用");
+    if (productionMode && !String(payload.signer_authorization_ref || "").trim()) return error(res, 400, "生产CA签署必须提供签署授权引用");
     const t = now();
+    if (productionMode) {
+      const digest = createHash("sha256").update(`${contract.id}:${orderId}:${contract.hash}`).digest("hex");
+      db.exec("BEGIN");
+      try {
+        const queued = enqueueProductionInstitutionCommand({
+          provider: "ca",
+          aggregateType: "contract",
+          aggregateId: contract.id,
+          commandType: "request_signature",
+          idempotencyKey: `CA:SIGN:${contract.id}:${party}`,
+          command: {
+            command_id: `CMD-CA-SIGN-${contract.id}-${party}`,
+            order_id: orderId,
+            contract_id: contract.id,
+            contract_digest: digest,
+            party,
+            signer_id: principal.id,
+            signer_authorization_ref: String(payload.signer_authorization_ref).trim().slice(0, 240),
+          },
+          now: t,
+        });
+        log(actorFor(req, "授权签约人"), "QUEUE_CA_SIGNATURE", orderId, `${party} · ${queued.id}`);
+        const data = { ...contract, status: "待机构签署", signatures: db.prepare("SELECT party,signer_id,signer_name,certificate_ref,signed_at FROM contract_signatures WHERE contract_id=? ORDER BY party").all(contract.id), institution_outbox: publicInstitutionCommand(queued) };
+        saveIdempotent(req, idemKey, 202, data, payload);
+        db.exec("COMMIT");
+        return json(res, 202, data);
+      } catch (cause) {
+        db.exec("ROLLBACK");
+        throw cause;
+      }
+    }
     const signerName = productionMode ? actorFor(req, "授权签约人") : String(payload.signer_name || principal?.name || "授权签约人");
     db.prepare("INSERT INTO contract_signatures(contract_id,order_id,party,signer_id,signer_name,certificate_ref,signed_at) VALUES (?,?,?,?,?,?,?)").run(contract.id, orderId, party, principal?.id || `merchant-${party}`, signerName, certificateRef, t);
     const count = Number(db.prepare("SELECT COUNT(*) AS n FROM contract_signatures WHERE contract_id=? AND party IN ('buyer','supplier')").get(contract.id).n);
@@ -1430,7 +1557,7 @@ const server = createServer(async (req, res) => {
     log(productionMode ? actorFor(req, "授权签约人") : (principal?.id || `merchant-${party}`), "SIGN_CONTRACT", orderId, `${party} · ${certificateRef}`);
     const data = db.prepare("SELECT * FROM contracts WHERE id=?").get(contract.id);
     const result = { ...data, signatures: db.prepare("SELECT party,signer_id,signer_name,certificate_ref,signed_at FROM contract_signatures WHERE contract_id=? ORDER BY party").all(contract.id) };
-    saveIdempotent(req, idemKey, 201, result);
+    saveIdempotent(req, idemKey, 201, result, payload);
     return json(res, 201, result);
   }
   const settleMatch = path.match(/^\/api\/v1\/trades\/([^/]+)\/settle$/);
@@ -1439,12 +1566,12 @@ const server = createServer(async (req, res) => {
     if (!hasAdminPermission(req, "finance", true)) return error(res, 403, "只有财务结算岗位可以发起最终分账");
     const payload = await body(req), orderId = settleMatch[1], idemKey = requestKey(req, payload);
     if (productionMode && !idemKey) return error(res, 400, "生产结算必须提供 Idempotency-Key");
-    if (replayIdempotent(req, res, idemKey)) return;
+    if (replayIdempotent(req, res, idemKey, payload)) return;
     const order = db.prepare("SELECT * FROM orders WHERE id=?").get(orderId);
     if (!order) return error(res, 404, "交易不存在");
     const existing = db.prepare("SELECT * FROM settlement_records WHERE order_id=?").get(orderId);
     if (existing) return error(res, 409, "该交易已完成结算，禁止重复分账");
-    const contract = db.prepare("SELECT status FROM contracts WHERE order_id=? ORDER BY id LIMIT 1").get(orderId);
+    const contract = db.prepare("SELECT id,status FROM contracts WHERE order_id=? ORDER BY id LIMIT 1").get(orderId);
     if (!contract || contract.status !== "已签署") return error(res, 409, "合同双方签署完成前不得结算");
     const accepted = db.prepare("SELECT id FROM acceptances WHERE order_id=? AND result='accepted' LIMIT 1").get(orderId);
     if (!accepted) return error(res, 409, "验收合格前不得结算");
@@ -1460,6 +1587,40 @@ const server = createServer(async (req, res) => {
     const platformFee = feeCalc.fee;
     const instructionRef = String(payload.instruction_ref || `SETTLE-${orderId}-${Date.now()}`).trim();
     const t = now();
+    if (productionMode) {
+      const payerCreditCode = String(payload.payer_credit_code || "").trim();
+      const payeeCreditCode = String(payload.payee_credit_code || "").trim();
+      if (!payerCreditCode || !payeeCreditCode) return error(res, 400, "生产分账指令必须提供采购方和供货方统一社会信用代码");
+      db.exec("BEGIN");
+      try {
+        const queued = enqueueProductionInstitutionCommand({
+          provider: "payment",
+          aggregateType: "order",
+          aggregateId: orderId,
+          commandType: "release",
+          idempotencyKey: `PAYMENT:RELEASE:${orderId}`,
+          command: {
+            command_id: `CMD-PAYMENT-RELEASE-${orderId}`,
+            action: "release",
+            order_id: orderId,
+            payment_id: payment.id,
+            payer: merchantParty(order.buyer_id, payerCreditCode),
+            payee: merchantParty(order.supplier_id, payeeCreditCode),
+            money: { amount, currency: "CNY" },
+            condition_refs: [contract.id, accepted.id, invoice.id, payment.id, `PLATFORM-FEE:${platformFee}`],
+          },
+          now: t,
+        });
+        log(actorFor(req, "财务结算岗"), "QUEUE_PAYMENT_RELEASE", orderId, `${queued.id} · 商品净额 ${feeCalc.base} · 平台费 ${platformFee}`);
+        const data = { ...tradeLedger(orderId), settlement_pending: true, institution_outbox: publicInstitutionCommand(queued) };
+        saveIdempotent(req, idemKey, 202, data, payload);
+        db.exec("COMMIT");
+        return json(res, 202, data);
+      } catch (cause) {
+        db.exec("ROLLBACK");
+        throw cause;
+      }
+    }
     db.exec("BEGIN");
     try {
       db.prepare("INSERT INTO settlement_records(id,order_id,amount,platform_fee,platform_fee_base,status,instruction_ref,settled_at,created_at) VALUES (?,?,?,?,?,?,?,?,?)").run(instructionRef, orderId, amount, platformFee, feeCalc.base, "settled", instructionRef, t, t);
@@ -1469,7 +1630,7 @@ const server = createServer(async (req, res) => {
       db.prepare("INSERT INTO fulfillment_events(order_id,step,title,evidence,actor,created_at) VALUES (?,?,?,?,?,?)").run(orderId, 11, "四流三账对账关账", `RECON-${instructionRef}`, principalFor(req)?.id || "finance", t);
       log(principalFor(req)?.id || "finance", "SETTLE_TRADE", orderId, `${instructionRef} · 平台技术服务费 ${platformFee} · 计费基数 ${feeCalc.base}${feeCalc.fallback ? "（订单明细缺失回退）" : "（商品净额）"}`);
       const data = tradeLedger(orderId);
-      saveIdempotent(req, idemKey, 201, data);
+      saveIdempotent(req, idemKey, 201, data, payload);
       db.exec("COMMIT");
       return json(res, 201, data);
     } catch (cause) {
@@ -1483,21 +1644,60 @@ const server = createServer(async (req, res) => {
     const payload = await body(req), id = shipmentMatch[1];
     const idemKey = requestKey(req, payload);
     if (productionMode && !idemKey) return error(res, 400, "生产发运登记必须提供 Idempotency-Key");
-    if (replayIdempotent(req, res, idemKey)) return;
+    if (replayIdempotent(req, res, idemKey, payload)) return;
     const order = db.prepare("SELECT * FROM orders WHERE id=?").get(id);
     if (!order) return error(res, 404, "交易不存在");
     if (!canActForOrder(req, order, "supplier")) return error(res, 403, "只有供货方或授权后台岗位可以登记发运");
     if (productionMode && process.env.SHUZHI_LOGISTICS_READY !== "true") return error(res, 503, "物流机构尚未完成联调，暂不接受生产发运登记");
-    if (!payload.provider || !payload.tracking_no) return error(res, 400, "物流公司和运单号不能为空");
-    if (db.prepare("SELECT id FROM shipments WHERE order_id=? AND tracking_no=? LIMIT 1").get(id, String(payload.tracking_no))) return error(res, 409, "该运单已登记，禁止重复发运");
-    const shipmentId = `SHP-${randomUUID()}`, t = now();
+    if (!payload.provider) return error(res, 400, "物流公司不能为空");
+    const shipmentId = String(payload.shipment_id || `SHP-${randomUUID()}`).trim();
+    const trackingNo = String(payload.tracking_no || (productionMode ? `PENDING-${shipmentId}` : "")).trim();
+    if (!trackingNo) return error(res, 400, "物流公司和运单号不能为空");
+    if (db.prepare("SELECT id FROM shipments WHERE id=? OR (order_id=? AND tracking_no=?) LIMIT 1").get(shipmentId, id, trackingNo)) return error(res, 409, "该运单已登记，禁止重复发运");
+    const t = now();
     const shipmentTemperature = payload.temperature == null ? null : Number(payload.temperature);
     if (shipmentTemperature != null && (!Number.isFinite(shipmentTemperature) || shipmentTemperature < -80 || shipmentTemperature > 80)) return error(res, 400, "运输温度必须在 -80℃ 至 80℃之间");
     const shipmentActor = actorFor(req, "物流履约岗");
-    db.prepare("INSERT INTO shipments VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").run(shipmentId, id, String(payload.provider).trim().slice(0, 80), String(payload.tracking_no).trim().slice(0, 80), String(payload.carrier_name || "").slice(0, 120), String(payload.vehicle_no || "").slice(0, 40), shipmentTemperature, "运输中", t, null, String(payload.evidence || "第三方物流回传").slice(0, 500), t);
+    if (productionMode) {
+      if (!Array.isArray(payload.goods) || payload.goods.length === 0 || payload.goods.length > 100) return error(res, 400, "生产物流指令必须提供货物明细");
+      const consignorCode = String(payload.consignor_credit_code || "").trim();
+      const consigneeCode = String(payload.consignee_credit_code || "").trim();
+      if (!consignorCode || !consigneeCode || !payload.consignor || !payload.consignee) return error(res, 400, "生产物流指令必须提供收发货主体和统一社会信用代码");
+      db.exec("BEGIN");
+      try {
+        db.prepare("INSERT INTO shipments VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").run(shipmentId, id, String(payload.provider).trim().slice(0, 80), trackingNo.slice(0, 80), String(payload.carrier_name || "").slice(0, 120), String(payload.vehicle_no || "").slice(0, 40), shipmentTemperature, "待机构受理", null, null, String(payload.evidence || "待第三方物流受理").slice(0, 500), t);
+        const queued = enqueueProductionInstitutionCommand({
+          provider: "logistics",
+          aggregateType: "shipment",
+          aggregateId: shipmentId,
+          commandType: "create",
+          idempotencyKey: `LOGISTICS:CREATE:${shipmentId}`,
+          command: {
+            command_id: `CMD-LOGISTICS-CREATE-${shipmentId}`,
+            action: "create",
+            order_id: id,
+            shipment_id: shipmentId,
+            goods: payload.goods,
+            consignor: merchantParty(order.supplier_id, consignorCode),
+            consignee: merchantParty(order.buyer_id, consigneeCode),
+            service_level: String(payload.service_level || "standard").slice(0, 40),
+          },
+          now: t,
+        });
+        log(shipmentActor, "QUEUE_LOGISTICS_SHIPMENT", id, `${payload.provider}/${shipmentId}`);
+        const data = { ...db.prepare("SELECT * FROM shipments WHERE id=?").get(shipmentId), institution_outbox: publicInstitutionCommand(queued) };
+        saveIdempotent(req, idemKey, 202, data, payload);
+        db.exec("COMMIT");
+        return json(res, 202, data);
+      } catch (cause) {
+        db.exec("ROLLBACK");
+        throw cause;
+      }
+    }
+    db.prepare("INSERT INTO shipments VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").run(shipmentId, id, String(payload.provider).trim().slice(0, 80), trackingNo.slice(0, 80), String(payload.carrier_name || "").slice(0, 120), String(payload.vehicle_no || "").slice(0, 40), shipmentTemperature, "运输中", t, null, String(payload.evidence || "第三方物流回传").slice(0, 500), t);
     log(shipmentActor, "CREATE_SHIPMENT", id, `${payload.provider}/${payload.tracking_no}`);
     const data = db.prepare("SELECT * FROM shipments WHERE id=?").get(shipmentId);
-    saveIdempotent(req, idemKey, 201, data);
+    saveIdempotent(req, idemKey, 201, data, payload);
     return json(res, 201, data);
   }
   const acceptMatch = path.match(/^\/api\/v1\/trades\/([^/]+)\/accept$/);
@@ -1506,7 +1706,7 @@ const server = createServer(async (req, res) => {
     const payload = await body(req), id = acceptMatch[1], result = String(payload.result || "");
     const idemKey = requestKey(req, payload);
     if (productionMode && !idemKey) return error(res, 400, "生产验收必须提供 Idempotency-Key");
-    if (replayIdempotent(req, res, idemKey)) return;
+    if (replayIdempotent(req, res, idemKey, payload)) return;
     if (!["accepted", "disputed"].includes(result)) return error(res, 400, "验收结果不合法");
     const order = db.prepare("SELECT * FROM orders WHERE id=?").get(id);
     if (!order) return error(res, 404, "交易不存在");
@@ -1522,7 +1722,7 @@ const server = createServer(async (req, res) => {
     db.prepare("UPDATE orders SET status=?,payment_status=?,updated_at=? WHERE id=?").run(result === "accepted" ? "待开票" : "争议处理中", result === "accepted" ? "待开票" : "争议款冻结", t, id);
     log(acceptanceActor, result === "accepted" ? "ACCEPT_TRADE" : "DISPUTE_TRADE", id, String(payload.evidence || ""));
     const data = tradeLedger(id);
-    saveIdempotent(req, idemKey, 201, data);
+    saveIdempotent(req, idemKey, 201, data, payload);
     return json(res, 201, data);
   }
   const invoiceMatch = path.match(/^\/api\/v1\/trades\/([^/]+)\/invoice$/);
@@ -1531,7 +1731,7 @@ const server = createServer(async (req, res) => {
     const payload = await body(req), id = invoiceMatch[1];
     const idemKey = requestKey(req, payload);
     if (productionMode && !idemKey) return error(res, 400, "生产发票登记必须提供 Idempotency-Key");
-    if (replayIdempotent(req, res, idemKey)) return;
+    if (replayIdempotent(req, res, idemKey, payload)) return;
     const order = db.prepare("SELECT * FROM orders WHERE id=?").get(id);
     if (!order) return error(res, 404, "交易不存在");
     if (!canActForOrder(req, order, "supplier")) return error(res, 403, "只有供货方或授权后台岗位可以登记发票");
@@ -1539,16 +1739,54 @@ const server = createServer(async (req, res) => {
     if (db.prepare("SELECT id FROM invoices WHERE order_id=? AND status='已开具' LIMIT 1").get(id)) return error(res, 409, "该交易发票已开具，禁止重复登记");
     const accepted = db.prepare("SELECT id FROM acceptances WHERE order_id=? AND result='accepted'").get(id);
     if (!accepted) return error(res, 409, "验收合格前不得开票");
-    if (!payload.invoice_no) return error(res, 400, "发票号码不能为空");
+    if (!productionMode && !payload.invoice_no) return error(res, 400, "发票号码不能为空");
     const invoice = db.prepare("SELECT amount FROM invoices WHERE order_id=? LIMIT 1").get(id);
     if (!invoice || (payload.amount !== undefined && (!finitePositive(payload.amount, 1e12) || Math.abs(Number(payload.amount) - Number(invoice.amount)) > 0.01))) return error(res, 409, "发票金额与订单金额不一致");
     if (productionMode && payload.amount === undefined) return error(res, 400, "生产开票必须提供 amount 用于四流核对");
     const t = now();
+    if (productionMode) {
+      const sellerCreditCode = String(payload.seller_credit_code || "").trim();
+      const buyerCreditCode = String(payload.buyer_credit_code || "").trim();
+      const taxRate = Number(payload.tax_rate);
+      if (!sellerCreditCode || !buyerCreditCode || !Number.isFinite(taxRate) || taxRate < 0 || taxRate > 1) return error(res, 400, "生产开票指令必须提供购销双方统一社会信用代码和税率");
+      const itemRows = db.prepare("SELECT name,qty,unit_price FROM order_items WHERE order_id=? ORDER BY id").all(id);
+      if (!itemRows.length) return error(res, 409, "生产开票缺少商品明细");
+      db.exec("BEGIN");
+      try {
+        const queued = enqueueProductionInstitutionCommand({
+          provider: "invoice",
+          aggregateType: "order",
+          aggregateId: id,
+          commandType: "issue",
+          idempotencyKey: `INVOICE:ISSUE:${id}`,
+          command: {
+            command_id: `CMD-INVOICE-ISSUE-${id}`,
+            action: "issue",
+            order_id: id,
+            invoice_id: `INV-${id}`,
+            seller: merchantParty(order.supplier_id, sellerCreditCode),
+            buyer: merchantParty(order.buyer_id, buyerCreditCode),
+            money: { amount: Number(invoice.amount), currency: "CNY" },
+            items: itemRows.map((item) => ({ name: item.name, quantity: Number(item.qty), unit_price: Number(item.unit_price), tax_rate: taxRate })),
+            original_invoice_no: null,
+          },
+          now: t,
+        });
+        log(actorFor(req, "供货财务岗"), "QUEUE_INVOICE_ISSUE", id, queued.id);
+        const data = { ...tradeLedger(id), invoice_pending: true, institution_outbox: publicInstitutionCommand(queued) };
+        saveIdempotent(req, idemKey, 202, data, payload);
+        db.exec("COMMIT");
+        return json(res, 202, data);
+      } catch (cause) {
+        db.exec("ROLLBACK");
+        throw cause;
+      }
+    }
     db.prepare("UPDATE invoices SET invoice_no=?,status='已开具',issued_at=? WHERE order_id=?").run(String(payload.invoice_no), t, id);
     db.prepare("UPDATE orders SET invoice_status='已验真',updated_at=? WHERE id=?").run(t, id);
     log(actorFor(req, "供货财务岗"), "ISSUE_INVOICE", id, String(payload.invoice_no));
     const data = tradeLedger(id);
-    saveIdempotent(req, idemKey, 200, data);
+    saveIdempotent(req, idemKey, 200, data, payload);
     return json(res, 200, data);
   }
   const creditMatch = path.match(/^\/api\/v1\/merchants\/([^/]+)\/credit$/);
@@ -1596,7 +1834,36 @@ const server = createServer(async (req, res) => {
   if (path === "/api/v1/admin/products") { if (!hasAdminPermission(req, "audit")) return error(res, 403, "当前管理员角色无商品审核权限"); return json(res, 200, db.prepare("SELECT p.*,m.name merchant_name FROM products p JOIN merchants m ON m.id=p.merchant_id ORDER BY p.name").all().map((p) => ({ ...p, media: db.prepare("SELECT media_type,url,status FROM product_media WHERE product_id=? ORDER BY sort_no").all(p.id) }))); }
   if (path === "/api/v1/admin/merchant-credit") { if (!hasAdminPermission(req, "risk")) return error(res, 403, "当前管理员角色无信用风控权限"); return json(res, 200, db.prepare("SELECT c.*,m.name merchant_name FROM merchant_credit c JOIN merchants m ON m.id=c.merchant_id ORDER BY c.score DESC").all()); }
   if (path === "/api/v1/admin/service-areas") { if (!hasAdminPermission(req, "merchant")) return error(res, 403, "当前管理员角色无区域管理权限"); return json(res, 200, db.prepare("SELECT a.*,m.name merchant_name FROM merchant_service_areas a JOIN merchants m ON m.id=a.merchant_id ORDER BY a.updated_at DESC").all().map((a) => ({ ...a, regions: JSON.parse(a.regions || "[]"), delivery_modes: JSON.parse(a.delivery_modes || "[]") }))); }
-  if (path === "/api/v1/admin/integrations") { if (!hasAdminPermission(req, "system")) return error(res, 403, "当前管理员角色无系统集成权限"); return json(res, 200, { ports: integrationPorts, webhooks: Object.keys(integrationSecrets).map((provider) => ({ provider, endpoint: `/api/v1/integrations/${provider}/webhook`, secret_configured: Boolean(integrationSecrets[provider]) })), rules: { webhook_signature: "HMAC-SHA256(timestamp.raw_body)", replay_window_seconds: webhookReplayWindowSeconds, idempotency_required: true, inbound_allowlist: "生产环境配置固定 IP/专线" } }); }
+  if (path === "/api/v1/admin/integrations") { if (!hasAdminPermission(req, "system")) return error(res, 403, "当前管理员角色无系统集成权限"); return json(res, 200, { ports: integrationPorts, webhooks: Object.keys(integrationSecrets).map((provider) => ({ provider, endpoint: `/api/v1/integrations/${provider}/webhook`, secret_configured: Boolean(integrationSecrets[provider]) })), outbox: institutionOutboxOverview(db), rules: { webhook_signature: "HMAC-SHA256(timestamp.raw_body)", replay_window_seconds: webhookReplayWindowSeconds, idempotency_required: true, outbound_delivery: "事务性 Outbox 至少一次投递；机构接口必须按 Idempotency-Key 去重", inbound_allowlist: "生产环境配置固定 IP/专线" } }); }
+  if (path === "/api/v1/admin/institution-outbox" && req.method === "GET") {
+    if (!hasAdminPermission(req, "system")) return error(res, 403, "当前管理员角色无机构指令查看权限");
+    const requestedStatus = String(url.searchParams.get("status") || "").trim();
+    const allowedStatuses = new Set(["pending", "processing", "accepted", "retry", "dead"]);
+    if (requestedStatus && !allowedStatuses.has(requestedStatus)) return error(res, 400, "机构指令状态筛选不合法");
+    const rows = requestedStatus
+      ? db.prepare("SELECT * FROM institution_outbox WHERE status=? ORDER BY created_at DESC LIMIT 200").all(requestedStatus)
+      : db.prepare("SELECT * FROM institution_outbox ORDER BY created_at DESC LIMIT 200").all();
+    return json(res, 200, { overview: institutionOutboxOverview(db), commands: rows.map(publicInstitutionCommand) });
+  }
+  const outboxRetryMatch = path.match(/^\/api\/v1\/admin\/institution-outbox\/([^/]+)\/retry$/);
+  if (outboxRetryMatch && req.method === "POST") {
+    if (!hasAdminPermission(req, "system", true)) return error(res, 403, "只有系统管理岗位可以重放机构死信指令");
+    const payload = await body(req), idemKey = requestKey(req, payload);
+    if (productionMode && !idemKey) return error(res, 400, "生产死信重放必须提供 Idempotency-Key");
+    if (replayIdempotent(req, res, idemKey, payload)) return;
+    const actor = actorFor(req, "系统管理岗");
+    db.exec("BEGIN");
+    try {
+      const data = requeueDeadInstitutionCommand(db, { id: outboxRetryMatch[1] });
+      log(actor, "REQUEUE_INSTITUTION_COMMAND", data.id, `${data.provider} · ${data.aggregate_type}/${data.aggregate_id}`);
+      saveIdempotent(req, idemKey, 200, data, payload);
+      db.exec("COMMIT");
+      return json(res, 200, data);
+    } catch (cause) {
+      db.exec("ROLLBACK");
+      throw cause;
+    }
+  }
   if (path === "/api/v1/admin/operations") { if (!hasAdminPermission(req, "data")) return error(res, 403, "当前管理员角色无业务流程查看权限"); return json(res, 200, operationWorkflowRules.map((item) => operationView(item.key))); }
   if (path === "/api/v1/admin/platform-events") { if (!hasAdminPermission(req, "audit")) return error(res, 403, "当前管理员角色无平台事件审计权限"); return json(res, 200, db.prepare("SELECT * FROM business_events ORDER BY id DESC LIMIT 200").all().map(businessEventView)); }
   if (path === "/api/v1/admin/merchant-applications") { if (!hasAdminPermission(req, "merchant")) return error(res, 403, "当前管理员角色无商户申请权限"); return json(res, 200, db.prepare("SELECT * FROM merchant_applications ORDER BY submitted_at DESC").all().map((item) => ({ ...item, documents: JSON.parse(item.documents || "[]") }))); }
@@ -1604,6 +1871,7 @@ const server = createServer(async (req, res) => {
   return error(res, 404, "接口不存在");
  } catch (cause) {
   if (cause instanceof HttpError) return error(res, cause.status, cause.message);
+  if (cause instanceof InstitutionOutboxError) return error(res, cause.code === "NOT_DEAD" ? 409 : 400, cause.message);
   console.error("[数智供社] request failed", cause);
   return error(res, 500, "服务器处理请求失败");
  }

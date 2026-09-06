@@ -60,6 +60,7 @@ const makeEnv = (port, db) => ({
   SHUZHI_USER_TOKEN_PRINCIPALS: JSON.stringify({ "prod-buyer-token-1234567890123456": { id: "buyer-user", name: "采购经办人", role: "buyer", merchant_id: "m-buyer" } }),
   SHUZHI_ALLOWED_ORIGIN: "https://demo.example.com",
   VITE_API_BASE: "https://demo.example.com",
+  CA_WEBHOOK_SECRET: "ca-secret-123456789012345678901234",
   LOGISTICS_WEBHOOK_SECRET: "logistics-secret-123456789012345678901234",
   PAYMENT_WEBHOOK_SECRET: "payment-secret-123456789012345678901234",
   INVOICE_WEBHOOK_SECRET: "invoice-secret-123456789012345678901234",
