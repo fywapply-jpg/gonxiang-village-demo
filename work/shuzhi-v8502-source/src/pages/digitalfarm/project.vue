@@ -256,6 +256,11 @@ onUnmounted(stopTimers);
 
 <template>
   <view class="sg-page project-page" :class="{ animal: mode === 'livestock' }">
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">暂无后台种养项目档案</text>
+      <text class="production-empty-text">正式环境的地块、场区、批次、种养投入品、检测、合同和项目进度必须由后台项目服务返回。本页面不展示本地项目、资金或验收样例。</text>
+    </view>
+    <template v-else>
     <view class="hero">
       <text class="hero-k">数智供社 v8533 · 生产项目制</text>
       <text class="hero-t">种养项目发起与全过程验收</text>
@@ -399,6 +404,7 @@ onUnmounted(stopTimers);
       <view @tap="goDashboard">进入{{ mode === "plant" ? "种植" : "养殖" }}运营台</view>
       <view @tap="runProcess">{{ projectCreated ? "开始全过程验收" : "请先完成项目发起" }}</view>
     </view>
+    </template>
   </view>
 </template>
 
@@ -554,4 +560,7 @@ onUnmounted(stopTimers);
 .bottom-actions>view:last-child { flex: 1; color: #fff; background: linear-gradient(135deg, $sg-primary, $sg-primary-deep); }
 .animal .bottom-actions>view:first-child { color: #95402c; background: #fff0eb; }
 .animal .bottom-actions>view:last-child { background: linear-gradient(135deg, #b5563c, #8f3d28); }
+.production-empty { margin: 48rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>

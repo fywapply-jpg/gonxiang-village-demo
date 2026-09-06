@@ -27,6 +27,11 @@ function talk(m: any) {
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">暂无后台撮合结果</text>
+      <text class="production-empty-text">正式环境的匹配度、供应商、价格、库存和服务半径必须由后台模型与交易服务返回。本页面不展示静态供应商或报价样例。</text>
+    </view>
+    <template v-else>
     <view class="hero">
       <text class="ht">🤝 AI 供需撮合</text>
       <text class="hs">供货与需求语义匹配 · 就近 / 时效 / 价格 / 信用综合排序 · 秒级撮合</text>
@@ -59,6 +64,7 @@ function talk(m: any) {
     </view>
 
     <view class="tip">🔗 撮合基于语义理解（品类/规格/时效/资质）+ 就近半径 + 信用星级综合排序；约谈、报价、成交全程留痕，撮合成功进入下单闭环。</view>
+    </template>
   </view>
 </template>
 
@@ -92,4 +98,7 @@ function talk(m: any) {
 .m-note { font-size: 20rpx; color: $sg-text-3; display: block; margin-bottom: 12rpx; }
 .m-btn { text-align: center; padding: 18rpx 0; border-radius: 999rpx; background: linear-gradient(135deg, #16884c, #0f6b3b); color: #fff; font-size: 25rpx; font-weight: 700; }
 .tip { margin: 20rpx 24rpx 30rpx; font-size: 20rpx; color: $sg-text-3; line-height: 1.6; }
+.production-empty { margin: 48rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>

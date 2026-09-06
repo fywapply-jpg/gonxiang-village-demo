@@ -26,6 +26,11 @@ function submit() {
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">暂无后台售后工单档案</text>
+      <text class="production-empty-text">正式环境的订单、物流、验收和争议证据必须由后台工单服务返回。本页面不展示本地订单号，也不会创建本地售后工单。</text>
+    </view>
+    <template v-else>
     <block v-if="!submitted">
       <view class="dispute-lk" @tap="uni.navigateTo({ url: '/pages/aftersale/dispute?id=' + orderId })">
         <text class="dl-ic">⚖️</text>
@@ -63,6 +68,7 @@ function submit() {
       <view class="d-link" @tap="uni.navigateTo({ url: '/pages/aftersale/review?id=' + orderId })">查看商家审核处理进度 ›</view>
       <view class="d-btn" @tap="uni.navigateBack()">返回</view>
     </view>
+    </template>
   </view>
 </template>
 
@@ -99,4 +105,7 @@ function submit() {
 .d-tip { font-size: 22rpx; color: $sg-text-3; text-align: center; padding: 16rpx 50rpx; }
 .d-link { font-size: 24rpx; color: $sg-primary; font-weight: 600; padding: 8rpx 0 18rpx; }
 .d-btn { margin-top: 10rpx; width: 80%; text-align: center; padding: 24rpx 0; border-radius: 999rpx; background: linear-gradient(135deg, $sg-primary, $sg-primary-deep); color: #fff; font-size: 30rpx; font-weight: 700; }
+.production-empty { margin: 48rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>

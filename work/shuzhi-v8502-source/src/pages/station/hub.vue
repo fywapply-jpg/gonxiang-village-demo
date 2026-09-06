@@ -40,6 +40,11 @@ function todo(t: string) {
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">暂无后台服务站档案</text>
+      <text class="production-empty-text">正式环境的服务站主体、站长、办理量、佣金和待办必须由后台民生服务台账返回。本页面不展示静态站点或收益样例。</text>
+    </view>
+    <template v-else>
     <view class="hero">
       <text class="ht">🏛️ {{ station.name }}</text>
       <text class="hs">📍 {{ station.addr }}</text>
@@ -79,6 +84,7 @@ function todo(t: string) {
     </view>
 
     <view class="tip">🔗 村社综合服务站是供销社「基层网点」的数字化升级：依托村集体、一站通办、数据上链，把平台服务送到村口、送到户。</view>
+    </template>
   </view>
 </template>
 
@@ -117,4 +123,7 @@ function todo(t: string) {
 .td-t { font-size: 24rpx; }
 .td-go { font-size: 22rpx; color: $sg-primary; }
 .tip { margin: 20rpx 24rpx 30rpx; font-size: 21rpx; color: $sg-text-3; line-height: 1.6; }
+.production-empty { margin: 48rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>

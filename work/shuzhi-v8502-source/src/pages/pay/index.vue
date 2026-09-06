@@ -5,7 +5,7 @@ import { payMethods, requestPay } from "@/utils/pay";
 import { useAuthStore } from "@/store/auth";
 import { useUserStore } from "@/store/user";
 import { useTradeStore } from "@/store/trade";
-import { createEscrowPayment, recordPlatformEvent } from "@/services/localApi";
+import { createEscrowPayment, getTrade, recordPlatformEvent } from "@/services/localApi";
 const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
 const auth = useAuthStore();
 const user = useUserStore();
@@ -14,20 +14,33 @@ const trade = useTradeStore();
 type PlanKey = "advance" | "custody" | "cod" | "credit";
 const STEP_UP_AMOUNT = 30000; // 增强核验提示参数，不是法定统一阈值；正式阈值由合作金融机构与企业权限规则配置
 const order = ref({ title: "订单支付", amount: 0, no: "" });
+const backendOrderReady = ref(!productionBuild);
 const scene = ref("general");
 const method = ref("wechat");
 const planKey = ref<PlanKey>("custody");
-onLoad((q) => {
+onLoad(async (q) => {
   scene.value = q?.scene || "general";
   method.value = scene.value === "b2b" ? "bank" : "wechat";
   const term = q?.term || "";
   if (["advance", "custody", "cod", "credit"].includes(term)) planKey.value = term as PlanKey;
+  if (productionBuild) {
+    const orderNo = String(q?.no || "");
+    order.value = { title: "等待后台订单", amount: NaN, no: orderNo };
+    if (!/^SZGS-/.test(orderNo)) return;
+    try {
+      const data = await getTrade(orderNo);
+      const amount = Number(data?.amount);
+      if (Number.isFinite(amount) && amount > 0) {
+        order.value = { title: "正式订单支付", amount, no: String(data.id || orderNo) };
+        backendOrderReady.value = true;
+      }
+    } catch {
+      backendOrderReady.value = false;
+    }
+    return;
+  }
   const raw = Number(q?.amount);
-  order.value = {
-    title: q?.title ? decodeURIComponent(q.title) : "订单支付",
-    amount: Number.isFinite(raw) ? raw : NaN,
-    no: q?.no || ("O" + Date.now()),
-  };
+  order.value = { title: q?.title ? decodeURIComponent(q.title) : "订单支付", amount: Number.isFinite(raw) ? raw : NaN, no: q?.no || ("O" + Date.now()) };
 });
 
 // 金额校验：必须为正、有限、且不超过单笔上限（防篡改/溢出）
@@ -113,6 +126,11 @@ function submitDeferred() {
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild && !backendOrderReady" class="production-empty">
+      <text class="production-empty-title">暂无可支付后台订单</text>
+      <text class="production-empty-text">正式环境支付金额、订单号、付款主体和结算模型必须从后台正式订单读取；未取得后台订单回执时不展示 URL 金额，也不会发起扣款。</text>
+    </view>
+    <template v-else>
     <!-- 金额 -->
     <view class="amount-box" :class="{ bad: !validAmount }">
       <text class="a-t">{{ order.title }}</text>
@@ -159,6 +177,7 @@ function submitDeferred() {
       <view class="bar-l"><text class="bl-1">{{ isDeferred ? '现在不扣款' : '本次应付' }}</text><text class="bl-2">{{ validAmount ? '¥' + payableNow.toLocaleString() : '—' }}</text></view>
       <view class="bar-btn" :class="{ dis: !validAmount || paying }" @tap="pay">{{ paying ? '处理中…' : usesSettlementSimulator ? '查看机构结算指引' : (isBig ? '🔒 增强核验后支付' : plan.action) }}</view>
     </view>
+    </template>
   </view>
 </template>
 
@@ -203,4 +222,7 @@ function submitDeferred() {
 .bl-1 { font-size: 24rpx; color: $sg-text-3; margin-right: 8rpx; }
 .bl-2 { font-size: 40rpx; font-weight: 800; color: $sg-red; }
 .bar-btn { flex: 0 0 44%; text-align: center; padding: 26rpx 0; border-radius: 999rpx; font-size: 30rpx; font-weight: 700; background: linear-gradient(135deg, $sg-primary, $sg-primary-deep); color: #fff; }
+.production-empty { margin: 48rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>

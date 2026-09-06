@@ -56,6 +56,11 @@ function toPremium() { uni.navigateTo({ url: "/pages/cert/premium" }); }
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">暂无认证机构回执</text>
+      <text class="production-empty-text">正式环境的认证类型、证书编号、有效期、产品溢价和八环节结论必须由认证/检测机构接口返回。本页面不展示静态证书或达标结论。</text>
+    </view>
+    <template v-else>
     <view class="hero">
       <text class="ht">🏅 品质认证中心</text>
       <text class="hs">绿色 · 有机 · 地理标志 · 小产区——认证融入产地到上市每一环，全程可核验、可溯源、防伪防冒用</text>
@@ -137,6 +142,7 @@ function toPremium() { uni.navigateTo({ url: "/pages/cert/premium" }); }
     </view>
 
     <view class="tip">🔗 认证不是"贴个标"：产地环境、投入品、生产过程、检测、赋码每一环都按认证标准核验并上链，证书编号可链上验真、防冒用；认证与溯源一码贯通，让"绿色有机地标"从口号变成买家可查、可信、愿溢价的硬凭证。</view>
+    </template>
   </view>
 </template>
 
@@ -200,4 +206,7 @@ function toPremium() { uni.navigateTo({ url: "/pages/cert/premium" }); }
 .vl-t { font-size: 24rpx; font-weight: 700; display: block; margin-top: 6rpx; }
 .vl-d { font-size: 19rpx; color: $sg-text-3; margin-top: 4rpx; display: block; line-height: 1.45; }
 .tip { margin: 20rpx 24rpx 40rpx; font-size: 21rpx; color: $sg-text-3; line-height: 1.6; }
+.production-empty { margin: 48rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>

@@ -47,6 +47,11 @@ function order(g: any) {
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">暂无跨境机构回执</text>
+      <text class="production-empty-text">正式环境的进口 SKU、报关、检疫、保税库存和跨境结算必须由后台及海关、物流、支付机构返回。本页面不展示静态进口货源或价格。</text>
+    </view>
+    <template v-else>
     <view class="hero">
       <text class="ht">📥 进口分销全流程</text>
       <text class="hs">海外选品 → 跨境物流 → 报关检疫 → 保税入仓 → 数币结算 → 国内分销</text>
@@ -84,6 +89,7 @@ function order(g: any) {
 
     <view class="trace-btn" @tap="trace">🔍 扫码验进口溯源（报关单/检疫证/冷链）</view>
     <view class="tip">🔗 依托五大枢纽保税仓 + 海关单一窗口，进口全链数据上链；数字人民币跨境结算替代传统电汇，实时清算、汇率锁定、合规可控。</view>
+    </template>
   </view>
 </template>
 
@@ -124,4 +130,7 @@ function order(g: any) {
 .g-p { font-size: 26rpx; font-weight: 800; color: $sg-red; }
 .trace-btn { margin: 8rpx 24rpx 0; text-align: center; padding: 24rpx 0; border-radius: 999rpx; background: #fff; border: 2rpx solid #1e5fa8; color: #1e5fa8; font-size: 25rpx; font-weight: 700; }
 .tip { margin: 20rpx 24rpx 30rpx; font-size: 20rpx; color: $sg-text-3; line-height: 1.6; }
+.production-empty { margin: 48rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>

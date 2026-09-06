@@ -48,6 +48,11 @@ function meal() { uni.navigateTo({ url: "/pages/village/meal" }); }
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">暂无后台民生关怀台账</text>
+      <text class="production-empty-text">正式环境的服务对象、助餐补贴、认捐流水和异常关怀工单必须由后台民生服务与持牌收款机构返回。本页面不展示静态金额、老人信息或捐赠样例。</text>
+    </view>
+    <template v-else>
     <view class="hero">
       <text class="ht">❤️ 银发关怀 · 助餐公益</text>
       <text class="hs">送一餐饭 · 看一眼人 · 问一句好 — 助餐即探访</text>
@@ -102,6 +107,7 @@ function meal() { uni.navigateTo({ url: "/pages/village/meal" }); }
 
     <view class="cta" @tap="meal">🍚 去长者食堂订餐 ›</view>
     <view class="tip">🔗 助餐 + 探访 + 认捐三合一：政府补、社会捐、平台连，独居老人不漏一人；消费、补贴、捐赠全链上留痕、公开透明。</view>
+    </template>
   </view>
 </template>
 
@@ -150,4 +156,7 @@ function meal() { uni.navigateTo({ url: "/pages/village/meal" }); }
 .d-a { font-size: 23rpx; font-weight: 700; color: #c0392b; }
 .cta { margin: 24rpx; text-align: center; padding: 26rpx 0; border-radius: 999rpx; background: linear-gradient(135deg, #c0392b, #922b21); color: #fff; font-size: 27rpx; font-weight: 700; box-shadow: 0 8rpx 20rpx rgba(192,57,43,0.3); }
 .tip { margin: 0 24rpx 30rpx; font-size: 21rpx; color: $sg-text-3; line-height: 1.6; }
+.production-empty { margin: 48rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>

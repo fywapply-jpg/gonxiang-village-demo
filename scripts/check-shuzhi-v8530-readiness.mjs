@@ -257,6 +257,14 @@ const machineryMerchantSource = text("work/shuzhi-v8502-source/src/pages/agri/ma
 const logisticsCapacitySource = text("work/shuzhi-v8502-source/src/pages/logistics/capacity.vue");
 const assistSource = text("work/shuzhi-v8502-source/src/pages/trade/assist.vue");
 const tradeControlSource = text("work/shuzhi-v8502-source/src/pages/trade/control.vue");
+const aftersaleTicketSource = text("work/shuzhi-v8502-source/src/pages/aftersale/ticket.vue");
+const aiMatchSource = text("work/shuzhi-v8502-source/src/pages/ai/match.vue");
+const certIndexSource = text("work/shuzhi-v8502-source/src/pages/cert/index.vue");
+const crossborderImportSource = text("work/shuzhi-v8502-source/src/pages/crossborder/import.vue");
+const digitalfarmProjectSource = text("work/shuzhi-v8502-source/src/pages/digitalfarm/project.vue");
+const payIndexSource = text("work/shuzhi-v8502-source/src/pages/pay/index.vue");
+const stationHubSource = text("work/shuzhi-v8502-source/src/pages/station/hub.vue");
+const villageCareSource = text("work/shuzhi-v8502-source/src/pages/village/care.vue");
 const premiumSource = text("work/shuzhi-v8502-source/src/pages/cert/premium.vue");
 const priceSource = text("work/shuzhi-v8502-source/src/pages/home/price.vue");
 const paymentResultSource = text("work/shuzhi-v8502-source/src/pages/pay/result.vue");
@@ -273,6 +281,8 @@ add(machineryMerchantSource.includes("v-if=\"productionBuild\" class=\"productio
 add(logisticsCapacitySource.includes("v-if=\"productionBuild\" class=\"production-empty\"") && logisticsCapacitySource.includes("暂无后台运力竞价档案") && logisticsCapacitySource.includes("<template v-else>") ? "pass" : "fail", "运力竞价演示隔离", "正式环境不展示静态线路、预算或报价，物流竞价必须读取后台承运主体和机构结果");
 add(assistSource.includes("v-if=\"productionBuild\" class=\"production-empty\"") && assistSource.includes("暂无后台消费帮扶档案") && assistSource.includes("<template v-else>") ? "pass" : "fail", "消费帮扶演示隔离", "正式环境不展示静态帮扶县、采购金额或成效，帮扶数据必须读取后台合同和结算回执");
 add(tradeControlSource.includes("v-if=\"productionBuild\" class=\"production-empty\"") && tradeControlSource.includes("暂无后台交易总控档案") && tradeControlSource.includes("<template v-else>") ? "pass" : "fail", "交易总控演示隔离", "正式环境不展示静态身份、资金状态或订单金额，交易总控必须读取后台真实节点和机构回执");
+add([aftersaleTicketSource, aiMatchSource, certIndexSource, crossborderImportSource, digitalfarmProjectSource, stationHubSource, villageCareSource].every((source) => source.includes("v-if=\"productionBuild\" class=\"production-empty\"") && source.includes("<template v-else>") && source.includes("production-empty-text")) ? "pass" : "fail", "其他业务深链演示隔离", "售后、撮合、认证、跨境、种养项目、服务站和民生关怀生产不展示静态主体、金额、证书或工单样例");
+add(payIndexSource.includes("const backendOrderReady") && payIndexSource.includes("await getTrade(orderNo)") && payIndexSource.includes("正式订单支付") && payIndexSource.includes("不展示 URL 金额") && payIndexSource.includes("v-if=\"productionBuild && !backendOrderReady\"") ? "pass" : "fail", "生产支付订单事实来源", "支付页生产只接受后台正式订单金额和订单号，未取得后台回执时不展示 URL 参数或发起扣款");
 add(premiumSource.includes("v-if=\"productionBuild\" class=\"production-empty\"") && premiumSource.includes("暂无后台信用收益档案") && premiumSource.includes("<template v-else>") ? "pass" : "fail", "信用收益演示隔离", "正式环境不展示固定商户评分、收购价或收益对比，必须读取后台风控和认证回执");
 add(priceSource.includes("v-if=\"productionBuild\" class=\"production-empty\"") && priceSource.includes("暂无实时行情接口") && priceSource.includes("<template v-else>") ? "pass" : "fail", "行情样例隔离", "正式环境不展示过期静态行情，也不据此生成采购或报价");
 add(paymentResultSource.includes("const productionBuild") && paymentResultSource.includes("支付结果待后台回执") && paymentResultSource.includes("正式环境不会根据页面参数") && paymentResultSource.includes("<template v-else>") ? "pass" : "fail", "支付结果参数防伪", "正式环境不信任 URL 的 ok、amount 或 trade 参数，支付成功只能来自后台和持牌机构回执");
