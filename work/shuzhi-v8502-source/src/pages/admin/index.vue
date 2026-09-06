@@ -56,6 +56,11 @@ function permClass(p: string) { return p; }
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">请从独立后台管理台操作</text>
+      <text class="production-empty-text">正式环境管理员岗位、待办、权限矩阵和区域范围只接受后台会话与实时接口返回。移动端不切换本地角色，也不展示静态待办或权限样例。</text>
+    </view>
+    <template v-else>
     <!-- 头部：当前管理身份 -->
     <view class="hd">
       <view class="hd-top">
@@ -143,6 +148,7 @@ function permClass(p: string) { return p; }
       </scroll-view>
       <text class="mx-legend">超=超级管理员 运=运营 审=审核员 财=财务 客=客服</text>
     </view>
+    </template>
   </view>
 </template>
 
@@ -207,4 +213,7 @@ function permClass(p: string) { return p; }
 .mx-cell.val.read { color: $sg-text-2; }
 .mx-cell.val.none { color: $sg-text-3; }
 .mx-legend { font-size: 20rpx; color: $sg-text-3; margin-top: 14rpx; display: block; }
+.production-empty { margin: 40rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>

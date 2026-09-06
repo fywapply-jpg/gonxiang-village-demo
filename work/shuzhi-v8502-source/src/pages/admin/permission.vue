@@ -21,6 +21,11 @@ function toDetail() { uni.navigateTo({ url: "/pages/admin/permdetail?role=super"
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">暂无后台权限档案</text>
+      <text class="production-empty-text">正式环境的管理员账号、岗位、区域范围和模块权限必须由后台岗位服务实时返回并留存双人复核记录。本页面不展示本地账号和权限矩阵样例。</text>
+    </view>
+    <template v-else>
     <view class="hd">
       <text class="hd-t">管理权限设置</text>
       <text class="hd-s">管理角色 · 数据权限范围（全国/省域/地市/单点）· 模块权限</text>
@@ -72,6 +77,7 @@ function toDetail() { uni.navigateTo({ url: "/pages/admin/permdetail?role=super"
       </view>
     </view>
     <view class="tip">🔒 遵循最小必要授权 · 数据权限按区域逐级下放 · 越权操作自动拦截并上链留痕</view>
+    </template>
   </view>
 </template>
 
@@ -117,4 +123,7 @@ function toDetail() { uni.navigateTo({ url: "/pages/admin/permdetail?role=super"
 .d.read { color: $sg-gold; }
 .d.none { color: $sg-text-3; }
 .tip { margin: 24rpx; font-size: 22rpx; color: $sg-text-3; line-height: 1.6; }
+.production-empty { margin: 40rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>

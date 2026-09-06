@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 
+const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+
 // 时间维度筛选
 const periods = [{ k: "今日", m: 1 }, { k: "本周", m: 6.5 }, { k: "本月", m: 28 }, { k: "本年", m: 320 }];
 const pi = ref(2);
@@ -60,6 +62,11 @@ const alarms = [
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">暂无后台运营看板数据</text>
+      <text class="production-empty-text">正式环境的交易额、结算额、授信、风控告警和区域排行必须由独立后台按管理员岗位、数据范围和实时业务表返回。本页面不展示静态经营数字。</text>
+    </view>
+    <template v-else>
     <view class="hd">
       <text class="hd-t">📊 运营数据看板</text>
       <text class="hd-s">全国一张网 · 实时经营 · 多维下钻</text>
@@ -144,6 +151,7 @@ const alarms = [
     </view>
 
     <view class="tip">🔗 数据来自全链真实业务，支持按时间 / 区域 / 品类下钻；关键指标异常自动告警，报表可导出报送。</view>
+    </template>
   </view>
 </template>
 
@@ -195,4 +203,7 @@ const alarms = [
 .vil-inc { font-size: 24rpx; font-weight: 800; color: $sg-red; margin-right: 12rpx; }
 .vil-up { font-size: 20rpx; color: $sg-primary; }
 .tip { margin: 16rpx 24rpx 30rpx; font-size: 20rpx; color: $sg-text-3; line-height: 1.6; }
+.production-empty { margin: 40rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>

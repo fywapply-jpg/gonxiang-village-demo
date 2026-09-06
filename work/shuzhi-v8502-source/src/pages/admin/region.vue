@@ -10,6 +10,11 @@ function assign(city: string) {
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">暂无后台区域档案</text>
+      <text class="production-empty-text">正式环境的区域中心、覆盖县乡村、服务半径、管理员和数据范围必须由后台区域服务按授权岗位返回。本页面不展示静态区域、人员或覆盖数量。</text>
+    </view>
+    <template v-else>
     <view class="hd">
       <text class="hd-t">区域管理 · 权限与范围</text>
       <text class="hd-s">以地市为中心 · 农批市场/分拣配送中心为枢纽 · 辐射地区供应链</text>
@@ -50,6 +55,7 @@ function assign(city: string) {
     </view>
 
     <view class="tip">🔗 区域管理员仅可管理本地市范围内的商户、审核、结算与运营数据，权限逐级下放、越权隔离</view>
+    </template>
   </view>
 </template>
 
@@ -81,4 +87,7 @@ function assign(city: string) {
 .mgr-v { flex: 1; font-size: 24rpx; font-weight: 600; }
 .assign { text-align: center; padding: 18rpx 0; border-radius: 999rpx; background: #334155; color: #fff; font-size: 26rpx; font-weight: 600; }
 .tip { margin: 24rpx; font-size: 22rpx; color: $sg-text-3; line-height: 1.6; }
+.production-empty { margin: 40rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>
