@@ -236,6 +236,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS contracts (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, contract_type TEXT NOT NULL, status TEXT NOT NULL, signed_at TEXT, hash TEXT NOT NULL, FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS contract_signatures (id INTEGER PRIMARY KEY AUTOINCREMENT, contract_id TEXT NOT NULL, order_id TEXT NOT NULL, party TEXT NOT NULL, signer_id TEXT NOT NULL, signer_name TEXT NOT NULL, certificate_ref TEXT NOT NULL, signed_at TEXT NOT NULL, UNIQUE(contract_id,party), FOREIGN KEY (contract_id) REFERENCES contracts(id), FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS payments (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, payer TEXT NOT NULL, payee TEXT NOT NULL, amount REAL NOT NULL, channel TEXT NOT NULL, status TEXT NOT NULL, paid_at TEXT, provider_transaction_id TEXT, FOREIGN KEY (order_id) REFERENCES orders(id));
+  CREATE TABLE IF NOT EXISTS payment_refunds (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, payment_id TEXT NOT NULL, amount REAL NOT NULL, reason TEXT NOT NULL, status TEXT NOT NULL, provider_ref TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY (order_id) REFERENCES orders(id), FOREIGN KEY (payment_id) REFERENCES payments(id));
   CREATE TABLE IF NOT EXISTS settlement_records (id TEXT PRIMARY KEY, order_id TEXT NOT NULL UNIQUE, amount REAL NOT NULL, platform_fee REAL NOT NULL DEFAULT 0, status TEXT NOT NULL, instruction_ref TEXT NOT NULL, settled_at TEXT, created_at TEXT NOT NULL, FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS fulfillment_events (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id TEXT NOT NULL, step INTEGER NOT NULL, title TEXT NOT NULL, evidence TEXT NOT NULL, actor TEXT NOT NULL, created_at TEXT NOT NULL, FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS invoices (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, invoice_no TEXT, amount REAL NOT NULL, status TEXT NOT NULL, issued_at TEXT, invoice_type TEXT NOT NULL DEFAULT '', tax_category_code TEXT NOT NULL DEFAULT '', tax_rate REAL, seller_credit_code TEXT, buyer_credit_code TEXT, FOREIGN KEY (order_id) REFERENCES orders(id));
@@ -568,7 +569,7 @@ const saveIdempotent = (req, key, status, data, payload) => {
 const orderView = (id) => {
   const order = db.prepare(`SELECT o.*, b.name buyer_name, s.name supplier_name FROM orders o JOIN merchants b ON b.id=o.buyer_id JOIN merchants s ON s.id=o.supplier_id WHERE o.id=?`).get(id);
   if (!order) return null;
-  return { ...order, items: db.prepare("SELECT * FROM order_items WHERE order_id=?").all(id), inventory_reservations: db.prepare("SELECT id,product_id,qty,status,reserved_at,released_at,release_reason FROM inventory_reservations WHERE order_id=? ORDER BY id").all(id), events: db.prepare("SELECT * FROM fulfillment_events WHERE order_id=? ORDER BY step").all(id), contracts: db.prepare("SELECT * FROM contracts WHERE order_id=?").all(id).map((contract) => ({ ...contract, signatures: db.prepare("SELECT party,signer_id,signer_name,certificate_ref,signed_at FROM contract_signatures WHERE contract_id=? ORDER BY party").all(contract.id) })), payments: db.prepare("SELECT * FROM payments WHERE order_id=?").all(id), invoices: db.prepare("SELECT * FROM invoices WHERE order_id=?").all(id), shipments: db.prepare("SELECT * FROM shipments WHERE order_id=? ORDER BY updated_at DESC").all(id), acceptances: db.prepare("SELECT * FROM acceptances WHERE order_id=? ORDER BY accepted_at DESC").all(id), settlement: db.prepare("SELECT * FROM settlement_records WHERE order_id=?").get(id) || null };
+  return { ...order, items: db.prepare("SELECT * FROM order_items WHERE order_id=?").all(id), inventory_reservations: db.prepare("SELECT id,product_id,qty,status,reserved_at,released_at,release_reason FROM inventory_reservations WHERE order_id=? ORDER BY id").all(id), events: db.prepare("SELECT * FROM fulfillment_events WHERE order_id=? ORDER BY step").all(id), contracts: db.prepare("SELECT * FROM contracts WHERE order_id=?").all(id).map((contract) => ({ ...contract, signatures: db.prepare("SELECT party,signer_id,signer_name,certificate_ref,signed_at FROM contract_signatures WHERE contract_id=? ORDER BY party").all(contract.id) })), payments: db.prepare("SELECT * FROM payments WHERE order_id=? ORDER BY rowid").all(id), refunds: db.prepare("SELECT * FROM payment_refunds WHERE order_id=? ORDER BY created_at").all(id), invoices: db.prepare("SELECT * FROM invoices WHERE order_id=?").all(id), shipments: db.prepare("SELECT * FROM shipments WHERE order_id=? ORDER BY updated_at DESC").all(id), acceptances: db.prepare("SELECT * FROM acceptances WHERE order_id=? ORDER BY accepted_at DESC").all(id), settlement: db.prepare("SELECT * FROM settlement_records WHERE order_id=?").get(id) || null };
 };
 const releaseOrderInventory = (orderId, reason) => {
   const reservations = db.prepare("SELECT id,product_id,qty FROM inventory_reservations WHERE order_id=? AND status='reserved'").all(orderId);
@@ -791,24 +792,50 @@ const processIntegrationWebhook = async (provider, req, res) => {
         const payment = db.prepare("SELECT * FROM payments WHERE order_id=? AND (?='' OR id=?) LIMIT 1").get(orderId, paymentId, paymentId);
         if (!payment) throw new HttpError(404, "回调关联的托管支付记录不存在");
         const providerTransactionId = String(payload.provider_transaction_id || "").trim();
+        const action = String(payload.action || "").trim().toLowerCase();
         if (productionMode && payload.amount === undefined) throw new HttpError(400, "生产支付回调必须提供 amount 用于资金核对");
         if (productionMode && !providerTransactionId) throw new HttpError(400, "生产支付回调必须提供机构交易号");
         if (providerTransactionId.length > 180) throw new HttpError(400, "机构交易号过长");
-        if (providerTransactionId && payment.provider_transaction_id && payment.provider_transaction_id !== providerTransactionId) throw new HttpError(409, "同一托管支付已绑定其他机构交易号");
-        if (providerTransactionId) {
+        if (action !== "refund" && providerTransactionId && payment.provider_transaction_id && payment.provider_transaction_id !== providerTransactionId) throw new HttpError(409, "同一托管支付已绑定其他机构交易号");
+        if (action !== "refund" && providerTransactionId) {
           const duplicateTransaction = db.prepare("SELECT id,order_id FROM payments WHERE provider_transaction_id=? AND id<>? LIMIT 1").get(providerTransactionId, payment.id);
           if (duplicateTransaction) throw new HttpError(409, "机构交易号已绑定其他托管支付，禁止重复落账");
         }
         if (productionMode && payload.amount !== undefined) moneyCents(payload.amount, "支付回调金额");
-        if (payload.amount !== undefined && (!finitePositive(payload.amount, 1e12) || Math.abs(Number(payload.amount) - Number(payment.amount)) > 0.01)) throw new HttpError(409, "支付回调金额与托管记录不一致");
+        if (action !== "refund" && payload.amount !== undefined && (!finitePositive(payload.amount, 1e12) || Math.abs(Number(payload.amount) - Number(payment.amount)) > 0.01)) throw new HttpError(409, "支付回调金额与托管记录不一致");
         if (db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(orderId)) throw new HttpError(409, "交易已完成结算，禁止支付回调覆盖账本");
         const paidStates = new Set(["已入金待验收", "待验收分账", "机构已确认（验收后分账）", "已支付"]);
         const failedStates = new Set(["支付失败", "已退款"]);
         if (payment.status === "已分账") throw new HttpError(409, "支付记录已分账，禁止回调覆盖账本");
-        if (paidStates.has(payment.status) && paymentState !== "paid") throw new HttpError(409, "资金已确认，禁止支付回调回退状态");
-        if (failedStates.has(payment.status) && paymentState !== "failed") throw new HttpError(409, "支付已终止，必须新建支付单后重试");
-        const releaseRequested = String(payload.action || "").trim().toLowerCase() === "release";
-        if (releaseRequested && paymentState === "paid") {
+        if (action !== "refund" && paidStates.has(payment.status) && paymentState !== "paid") throw new HttpError(409, "资金已确认，禁止支付回调回退状态");
+        if (action !== "refund" && failedStates.has(payment.status) && paymentState !== "failed") throw new HttpError(409, "支付已终止，必须新建支付单后重试");
+        if (action === "refund") {
+          const refundId = String(payload.refund_id || "").trim();
+          if (!refundId) throw new HttpError(400, "退款回调缺少 refund_id");
+          const refund = db.prepare("SELECT * FROM payment_refunds WHERE id=? AND order_id=? AND payment_id=? LIMIT 1").get(refundId, orderId, payment.id);
+          if (!refund) throw new HttpError(404, "回调关联的退款记录不存在");
+          const refundStatus = paymentState === "failed" && ["refunded", "success", "succeeded", "已退款"].includes(String(payload.status || "").trim().toLowerCase()) ? "refunded" : paymentState;
+          const nextRefundStatus = refundStatus === "refunded" ? "已退款" : refundStatus === "failed" ? "退款失败" : "退款处理中";
+          if (payload.amount !== undefined && Math.abs(Number(payload.amount) - Number(refund.amount)) > 0.01) throw new HttpError(409, "退款回调金额与退款申请不一致");
+          if (refund.status === "已退款" && nextRefundStatus !== "已退款") throw new HttpError(409, "退款已完成，禁止回调回退状态");
+          if (providerTransactionId) {
+            const duplicateRefund = db.prepare("SELECT id FROM payment_refunds WHERE provider_ref=? AND id<>? LIMIT 1").get(providerTransactionId, refund.id);
+            if (duplicateRefund) throw new HttpError(409, "退款机构交易号已绑定其他退款，禁止重复入账");
+          }
+          db.prepare("UPDATE payment_refunds SET status=?,provider_ref=COALESCE(provider_ref,?),updated_at=? WHERE id=?").run(nextRefundStatus, providerTransactionId || null, t, refund.id);
+          if (nextRefundStatus === "已退款") {
+            db.prepare("UPDATE payments SET status='已退款' WHERE id=?").run(payment.id);
+            db.prepare("UPDATE orders SET payment_status='已退款',updated_at=? WHERE id=?").run(t, orderId);
+            db.prepare("INSERT INTO fulfillment_events(order_id,step,title,evidence,actor,created_at) VALUES (?,?,?,?,?,?)").run(orderId, Math.max(0, Number(order.fulfillment_step)), "机构退款已确认", refundId, `integration-payment:${providerTransactionId || eventId}`, t);
+            nextAction = "退款机构已确认，交易资金已退回";
+          } else if (nextRefundStatus === "退款失败") {
+            db.prepare("UPDATE orders SET payment_status='退款失败',updated_at=? WHERE id=?").run(t, orderId);
+            nextAction = "退款机构处理失败，进入财务复核";
+          } else {
+            db.prepare("UPDATE orders SET payment_status='退款处理中',updated_at=? WHERE id=?").run(t, orderId);
+            nextAction = "退款机构处理中，等待最终回执";
+          }
+        } else if (action === "release" && paymentState === "paid") {
           if (!paidStates.has(payment.status)) throw new HttpError(409, "分账回调前托管资金尚未进入可分账状态");
           const contract = db.prepare("SELECT id,status FROM contracts WHERE order_id=? ORDER BY id LIMIT 1").get(orderId);
           const accepted = db.prepare("SELECT id FROM acceptances WHERE order_id=? AND result='accepted' LIMIT 1").get(orderId);
@@ -871,7 +898,7 @@ const server = createServer(async (req, res) => {
   const path = url.pathname;
   if (path === "/health" || path === "/health/live") return json(res, 200, { status: "ok", database: "sqlite", dbPath: productionMode ? undefined : dbPath, version: healthVersion, platform_version: platformVersion, api_version: apiReleaseVersion, runtime_mode: runtimeMode, reserved_ports: integrationPorts });
   if (path === "/health/ready") {
-    const requiredTables = ["organizations", "merchants", "merchant_identity", "products", "orders", "order_items", "inventory_reservations", "contracts", "payments", "invoices", "shipments", "acceptances", "audit_logs", "operation_progress", "request_idempotency", "integration_callbacks", "institution_outbox", "user_sessions"];
+    const requiredTables = ["organizations", "merchants", "merchant_identity", "products", "orders", "order_items", "inventory_reservations", "contracts", "payments", "payment_refunds", "invoices", "shipments", "acceptances", "audit_logs", "operation_progress", "request_idempotency", "integration_callbacks", "institution_outbox", "user_sessions"];
     const placeholders = requiredTables.map(() => "?").join(",");
     const rows = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name IN (${placeholders})`).all(...requiredTables);
     const present = new Set(rows.map((row) => row.name));
@@ -1501,6 +1528,67 @@ const server = createServer(async (req, res) => {
     }
     return error(res, 409, "本地演示请使用支付演示流程，不直接创建生产托管指令");
   }
+  const refundMatch = path.match(/^\/api\/v1\/trades\/([^/]+)\/refund$/);
+  if (refundMatch && req.method === "POST") {
+    if (!authorized(req)) return error(res, 401, "需要退款授权");
+    const payload = await body(req), id = refundMatch[1], idemKey = requestKey(req, payload);
+    if (productionMode && !idemKey) return error(res, 400, "生产退款必须提供 Idempotency-Key");
+    if (replayIdempotent(req, res, idemKey, payload)) return;
+    const order = db.prepare("SELECT * FROM orders WHERE id=?").get(id);
+    if (!order) return error(res, 404, "交易不存在");
+    const principal = principalFor(req);
+    const financeAuthorized = hasAdminPermission(req, "finance", true);
+    if (!financeAuthorized && !canActForOrder(req, order, "buyer")) return error(res, 403, "只有采购方或财务结算岗位可以发起退款");
+    if (!productionMode) return error(res, 409, "本地演示请使用演示重置，不创建退款机构指令");
+    if (process.env.SHUZHI_PAYMENT_READY !== "true") return error(res, 503, "支付机构尚未完成联调，暂不接受生产退款");
+    if (db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(id)) return error(res, 409, "交易已分账，退款必须进入争议人工流程，不得直接退款");
+    const payment = db.prepare("SELECT * FROM payments WHERE order_id=? ORDER BY rowid DESC LIMIT 1").get(id);
+    if (!payment || !["已入金待验收", "机构已确认（验收后分账）", "已支付", "待验收分账"].includes(payment.status)) return error(res, 409, "当前资金状态不允许发起退款");
+    if (!payment.provider_transaction_id) return error(res, 409, "原支付尚未取得机构交易号，不能发起退款");
+    const amount = Number(payload.amount === undefined ? payment.amount : payload.amount);
+    if (productionMode) moneyCents(amount, "退款金额");
+    if (amount <= 0 || amount > Number(payment.amount) + 0.000001) return error(res, 409, "退款金额必须大于零且不得超过原支付金额");
+    const refundCents = moneyCents(amount, "退款金额");
+    const refundedCents = Math.round(Number(db.prepare("SELECT COALESCE(SUM(amount),0) AS amount FROM payment_refunds WHERE payment_id=? AND status IN ('机构待受理','退款处理中','已退款')").get(payment.id)?.amount || 0) * 100);
+    const paymentCents = productionMode ? moneyCents(payment.amount, "原支付金额") : Math.round(Number(payment.amount) * 100);
+    if (refundedCents + refundCents > paymentCents) return error(res, 409, "累计退款金额不得超过原支付金额");
+    const reason = String(payload.reason || "交易退款申请").trim().slice(0, 240);
+    if (reason.length < 4) return error(res, 400, "退款原因至少需要 4 个字符");
+    const refundId = `REF-${id}-${randomUUID().slice(0, 12).toUpperCase()}`;
+    const t = now();
+    db.exec("BEGIN");
+    try {
+      db.prepare("INSERT INTO payment_refunds(id,order_id,payment_id,amount,reason,status,provider_ref,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)").run(refundId, id, payment.id, amount, reason, "机构待受理", null, t, t);
+      const queued = enqueueProductionInstitutionCommand({
+        provider: "payment",
+        aggregateType: "payment_refund",
+        aggregateId: refundId,
+        commandType: "refund",
+        idempotencyKey: `PAYMENT:REFUND:${refundId}`,
+        command: {
+          command_id: `CMD-PAYMENT-REFUND-${refundId}`,
+          action: "refund",
+          order_id: id,
+          refund_id: refundId,
+          payment_id: payment.id,
+          provider_transaction_id: payment.provider_transaction_id,
+          money: { amount, currency: order.currency || "CNY" },
+          reason,
+          requested_by: principal?.id || "finance",
+        },
+        now: t,
+      });
+      db.prepare("UPDATE orders SET payment_status='退款待机构受理',updated_at=? WHERE id=?").run(t, id);
+      log(actorFor(req, "财务退款岗"), "QUEUE_PAYMENT_REFUND", id, `${refundId} · ${amount}`);
+      const data = { ...orderView(id), refund_pending: true, institution_outbox: publicInstitutionCommand(queued) };
+      saveIdempotent(req, idemKey, 202, data, payload);
+      db.exec("COMMIT");
+      return json(res, 202, data);
+    } catch (cause) {
+      db.exec("ROLLBACK");
+      throw cause;
+    }
+  }
   const cancelMatch = path.match(/^\/api\/v1\/trades\/([^/]+)\/cancel$/);
   if (cancelMatch && req.method === "POST") {
     if (!authorized(req)) return error(res, 401, "需要交易取消授权");
@@ -1723,6 +1811,7 @@ const server = createServer(async (req, res) => {
     if (!invoiceDetail || Math.abs(Number(invoiceDetail.amount) - Number(order.amount)) > 0.01) return error(res, 409, "发票金额与订单金额不一致，禁止结算");
     const payment = db.prepare("SELECT * FROM payments WHERE order_id=? ORDER BY rowid DESC LIMIT 1").get(orderId);
     if (!payment || !["已入金待验收", "待验收分账", "机构已确认（验收后分账）", "已支付"].includes(payment.status)) return error(res, 409, "托管资金尚未确认，禁止结算");
+    if (db.prepare("SELECT id FROM payment_refunds WHERE order_id=? AND status IN ('机构待受理','退款处理中') LIMIT 1").get(orderId)) return error(res, 409, "退款机构指令尚未完成，禁止同时分账");
     if (productionMode && process.env.SHUZHI_PAYMENT_READY !== "true") return error(res, 503, "支付机构尚未完成联调，暂不接受生产分账");
     const amount = Number(order.amount);
     const feeCalc = platformFeeForOrder(orderId, amount);

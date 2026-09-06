@@ -133,11 +133,23 @@ try {
   const retryPaymentId = paymentRetry.payload?.payments?.at(-1)?.id;
   const paymentCallbackMissingId = await webhook(prodPort, "payment", { event_id: `outbox-payment-missing-id-${Date.now()}`, order_id: orderId, status: "paid", amount: 276000, provider_transaction_id: "PROVIDER-TX-MISSING-PAYMENT-ID" }, baseEnv.PAYMENT_WEBHOOK_SECRET);
   add(paymentCallbackMissingId.status === 400, "生产支付回调必须绑定支付尝试", `HTTP ${paymentCallbackMissingId.status}`);
+  const dbRefund = new DatabaseSync(dbPath);
+  dbRefund.prepare("UPDATE payments SET status='已入金待验收',provider_transaction_id=? WHERE id=?").run("PROVIDER-DEPOSIT-001", retryPaymentId);
+  dbRefund.close();
+  const refund = await request(prodPort, `/api/v1/trades/${orderId}/refund`, buyerToken, { amount: 100, reason: "买方复核后申请退款" }, "outbox-payment-refund-000001");
+  add(refund.status === 202 && refund.payload?.refund_pending === true, "生产退款先入 Outbox", `HTTP ${refund.status}`);
+  const refundId = refund.payload?.refunds?.at(-1)?.id;
+  const refundCallback = await webhook(prodPort, "payment", { event_id: `outbox-payment-refund-callback-${Date.now()}`, action: "refund", refund_id: refundId, order_id: orderId, payment_id: retryPaymentId, status: "refunded", amount: 100, provider_transaction_id: "PROVIDER-REFUND-001" }, baseEnv.PAYMENT_WEBHOOK_SECRET);
+  add(refundCallback.status === 202, "生产退款回调落账", `HTTP ${refundCallback.status}${refundCallback.status !== 202 ? ` · ${JSON.stringify(refundCallback.payload)}` : ""}`);
+  const refundOverLimit = await request(prodPort, `/api/v1/trades/${orderId}/refund`, buyerToken, { amount: 275999.99, reason: "买方再次复核后申请超额退款" }, "outbox-payment-refund-over-limit");
+  add(refundOverLimit.status === 409, "累计退款超过原支付金额时阻断", `HTTP ${refundOverLimit.status}`);
   const dbAfter = new DatabaseSync(dbPath);
   dbAfter.prepare("UPDATE contracts SET status='已签署',signed_at=? WHERE order_id=?").run(t, orderId);
   dbAfter.prepare("UPDATE acceptances SET result='accepted',accepted_qty=1,accepted_at=?,evidence='生产验收回执' WHERE order_id=?").run(t, orderId);
   dbAfter.prepare("UPDATE invoices SET amount=276000 WHERE order_id=?").run(orderId);
   dbAfter.prepare("UPDATE payments SET status='已入金待验收',paid_at=? WHERE id=?").run(t, retryPaymentId);
+  dbAfter.prepare("UPDATE payment_refunds SET status='退款失败',updated_at=? WHERE id=?").run(t, refundId);
+  dbAfter.prepare("UPDATE orders SET payment_status='机构已确认（验收后分账）' WHERE id=?").run(orderId);
   dbAfter.close();
   const invoiceMissingTax = await request(prodPort, `/api/v1/trades/${orderId}/invoice`, supplierToken, { amount: 276000, seller_credit_code: "91360722MA8V85013X", buyer_credit_code: "91420100MA8V85013Y", tax_rate: 0.09 }, "outbox-invoice-missing-tax-fields");
   add(invoiceMissingTax.status === 400, "生产开票缺少税务字段阻断", `HTTP ${invoiceMissingTax.status}`);
@@ -150,7 +162,7 @@ try {
   add(settlement.status === 202 && settlement.payload?.settlement_pending === true, "生产分账先入 Outbox", `HTTP ${settlement.status}${settlement.status !== 202 ? ` · ${JSON.stringify(settlement.payload)} · ${productionServer.output().slice(-600)}` : ""}`);
   const outbox = new DatabaseSync(dbPath).prepare("SELECT provider,command_type,status FROM institution_outbox ORDER BY provider,command_type").all();
   const providers = [...new Set(outbox.map((row) => row.provider))].sort();
-  add(providers.join(",") === "ca,invoice,logistics,payment", "五类机构写操作使用异步边界", JSON.stringify(outbox));
+  add(providers.join(",") === "ca,invoice,logistics,payment" && outbox.some((row) => row.provider === "payment" && row.command_type === "refund"), "五类机构写操作使用异步边界", JSON.stringify(outbox));
 } catch (error) {
   add(false, "生产 Outbox 回归启动", `${error instanceof Error ? error.message : String(error)}${productionServer?.output?.() ? ` · ${productionServer.output().slice(-1200)}` : ""}`);
 } finally {
