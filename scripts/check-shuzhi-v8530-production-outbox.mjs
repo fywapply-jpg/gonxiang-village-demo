@@ -128,6 +128,17 @@ try {
   add(withinArea.status === 201 && withinArea.payload?.delivery_constraint?.status === "within_radius", "生产订单落库服务半径证据", `HTTP ${withinArea.status}`);
   const dailyLimit = await request(prodPort, "/api/v1/trades", buyerToken, { scene: "buyerSupply", supplier_id: "m-supplier", items: [{ product_id: "p-orange", qty: 1 }], delivery_address: "江西省赣州市寻乌县测试仓2", delivery_lat: 24.91, delivery_lng: 115.65, settlement_model: "持牌机构条件结算（验收后分账）" }, "outbox-delivery-daily-limit");
   add(dailyLimit.status === 409, "生产订单超过日单量阻断", `HTTP ${dailyLimit.status}`);
+  const cancelledOrderId = withinArea.payload?.id;
+  const cancelled = await request(prodPort, `/api/v1/trades/${cancelledOrderId}/cancel`, buyerToken, { reason: "采购计划调整取消" }, "outbox-cancel-before-flow");
+  add(cancelled.status === 200 && cancelled.payload?.status === "已取消", "生产未启动订单可受控取消", `HTTP ${cancelled.status}`);
+  const cancelledContract = await request(prodPort, `/api/v1/trades/${cancelledOrderId}/contract/sign`, buyerToken, { party: "buyer", certificate_ref: "CA-CANCELLED", signer_authorization_ref: "AUTH-CANCELLED" }, "outbox-cancelled-contract");
+  add(cancelledContract.status === 409, "已取消交易禁止继续签署合同", `HTTP ${cancelledContract.status}`);
+  const cancelledShipment = await request(prodPort, `/api/v1/trades/${cancelledOrderId}/shipments`, supplierToken, { provider: "carrier-prod", consignor: "赣南优品", consignee: "华中商贸", consignor_credit_code: "91360722MA8V85013X", consignee_credit_code: "91420100MA8V85013Y", consignor_address: "江西省赣州市寻乌县农产品仓", consignee_address: "湖北省武汉市洪山区团餐配送中心", goods: [{ product_id: "p-orange", name: "赣南脐橙", quantity: 1, unit: "箱" }] }, "outbox-cancelled-shipment");
+  add(cancelledShipment.status === 409, "已取消交易禁止新增运单", `HTTP ${cancelledShipment.status}`);
+  const cancelledAcceptance = await request(prodPort, `/api/v1/trades/${cancelledOrderId}/accept`, buyerToken, { result: "accepted", accepted_qty: 1, evidence: "取消后不应再验收" }, "outbox-cancelled-acceptance");
+  add(cancelledAcceptance.status === 409, "已取消交易禁止新增验收结论", `HTTP ${cancelledAcceptance.status}`);
+  const cancelledCallback = await webhook(prodPort, "logistics", { event_id: `outbox-cancelled-callback-${Date.now()}`, order_id: cancelledOrderId, tracking_no: "CANCELLED-TRK-001", status: "delivered", evidence: "取消后不应推进" }, baseEnv.LOGISTICS_WEBHOOK_SECRET);
+  add(cancelledCallback.status === 409, "已取消交易禁止机构回调推进", `HTTP ${cancelledCallback.status}`);
   const fractionalMoney = await request(prodPort, "/api/v1/trades", buyerToken, { scene: "buyerSupply", supplier_id: "m-supplier", items: [{ product_id: "p-orange", qty: 1 }], service_amount: 0.001 }, "outbox-money-fraction-000001");
   add(fractionalMoney.status === 400, "生产金额拒绝半分值", `HTTP ${fractionalMoney.status}`);
   const caBuyer = await request(prodPort, `/api/v1/trades/${orderId}/contract/sign`, buyerToken, { party: "buyer", certificate_ref: "CA-BUYER-PROD", signer_authorization_ref: "AUTH-BUYER-PROD" }, "outbox-ca-buyer-000001");

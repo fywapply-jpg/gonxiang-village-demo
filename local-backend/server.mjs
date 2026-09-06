@@ -824,6 +824,7 @@ const processIntegrationWebhook = async (provider, req, res) => {
     if (provider !== "regulator") {
       const order = orderId ? db.prepare("SELECT * FROM orders WHERE id=?").get(orderId) : null;
       if (!order) throw new HttpError(404, "回调关联的交易不存在");
+      if (order.status === "已取消") throw new HttpError(409, "交易已取消，禁止机构回调继续推进履约或账本");
       if (provider === "ca") {
         const contractId = String(payload.contract_id || "").trim();
         const party = String(payload.party || "").trim();
@@ -1960,6 +1961,7 @@ const server = createServer(async (req, res) => {
     if (replayIdempotent(req, res, idemKey, payload)) return;
     const order = db.prepare("SELECT * FROM orders WHERE id=?").get(orderId);
     if (!order) return error(res, 404, "交易不存在");
+    if (order.status === "已取消") return error(res, 409, "交易已取消，禁止继续签署合同");
     const party = String(payload.party || "").trim();
     if (!["buyer", "supplier"].includes(party)) return error(res, 400, "签署方必须为 buyer 或 supplier");
     if (!canActForOrder(req, order, party)) return error(res, 403, "无权代表该交易签署合同");
@@ -2109,6 +2111,7 @@ const server = createServer(async (req, res) => {
     const order = db.prepare("SELECT * FROM orders WHERE id=?").get(id);
     if (!order) return error(res, 404, "交易不存在");
     if (!canActForOrder(req, order, "supplier")) return error(res, 403, "只有供货方或授权后台岗位可以登记发运");
+    if (["已取消", "已完成"].includes(order.status) || db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(id)) return error(res, 409, "交易已取消或已关账，禁止新增运单");
     if (productionMode && process.env.SHUZHI_LOGISTICS_READY !== "true") return error(res, 503, "物流机构尚未完成联调，暂不接受生产发运登记");
     if (!payload.provider) return error(res, 400, "物流公司不能为空");
     const shipmentId = String(payload.shipment_id || `SHP-${randomUUID()}`).trim();
@@ -2177,6 +2180,7 @@ const server = createServer(async (req, res) => {
     const order = db.prepare("SELECT * FROM orders WHERE id=?").get(id);
     if (!order) return error(res, 404, "交易不存在");
     if (!canActForOrder(req, order, "buyer")) return error(res, 403, "只有采购方或授权后台岗位可以执行验收");
+    if (["已取消", "已完成"].includes(order.status) || db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(id)) return error(res, 409, "交易已取消或已关账，禁止新增验收结论");
     if (db.prepare("SELECT id FROM acceptances WHERE order_id=? AND result IN ('accepted','disputed') LIMIT 1").get(id)) return error(res, 409, "该交易已存在最终验收结论，禁止重复提交");
     const acceptedQty = payload.accepted_qty == null ? null : Number(payload.accepted_qty);
     const orderedQty = Number(db.prepare("SELECT COALESCE(SUM(qty),0) AS qty FROM order_items WHERE order_id=?").get(id).qty);
@@ -2210,6 +2214,7 @@ const server = createServer(async (req, res) => {
     const order = db.prepare("SELECT * FROM orders WHERE id=?").get(id);
     if (!order) return error(res, 404, "交易不存在");
     if (!canActForOrder(req, order, "supplier")) return error(res, 403, "只有供货方或授权后台岗位可以登记发票");
+    if (["已取消", "已完成"].includes(order.status) || db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(id)) return error(res, 409, "交易已取消或已关账，禁止新增发票");
     if (productionMode && process.env.SHUZHI_INVOICE_READY !== "true") return error(res, 503, "发票机构尚未完成联调，暂不接受生产开票登记");
     if (db.prepare("SELECT id FROM invoices WHERE order_id=? AND status='已开具' LIMIT 1").get(id)) return error(res, 409, "该交易发票已开具，禁止重复登记");
     const accepted = db.prepare("SELECT id FROM acceptances WHERE order_id=? AND result='accepted'").get(id);
