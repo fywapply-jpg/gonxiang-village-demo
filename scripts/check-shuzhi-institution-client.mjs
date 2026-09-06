@@ -12,6 +12,14 @@ const command = {
   callback_url: "https://api.example.cn/api/v1/integrations/payment/webhook",
   order_id: "SZGS-ORDER-001",
 };
+const party = { merchant_id: "m-test", legal_name: "测试企业", credit_code: "91360000MA8V85331X" };
+const commands = {
+  ca: { ...command, contract_id: "CA-ORDER-001", contract_digest: "a".repeat(64), party: "buyer", signer_id: "m-test" },
+  payment: { ...command, action: "create_escrow", payment_id: "PAY-ORDER-001", payer: party, payee: { ...party, merchant_id: "m-supplier", legal_name: "测试供货企业" }, money: { amount: 100, currency: "CNY" } },
+  logistics: { ...command, action: "create", shipment_id: "SHP-ORDER-001", goods: [{ product_id: "p-test", name: "测试商品", quantity: 1, unit: "箱" }], consignor: party, consignee: { ...party, merchant_id: "m-buyer", legal_name: "测试采购企业" } },
+  invoice: { ...command, action: "issue", invoice_id: "INV-ORDER-001", seller: party, buyer: { ...party, merchant_id: "m-buyer", legal_name: "测试采购企业" }, money: { amount: 100, currency: "CNY" }, items: [{ name: "测试商品", quantity: 1, unit_price: 100, tax_rate: 0.01 }] },
+  regulator: { ...command, action: "submit", submission_id: "REG-ORDER-001", subject_type: "merchant", subject_id: "m-test", authority_code: "TEST-AUTH", data_minimization_version: "2026-01", evidence_refs: ["EVIDENCE-001"] },
+};
 
 try {
   createInstitutionAdapterClient({ provider: "payment", baseUrl: "http://adapter.example.cn", secret });
@@ -35,7 +43,7 @@ const fetchImpl = async (url, init) => {
 
 for (const provider of Object.keys(PROVIDER_COMMAND_PATHS)) {
   const client = createInstitutionAdapterClient({ provider, baseUrl: "https://adapter.example.cn/root/", secret, fetchImpl });
-  const result = await client.send(command, { idempotencyKey: `idem-${provider}-1234567890` });
+  const result = await client.send(commands[provider], { idempotencyKey: `idem-${provider}-1234567890` });
   add(result.instruction_id === "INS-1" && observed.at(-1).url === `https://adapter.example.cn${PROVIDER_COMMAND_PATHS[provider]}`, `${provider} 路径固定`, observed.at(-1).url);
 }
 
@@ -46,15 +54,23 @@ add(last.init.redirect === "error" && last.init.method === "POST" && last.init.h
 
 try {
   const client = createInstitutionAdapterClient({ provider: "payment", baseUrl: "https://adapter.example.cn", secret, fetchImpl });
-  await client.send(command, { idempotencyKey: "short" });
+  await client.send(commands.payment, { idempotencyKey: "short" });
   add(false, "幂等键校验", "错误地接受了短幂等键");
 } catch (error) {
   add(error instanceof InstitutionAdapterError && error.code === "INVALID_IDEMPOTENCY_KEY", "幂等键校验", error.code);
 }
 
 try {
+  const client = createInstitutionAdapterClient({ provider: "payment", baseUrl: "https://adapter.example.cn", secret, fetchImpl });
+  await client.send({ ...commands.payment, action: "create" }, { idempotencyKey: "idem-invalid-dto-123456" });
+  add(false, "机构 DTO 前置校验", "错误地接受了不在协议范围内的支付动作");
+} catch (error) {
+  add(error instanceof InstitutionAdapterError && error.code === "INVALID_COMMAND", "机构 DTO 前置校验", "支付动作与五类 DTO 规则在出站前校验");
+}
+
+try {
   const client = createInstitutionAdapterClient({ provider: "payment", baseUrl: "https://adapter.example.cn", secret, fetchImpl: async () => new Response("upstream stack and secret", { status: 500 }) });
-  await client.send(command, { idempotencyKey: "idem-reject-1234567890" });
+  await client.send(commands.payment, { idempotencyKey: "idem-reject-1234567890" });
   add(false, "上游错误脱敏", "错误地接受了异常响应");
 } catch (error) {
   add(error instanceof InstitutionAdapterError && !error.message.includes(secret) && !error.message.includes("upstream stack"), "上游错误脱敏", error.code);
@@ -67,7 +83,7 @@ try {
     secret,
     fetchImpl: async () => new Response("oversized", { status: 202, headers: { "content-length": String(1024 * 1024 + 1) } }),
   });
-  await client.send(command, { idempotencyKey: "idem-oversized-123456789" });
+  await client.send(commands.payment, { idempotencyKey: "idem-oversized-123456789" });
   add(false, "响应大小限制", "错误地接受了超过 1MB 的响应");
 } catch (error) {
   add(error instanceof InstitutionAdapterError && error.code === "ADAPTER_RESPONSE_TOO_LARGE", "响应大小限制", error.code);
@@ -75,7 +91,7 @@ try {
 
 try {
   const client = createInstitutionAdapterClient({ provider: "payment", baseUrl: "https://adapter.example.cn", secret, fetchImpl: async () => { const error = new Error("aborted"); error.name = "AbortError"; throw error; } });
-  await client.send(command, { idempotencyKey: "idem-timeout-123456789" });
+  await client.send(commands.payment, { idempotencyKey: "idem-timeout-123456789" });
   add(false, "超时隔离", "错误地接受了超时请求");
 } catch (error) {
   add(error instanceof InstitutionAdapterError && error.code === "ADAPTER_TIMEOUT", "超时隔离", error.code);

@@ -1641,7 +1641,7 @@ const server = createServer(async (req, res) => {
           idempotencyKey: `PAYMENT:CREATE:${payment.id}`,
           command: {
             command_id: `CMD-PAYMENT-CREATE-${payment.id}`,
-            action: "create",
+            action: "create_escrow",
             order_id: id,
             payment_id: payment.id,
             payer: merchantParty(order.buyer_id, payerCreditCode),

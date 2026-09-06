@@ -38,6 +38,69 @@ const validateCommand = (command) => {
   if (callback.protocol !== "https:") throw new InstitutionAdapterError("INVALID_COMMAND", "callback_url 必须使用 HTTPS");
 };
 
+const requiredText = (command, fields, provider) => {
+  for (const field of fields) {
+    if (!String(command[field] || "").trim()) throw new InstitutionAdapterError("INVALID_COMMAND", `${provider} 机构命令缺少 ${field}`);
+  }
+};
+
+const validateParty = (party, provider, field) => {
+  if (!party || typeof party !== "object" || Array.isArray(party)) throw new InstitutionAdapterError("INVALID_COMMAND", `${provider} 机构命令缺少 ${field}`);
+  requiredText(party, ["merchant_id", "legal_name", "credit_code"], provider);
+  if (!/^[0-9A-Z]{15,18}$/i.test(String(party.credit_code))) throw new InstitutionAdapterError("INVALID_COMMAND", `${provider} 机构命令的 ${field}.credit_code 格式不正确`);
+};
+
+const validateMoney = (money, provider) => {
+  if (!money || typeof money !== "object" || Array.isArray(money)) throw new InstitutionAdapterError("INVALID_COMMAND", `${provider} 机构命令缺少 money`);
+  const amount = Number(money.amount);
+  if (!Number.isFinite(amount) || amount <= 0 || Math.abs(amount * 100 - Math.round(amount * 100)) > 1e-7 || money.currency !== "CNY") throw new InstitutionAdapterError("INVALID_COMMAND", `${provider} 机构命令 money 必须是精确到人民币分的 CNY 金额`);
+};
+
+const validateProviderCommand = (provider, command) => {
+  if (provider === "ca") {
+    requiredText(command, ["order_id", "contract_id", "contract_digest", "party", "signer_id"], provider);
+    if (!/^[a-f0-9]{64}$/i.test(String(command.contract_digest)) || !["buyer", "supplier"].includes(command.party)) throw new InstitutionAdapterError("INVALID_COMMAND", "ca 机构命令的合同摘要或签署方不合法");
+    return;
+  }
+  if (provider === "payment") {
+    requiredText(command, ["action", "order_id", "payment_id"], provider);
+    if (!["create_escrow", "release", "refund", "query"].includes(command.action)) throw new InstitutionAdapterError("INVALID_COMMAND", "payment 机构命令 action 不在协议范围");
+    validateParty(command.payer, provider, "payer");
+    validateParty(command.payee, provider, "payee");
+    validateMoney(command.money, provider);
+    return;
+  }
+  if (provider === "logistics") {
+    requiredText(command, ["action", "order_id", "shipment_id"], provider);
+    if (!["create", "cancel", "query"].includes(command.action)) throw new InstitutionAdapterError("INVALID_COMMAND", "logistics 机构命令 action 不在协议范围");
+    if (!Array.isArray(command.goods) || command.goods.length < 1) throw new InstitutionAdapterError("INVALID_COMMAND", "logistics 机构命令 goods 不能为空");
+    for (const item of command.goods) {
+      requiredText(item, ["product_id", "name", "unit"], provider);
+      if (!Number.isFinite(Number(item.quantity)) || Number(item.quantity) <= 0) throw new InstitutionAdapterError("INVALID_COMMAND", "logistics 机构命令 goods.quantity 不合法");
+    }
+    validateParty(command.consignor, provider, "consignor");
+    validateParty(command.consignee, provider, "consignee");
+    return;
+  }
+  if (provider === "invoice") {
+    requiredText(command, ["action", "order_id", "invoice_id"], provider);
+    if (!["issue", "verify", "red_letter", "void"].includes(command.action)) throw new InstitutionAdapterError("INVALID_COMMAND", "invoice 机构命令 action 不在协议范围");
+    validateParty(command.seller, provider, "seller");
+    validateParty(command.buyer, provider, "buyer");
+    validateMoney(command.money, provider);
+    if (!Array.isArray(command.items) || command.items.length < 1) throw new InstitutionAdapterError("INVALID_COMMAND", "invoice 机构命令 items 不能为空");
+    for (const item of command.items) {
+      requiredText(item, ["name"], provider);
+      if (!Number.isFinite(Number(item.quantity)) || Number(item.quantity) <= 0 || !Number.isFinite(Number(item.unit_price)) || Number(item.unit_price) < 0 || !Number.isFinite(Number(item.tax_rate)) || Number(item.tax_rate) < 0 || Number(item.tax_rate) > 1) throw new InstitutionAdapterError("INVALID_COMMAND", "invoice 机构命令商品金额或税率不合法");
+    }
+    return;
+  }
+  if (provider === "regulator") {
+    requiredText(command, ["action", "submission_id", "subject_type", "subject_id", "authority_code", "data_minimization_version"], provider);
+    if (!["submit", "query", "withdraw"].includes(command.action) || !Array.isArray(command.evidence_refs) || command.evidence_refs.length < 1) throw new InstitutionAdapterError("INVALID_COMMAND", "regulator 机构命令 action 或 evidence_refs 不合法");
+  }
+};
+
 export const createInstitutionAdapterClient = ({ provider, baseUrl, secret, timeoutMs = 5000, fetchImpl = fetch, allowHttpForTests = false }) => {
   const path = PROVIDER_COMMAND_PATHS[provider];
   if (!path) throw new InstitutionAdapterError("UNSUPPORTED_PROVIDER", "不支持的机构类型");
@@ -52,6 +115,7 @@ export const createInstitutionAdapterClient = ({ provider, baseUrl, secret, time
     provider,
     async send(command, { idempotencyKey } = {}) {
       validateCommand(command);
+      validateProviderCommand(provider, command);
       const key = String(idempotencyKey || "").trim();
       if (key.length < 16 || key.length > 128) throw new InstitutionAdapterError("INVALID_IDEMPOTENCY_KEY", "Idempotency-Key 长度必须为 16—128 个字符");
       const raw = canonicalizeInstitutionCommand(command);
