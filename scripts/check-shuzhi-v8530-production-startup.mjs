@@ -1,0 +1,153 @@
+#!/usr/bin/env node
+import { spawn } from "node:child_process";
+import { mkdtempSync, rmSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { tmpdir } from "node:os";
+
+const root = resolve(new URL("..", import.meta.url).pathname);
+const serverFile = resolve(root, "local-backend/server.mjs");
+const wait = (ms) => new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
+
+const startChild = (env) => {
+  const child = spawn(process.execPath, [serverFile], {
+    cwd: root,
+    env: { ...process.env, ...env },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let stdout = "";
+  let stderr = "";
+  child.stdout.on("data", (chunk) => { stdout += chunk.toString(); });
+  child.stderr.on("data", (chunk) => { stderr += chunk.toString(); });
+  const closed = new Promise((resolvePromise) => child.once("close", (code, signal) => resolvePromise({ code, signal })));
+  return { child, closed, output: () => ({ stdout, stderr }) };
+};
+
+const stopChild = async (running) => {
+  if (!running || running.child.exitCode !== null) return await running?.closed;
+  running.child.kill("SIGINT");
+  const stopped = await Promise.race([running.closed, wait(1500).then(() => null)]);
+  if (stopped) return stopped;
+  running.child.kill("SIGTERM");
+  return await Promise.race([running.closed, wait(1000).then(() => null)]);
+};
+
+const waitReady = async (running, port, timeoutMs = 8000) => {
+  const deadline = Date.now() + timeoutMs;
+  let lastError = "";
+  while (Date.now() < deadline) {
+    if (running.child.exitCode !== null) break;
+    try {
+      const response = await fetch(`http://127.0.0.1:${port}/health/ready`);
+      const body = await response.json();
+      const payload = body?.data || body;
+      if (response.ok && payload.status === "ready" && payload.database === "sqlite") return payload;
+      lastError = `HTTP ${response.status} ${JSON.stringify(body)}`;
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+    }
+    await wait(100);
+  }
+  const output = running.output();
+  throw new Error(`就绪探针未通过：${lastError || "进程提前退出"}\n${output.stderr || output.stdout}`);
+};
+
+const makeEnv = (port, db) => ({
+  SHUZHI_RUNTIME_MODE: "production",
+  PORT: String(port),
+  SHUZHI_DB: db,
+  SHUZHI_API_TOKEN: "prod-internal-token-123456789012345678901234",
+  SHUZHI_ADMIN_TOKEN_ROLES: JSON.stringify({ "prod-finance-token-1234567890123456": "finance" }),
+  SHUZHI_USER_TOKEN_PRINCIPALS: JSON.stringify({ "prod-buyer-token-1234567890123456": { id: "buyer-user", name: "采购经办人", role: "buyer", merchant_id: "m-buyer" } }),
+  SHUZHI_ALLOWED_ORIGIN: "https://demo.example.com",
+  VITE_API_BASE: "https://demo.example.com",
+  LOGISTICS_WEBHOOK_SECRET: "logistics-secret-123456789012345678901234",
+  PAYMENT_WEBHOOK_SECRET: "payment-secret-123456789012345678901234",
+  INVOICE_WEBHOOK_SECRET: "invoice-secret-123456789012345678901234",
+  REGULATOR_WEBHOOK_SECRET: "regulator-secret-123456789012345678901234",
+});
+
+const checks = [];
+const add = (ok, name, detail) => {
+  checks.push({ ok, name, detail });
+  console.log(`${ok ? "PASS" : "FAIL"}  ${name}  ${detail}`);
+};
+
+const tempRoot = mkdtempSync(join(tmpdir(), "shuzhi-v8530-startup-"));
+let secure;
+let wechatOnly;
+let weak;
+try {
+  const securePort = 8899 + Math.floor(Math.random() * 200);
+  const secureEnv = makeEnv(securePort, join(tempRoot, "secure.sqlite"));
+  secure = startChild(secureEnv);
+  try {
+    const ready = await waitReady(secure, securePort);
+    add(true, "生产安全配置启动", `进程启动且 /health/ready 返回 ${ready.status}`);
+    try {
+      const response = await fetch(`http://127.0.0.1:${securePort}/api/v1/products`);
+      const body = await response.json();
+      const products = body?.data || body;
+      add(response.ok && Array.isArray(products) && products.length === 0 && ready.seeded_demo_data === false, "生产库不写入演示数据", "空生产库无演示商品，seeded_demo_data=false");
+    } catch (error) {
+      add(false, "生产库不写入演示数据", error instanceof Error ? error.message : String(error));
+    }
+    try {
+      const response = await fetch(`http://127.0.0.1:${securePort}/api/v1/platform/capabilities`);
+      const body = await response.json();
+      const capabilities = body?.data || body;
+      add(response.ok && capabilities.version === "v8533" && capabilities.productionReadiness?.allRequiredAvailable === false && capabilities.boundaries?.platformCustodiesFunds === false, "生产能力清单不虚报", "未完成机构联调时明确阻断，不把本地能力冒充生产能力");
+    } catch (error) {
+      add(false, "生产能力清单不虚报", error instanceof Error ? error.message : String(error));
+    }
+    try {
+      const response = await fetch(`http://127.0.0.1:${securePort}/api/v1/auth/wechat/session`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: "not-configured" }) });
+      const body = await response.json();
+      add(response.status === 503 && body?.message?.includes("微信身份认证尚未完成"), "生产禁止伪造微信登录", `HTTP ${response.status}`);
+    } catch (error) {
+      add(false, "生产禁止伪造微信登录", error instanceof Error ? error.message : String(error));
+    }
+  } catch (error) {
+    add(false, "生产安全配置启动", error instanceof Error ? error.message : String(error));
+  } finally {
+    await stopChild(secure);
+  }
+
+  const wechatOnlyPort = securePort + 1;
+  const wechatOnlyEnv = {
+    ...makeEnv(wechatOnlyPort, join(tempRoot, "wechat-only.sqlite")),
+    SHUZHI_WECHAT_AUTH_READY: "true",
+    SHUZHI_USER_TOKEN_PRINCIPALS: "{}",
+    WECHAT_APP_ID: "wx0123456789abcdef",
+    WECHAT_APP_SECRET: "wechat-secret-for-startup-smoke",
+    SHUZHI_WECHAT_OPENID_PRINCIPALS: JSON.stringify({ "openid-startup-smoke": { id: "buyer-user", name: "采购经办人", role: "buyer", merchant_id: "m-buyer" } }),
+  };
+  wechatOnly = startChild(wechatOnlyEnv);
+  try {
+    const ready = await waitReady(wechatOnly, wechatOnlyPort);
+    add(true, "微信认证 ready 可免长期用户令牌", `空 SHUZHI_USER_TOKEN_PRINCIPALS 仍可启动，/health/ready=${ready.status}`);
+  } catch (error) {
+    add(false, "微信认证 ready 可免长期用户令牌", error instanceof Error ? error.message : String(error));
+  } finally {
+    await stopChild(wechatOnly);
+  }
+
+  const weakPort = wechatOnlyPort + 1;
+  weak = startChild({ ...makeEnv(weakPort, join(tempRoot, "weak.sqlite")), SHUZHI_API_TOKEN: "short-token" });
+  const weakResult = await Promise.race([weak.closed, wait(3000).then(() => null)]);
+  if (!weakResult) {
+    await stopChild(weak);
+    add(false, "弱令牌拒绝启动", "弱令牌进程未在 3 秒内退出");
+  } else {
+    const output = weak.output();
+    add(weakResult.code !== 0, "弱令牌拒绝启动", weakResult.code !== 0 ? "短于 32 字符的 API 令牌已被拒绝" : `进程异常以 0 退出${output.stderr ? `：${output.stderr.trim()}` : ""}`);
+  }
+} finally {
+  await stopChild(secure);
+  await stopChild(wechatOnly);
+  await stopChild(weak);
+  rmSync(tempRoot, { recursive: true, force: true });
+}
+
+const failed = checks.filter((item) => !item.ok).length;
+console.log(`\n数智供社 v8530 生产启动烟测：${checks.length - failed} 通过，${failed} 失败`);
+process.exitCode = failed ? 1 : 0;
