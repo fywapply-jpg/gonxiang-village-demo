@@ -287,6 +287,8 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS invoices (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, invoice_no TEXT, amount REAL NOT NULL, status TEXT NOT NULL, issued_at TEXT, invoice_type TEXT NOT NULL DEFAULT '', tax_category_code TEXT NOT NULL DEFAULT '', tax_rate REAL, seller_credit_code TEXT, buyer_credit_code TEXT, FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS shipments (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, provider TEXT NOT NULL, tracking_no TEXT NOT NULL, carrier_name TEXT, vehicle_no TEXT, temperature REAL, status TEXT NOT NULL, departed_at TEXT, arrived_at TEXT, evidence TEXT, updated_at TEXT NOT NULL, consignor_address TEXT NOT NULL DEFAULT '', consignee_address TEXT NOT NULL DEFAULT '', FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS acceptances (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, receiver TEXT NOT NULL, result TEXT NOT NULL, accepted_qty REAL, evidence TEXT, accepted_at TEXT, dispute_note TEXT, FOREIGN KEY (order_id) REFERENCES orders(id));
+  CREATE TABLE IF NOT EXISTS acceptance_items (id INTEGER PRIMARY KEY AUTOINCREMENT, acceptance_id TEXT NOT NULL, order_item_id INTEGER NOT NULL, accepted_qty REAL NOT NULL, result TEXT NOT NULL, evidence TEXT NOT NULL DEFAULT '', FOREIGN KEY (acceptance_id) REFERENCES acceptances(id), FOREIGN KEY (order_item_id) REFERENCES order_items(id), UNIQUE(acceptance_id,order_item_id));
+  CREATE INDEX IF NOT EXISTS idx_acceptance_items_acceptance ON acceptance_items(acceptance_id);
   CREATE TABLE IF NOT EXISTS merchant_credit (merchant_id TEXT PRIMARY KEY, star_level INTEGER NOT NULL DEFAULT 1, score REAL NOT NULL DEFAULT 60, completed_orders INTEGER NOT NULL DEFAULT 0, on_time_rate REAL NOT NULL DEFAULT 0, dispute_rate REAL NOT NULL DEFAULT 0, last_review_at TEXT, FOREIGN KEY (merchant_id) REFERENCES merchants(id));
   CREATE TABLE IF NOT EXISTS merchant_rewards (id INTEGER PRIMARY KEY AUTOINCREMENT, merchant_id TEXT NOT NULL, type TEXT NOT NULL, points INTEGER NOT NULL, reason TEXT NOT NULL, created_at TEXT NOT NULL, FOREIGN KEY (merchant_id) REFERENCES merchants(id));
   CREATE TABLE IF NOT EXISTS merchant_service_areas (id TEXT PRIMARY KEY, merchant_id TEXT NOT NULL, area_type TEXT NOT NULL DEFAULT 'radius', center_lat REAL NOT NULL, center_lng REAL NOT NULL, radius_km REAL NOT NULL, regions TEXT NOT NULL DEFAULT '[]', delivery_modes TEXT NOT NULL DEFAULT '[]', max_daily_orders INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'active', updated_at TEXT NOT NULL, FOREIGN KEY (merchant_id) REFERENCES merchants(id));
@@ -620,7 +622,7 @@ const saveIdempotent = (req, key, status, data, payload) => {
 const orderView = (id) => {
   const order = db.prepare(`SELECT o.*, b.name buyer_name, s.name supplier_name FROM orders o JOIN merchants b ON b.id=o.buyer_id JOIN merchants s ON s.id=o.supplier_id WHERE o.id=?`).get(id);
   if (!order) return null;
-  return { ...order, items: db.prepare("SELECT * FROM order_items WHERE order_id=?").all(id), inventory_reservations: db.prepare("SELECT id,product_id,qty,status,reserved_at,released_at,release_reason FROM inventory_reservations WHERE order_id=? ORDER BY id").all(id), events: db.prepare("SELECT * FROM fulfillment_events WHERE order_id=? ORDER BY step").all(id), contracts: db.prepare("SELECT * FROM contracts WHERE order_id=?").all(id).map((contract) => ({ ...contract, signatures: db.prepare("SELECT party,signer_id,signer_name,certificate_ref,signed_at FROM contract_signatures WHERE contract_id=? ORDER BY party").all(contract.id) })), payments: db.prepare("SELECT * FROM payments WHERE order_id=? ORDER BY rowid").all(id), refunds: db.prepare("SELECT * FROM payment_refunds WHERE order_id=? ORDER BY created_at").all(id), invoices: db.prepare("SELECT * FROM invoices WHERE order_id=?").all(id), shipments: db.prepare("SELECT * FROM shipments WHERE order_id=? ORDER BY updated_at DESC").all(id), acceptances: db.prepare("SELECT * FROM acceptances WHERE order_id=? ORDER BY accepted_at DESC").all(id), delivery_constraint: db.prepare("SELECT * FROM order_delivery_constraints WHERE order_id=?").get(id) || null, settlement: db.prepare("SELECT * FROM settlement_records WHERE order_id=?").get(id) || null };
+  return { ...order, items: db.prepare("SELECT oi.*,p.unit FROM order_items oi JOIN products p ON p.id=oi.product_id WHERE oi.order_id=?").all(id), inventory_reservations: db.prepare("SELECT id,product_id,qty,status,reserved_at,released_at,release_reason FROM inventory_reservations WHERE order_id=? ORDER BY id").all(id), events: db.prepare("SELECT * FROM fulfillment_events WHERE order_id=? ORDER BY step").all(id), contracts: db.prepare("SELECT * FROM contracts WHERE order_id=?").all(id).map((contract) => ({ ...contract, signatures: db.prepare("SELECT party,signer_id,signer_name,certificate_ref,signed_at FROM contract_signatures WHERE contract_id=? ORDER BY party").all(contract.id) })), payments: db.prepare("SELECT * FROM payments WHERE order_id=? ORDER BY rowid").all(id), refunds: db.prepare("SELECT * FROM payment_refunds WHERE order_id=? ORDER BY created_at").all(id), invoices: db.prepare("SELECT * FROM invoices WHERE order_id=?").all(id), shipments: db.prepare("SELECT * FROM shipments WHERE order_id=? ORDER BY updated_at DESC").all(id), acceptances: db.prepare("SELECT * FROM acceptances WHERE order_id=? ORDER BY accepted_at DESC").all(id).map((acceptance) => ({ ...acceptance, items: db.prepare("SELECT ai.*,oi.product_id,oi.name,oi.qty AS ordered_qty,p.unit FROM acceptance_items ai JOIN order_items oi ON oi.id=ai.order_item_id JOIN products p ON p.id=oi.product_id WHERE ai.acceptance_id=? ORDER BY ai.order_item_id").all(acceptance.id) })), delivery_constraint: db.prepare("SELECT * FROM order_delivery_constraints WHERE order_id=?").get(id) || null, settlement: db.prepare("SELECT * FROM settlement_records WHERE order_id=?").get(id) || null };
 };
 const releaseOrderInventory = (orderId, reason) => {
   const reservations = db.prepare("SELECT id,product_id,qty FROM inventory_reservations WHERE order_id=? AND status='reserved'").all(orderId);
@@ -636,9 +638,13 @@ const orderGoodsNet = (orderId) => {
   return Math.round(Number(row?.amount || 0) * 100) / 100;
 };
 const acceptanceCompleteForOrder = (orderId) => {
-  const orderedQty = Number(db.prepare("SELECT COALESCE(SUM(qty),0) AS qty FROM order_items WHERE order_id=?").get(orderId)?.qty || 0);
-  const acceptedQty = Number(db.prepare("SELECT COALESCE(MAX(accepted_qty),0) AS qty FROM acceptances WHERE order_id=? AND result='accepted'").get(orderId)?.qty || 0);
-  return orderedQty > 0 && Math.abs(acceptedQty - orderedQty) <= 0.000001;
+  const orderItems = db.prepare("SELECT id,qty FROM order_items WHERE order_id=? ORDER BY id").all(orderId);
+  const acceptedRows = db.prepare("SELECT id FROM acceptances WHERE order_id=? AND result='accepted' ORDER BY accepted_at DESC").all(orderId);
+  if (!orderItems.length || acceptedRows.length !== 1) return false;
+  const acceptedItems = db.prepare("SELECT order_item_id,accepted_qty FROM acceptance_items WHERE acceptance_id=? ORDER BY order_item_id").all(acceptedRows[0].id);
+  if (acceptedItems.length !== orderItems.length) return false;
+  const acceptedByItem = new Map(acceptedItems.map((item) => [Number(item.order_item_id), Number(item.accepted_qty)]));
+  return orderItems.every((item) => acceptedByItem.has(Number(item.id)) && Math.abs(Number(acceptedByItem.get(Number(item.id))) - Number(item.qty)) <= 0.000001);
 };
 const platformFeeForOrder = (orderId, orderAmount) => {
   // 只有商品明细才是平台费计费基数；物流、包装、检测等实际服务费不得并入基数。
@@ -1039,7 +1045,7 @@ const server = createServer(async (req, res) => {
   const path = url.pathname;
   if (path === "/health" || path === "/health/live") return json(res, 200, { status: "ok", database: "sqlite", dbPath: productionMode ? undefined : dbPath, version: healthVersion, platform_version: platformVersion, api_version: apiReleaseVersion, runtime_mode: runtimeMode, reserved_ports: integrationPorts });
   if (path === "/health/ready") {
-    const requiredTables = ["organizations", "merchants", "merchant_identity", "products", "orders", "order_items", "inventory_reservations", "contracts", "payments", "payment_refunds", "invoices", "shipments", "acceptances", "merchant_service_areas", "order_delivery_constraints", "regulatory_submissions", "audit_logs", "operation_progress", "request_idempotency", "integration_callbacks", "institution_outbox", "user_sessions"];
+    const requiredTables = ["organizations", "merchants", "merchant_identity", "products", "orders", "order_items", "inventory_reservations", "contracts", "payments", "payment_refunds", "invoices", "shipments", "acceptances", "acceptance_items", "merchant_service_areas", "order_delivery_constraints", "regulatory_submissions", "audit_logs", "operation_progress", "request_idempotency", "integration_callbacks", "institution_outbox", "user_sessions"];
     const placeholders = requiredTables.map(() => "?").join(",");
     const rows = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name IN (${placeholders})`).all(...requiredTables);
     const present = new Set(rows.map((row) => row.name));
@@ -1899,6 +1905,7 @@ const server = createServer(async (req, res) => {
       }
       db.prepare("DELETE FROM request_idempotency WHERE path LIKE ?").run(`/api/v1/trades/${id}/%`);
       db.prepare("DELETE FROM settlement_records WHERE order_id=?").run(id);
+      db.prepare("DELETE FROM acceptance_items WHERE acceptance_id IN (SELECT id FROM acceptances WHERE order_id=?)").run(id);
       db.prepare("DELETE FROM acceptances WHERE order_id=?").run(id);
       db.prepare("DELETE FROM fulfillment_events WHERE order_id=?").run(id);
       db.prepare("UPDATE invoices SET invoice_no=NULL,status='待开具',issued_at=NULL WHERE order_id=?").run(id);
@@ -2224,10 +2231,32 @@ const server = createServer(async (req, res) => {
     if (!canActForOrder(req, order, "buyer")) return error(res, 403, "只有采购方或授权后台岗位可以执行验收");
     if (["已取消", "已完成"].includes(order.status) || db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(id)) return error(res, 409, "交易已取消或已关账，禁止新增验收结论");
     if (db.prepare("SELECT id FROM acceptances WHERE order_id=? AND result IN ('accepted','disputed') LIMIT 1").get(id)) return error(res, 409, "该交易已存在最终验收结论，禁止重复提交");
-    const acceptedQty = payload.accepted_qty == null ? null : Number(payload.accepted_qty);
-    const orderedQty = Number(db.prepare("SELECT COALESCE(SUM(qty),0) AS qty FROM order_items WHERE order_id=?").get(id).qty);
-    if (result === "accepted" && (!finitePositive(acceptedQty) || acceptedQty > orderedQty || (productionMode && Math.abs(acceptedQty - orderedQty) > 0.000001))) return error(res, 400, productionMode ? "生产全量合格验收数量必须等于订单总量；部分到货请提交争议并冻结差异" : "合格验收数量必须为正数且不得超过订单数量");
-    if (result === "disputed" && acceptedQty != null && (!finiteNonNegative(acceptedQty) || acceptedQty > orderedQty)) return error(res, 400, "争议验收数量不合法");
+    const orderItems = db.prepare("SELECT oi.id,oi.qty,p.unit FROM order_items oi JOIN products p ON p.id=oi.product_id WHERE oi.order_id=? ORDER BY oi.id").all(id);
+    const orderedQty = orderItems.reduce((sum, item) => sum + Number(item.qty || 0), 0);
+    const hasItemAcceptance = Array.isArray(payload.accepted_items);
+    if (productionMode && !hasItemAcceptance) return error(res, 400, "生产验收必须按订单明细提供 accepted_items；不同计量单位不得合并成一个数量");
+    if (payload.accepted_items !== undefined && !hasItemAcceptance) return error(res, 400, "accepted_items 必须是订单明细数组");
+    let acceptedQty = payload.accepted_qty == null ? null : Number(payload.accepted_qty);
+    const acceptedItems = hasItemAcceptance ? payload.accepted_items : [];
+    if (hasItemAcceptance) {
+      if ((result === "disputed" && acceptedItems.length === 0) || (result === "accepted" && acceptedItems.length !== orderItems.length)) return error(res, 400, result === "accepted" ? "生产全量合格验收必须逐项覆盖全部订单明细" : "争议验收至少要绑定一条订单明细");
+      const orderItemMap = new Map(orderItems.map((item) => [Number(item.id), item]));
+      const seen = new Set();
+      let itemTotal = 0;
+      for (const item of acceptedItems) {
+        const orderItemId = Number(item?.order_item_id);
+        const row = orderItemMap.get(orderItemId);
+        const itemQty = Number(item?.accepted_qty);
+        if (!row || seen.has(orderItemId) || !finiteNonNegative(itemQty) || itemQty > Number(row.qty) || (result === "accepted" && Math.abs(itemQty - Number(row.qty)) > 0.000001)) return error(res, 400, result === "accepted" ? "生产全量合格验收的明细数量必须与订单逐项一致" : "争议验收明细数量不合法");
+        seen.add(orderItemId);
+        itemTotal += itemQty;
+      }
+      if (result === "accepted" && seen.size !== orderItems.length) return error(res, 400, "生产全量合格验收必须覆盖每一条订单明细");
+      acceptedQty = itemTotal;
+    } else {
+      if (result === "accepted" && (!finitePositive(acceptedQty) || acceptedQty > orderedQty)) return error(res, 400, "合格验收数量必须为正数且不得超过订单数量");
+      if (result === "disputed" && acceptedQty != null && (!finiteNonNegative(acceptedQty) || acceptedQty > orderedQty)) return error(res, 400, "争议验收数量不合法");
+    }
     // 生产环境的最终验收必须建立在物流机构已确认送达的事实之上。
     // 本地演示仍保留原有的离线跑通能力；真实交易不能跳过发运、签收再进入开票/结算。
     if (productionMode) {
@@ -2239,7 +2268,10 @@ const server = createServer(async (req, res) => {
     }
     const acceptanceId = `ACC-${randomUUID()}`, t = now();
     const acceptanceActor = productionMode ? actorFor(req, "采购验收岗") : String(payload.receiver || "采购验收岗");
-    db.prepare("INSERT INTO acceptances VALUES (?,?,?,?,?,?,?,?)").run(acceptanceId, id, acceptanceActor.slice(0, 120), result, acceptedQty, String(payload.evidence || "复磅/抽检/签收证据").slice(0, 500), t, result === "disputed" ? String(payload.dispute_note || "").slice(0, 500) : null);
+    const evidence = String(payload.evidence || "复磅/抽检/签收证据").slice(0, 500);
+    db.prepare("INSERT INTO acceptances VALUES (?,?,?,?,?,?,?,?)").run(acceptanceId, id, acceptanceActor.slice(0, 120), result, acceptedQty, evidence, t, result === "disputed" ? String(payload.dispute_note || "").slice(0, 500) : null);
+    const acceptanceItemStmt = db.prepare("INSERT INTO acceptance_items(acceptance_id,order_item_id,accepted_qty,result,evidence) VALUES (?,?,?,?,?)");
+    for (const item of acceptedItems) acceptanceItemStmt.run(acceptanceId, Number(item.order_item_id), Number(item.accepted_qty), result, String(item.evidence || evidence).slice(0, 500));
     db.prepare("UPDATE orders SET status=?,payment_status=?,updated_at=? WHERE id=?").run(result === "accepted" ? "待开票" : "争议处理中", result === "accepted" ? "待开票" : "争议款冻结", t, id);
     log(acceptanceActor, result === "accepted" ? "ACCEPT_TRADE" : "DISPUTE_TRADE", id, String(payload.evidence || ""));
     const data = tradeLedger(id);

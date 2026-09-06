@@ -14,6 +14,7 @@ const backendMode = ref<"local-demo" | "production">(productionBuild ? "producti
 const backendOrderAmount = ref<number | null>(null);
 const backendGoodsNet = ref<number | null>(null);
 const backendPlatformFee = ref<number | null>(null);
+const backendOrderItems = ref<Array<{ id: number; qty: number }>>([]);
 const advancing = ref(false);
 let timer: ReturnType<typeof setInterval> | null = null;
 const demoBackendOrderId = "SZGS-2026-850901";
@@ -123,7 +124,7 @@ async function executeNext(showToast = true) {
     advancing.value = true;
     try {
       if (index === 4) await signTradeContract(backendOrderId, isBuyer.value ? "buyer" : "supplier", `CA-${isBuyer.value ? "BUYER" : "SUPPLIER"}-V8533`);
-      else if (index === 8) await acceptTrade(backendOrderId, evidence);
+      else if (index === 8) await acceptTrade(backendOrderId, evidence, undefined, backendOrderItems.value.map((item) => ({ order_item_id: Number(item.id), accepted_qty: Number(item.qty), evidence })));
       else if (index === 9) await issueTradeInvoice(backendOrderId, `V8533-${Date.now().toString().slice(-8)}`, backendOrderAmount.value ?? displayTotalAmount.value);
       else if (index === 10) await settleTrade(backendOrderId, `SETTLE-V8533-${Date.now().toString().slice(-8)}`);
       else await recordPlatformEvent("trade", step.title, { reference_id: backendOrderId, evidence, batch_id: tx.value.id });
@@ -195,6 +196,7 @@ async function syncBackendTrade() {
     if (!backendOrderId) throw new Error("尚未形成可同步的正式订单");
     const backend = await getTrade(backendOrderId);
     backendLinked.value = true;
+    backendOrderItems.value = Array.isArray(backend?.items) ? backend.items.map((item: any) => ({ id: Number(item.id), qty: Number(item.qty) })) : [];
     const backendGoods = (backend?.items || []).reduce((sum: number, item: any) => sum + Number(item.subtotal || 0), 0);
     backendOrderAmount.value = Number(backend?.amount || 0) || null;
     backendGoodsNet.value = backendGoods > 0 ? Math.round(backendGoods * 100) / 100 : null;

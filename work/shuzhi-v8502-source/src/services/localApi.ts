@@ -354,11 +354,11 @@ export function signTradeContract(orderId: string, party: "buyer" | "supplier", 
   });
 }
 
-export function acceptTrade(orderId: string, evidence = "复磅+抽检+签收影像", acceptedQty?: number) {
+export function acceptTrade(orderId: string, evidence = "复磅+抽检+签收影像", acceptedQty?: number, acceptedItems?: Array<{ order_item_id: number; accepted_qty: number; evidence?: string }>) {
   return requestJson<any>(`/api/v1/trades/${encodeURIComponent(orderId)}/accept`, {
     method: "POST",
     idempotencyKey: newIdempotencyKey("accept-trade"),
-    data: { result: "accepted", receiver: "采购验收岗", evidence, ...(acceptedQty == null ? {} : { accepted_qty: acceptedQty }) },
+    data: { result: "accepted", receiver: "采购验收岗", evidence, ...(acceptedQty == null ? {} : { accepted_qty: acceptedQty }), ...(acceptedItems?.length ? { accepted_items: acceptedItems } : {}) },
   });
 }
 

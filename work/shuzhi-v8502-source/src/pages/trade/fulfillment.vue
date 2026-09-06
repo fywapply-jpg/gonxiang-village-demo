@@ -34,6 +34,7 @@ const batches = ref([
 const current = ref(2);
 const orderId = ref("SO-2026-08504");
 const backendSync = ref("");
+const backendItems = ref<Array<{ id: number; qty: number }>>([]);
 const settling = ref(false);
 const normalAmount = computed(() => batches.value.filter((b) => b.status === "已验收").reduce((sum, b) => sum + b.amount, 0));
 const frozenAmount = computed(() => contract.amount - normalAmount.value);
@@ -44,6 +45,7 @@ onLoad((q) => {
   if (q?.order) orderId.value = String(q.order);
   if (orderId.value.startsWith("SZGS-")) {
     getTrade(orderId.value).then((data) => {
+      backendItems.value = Array.isArray(data?.items) ? data.items.map((item: any) => ({ id: Number(item.id), qty: Number(item.qty) })) : [];
       backendSync.value = `后台订单：${data.status} · 资金：${data.payment_status} · 发票：${data.invoice_status}`;
     }).catch(() => { backendSync.value = "后台状态暂不可读，请先完成登录授权"; });
   }
@@ -75,11 +77,24 @@ function checkBatch(batch: any) {
       const sync = orderId.value.startsWith("SZGS-");
       if (productionBuild && !sync) return productionBlocked("到货验收");
       if (sync) {
-        acceptTrade(orderId.value, `批次 ${batch.no} 复磅+抽检+签收影像`, batch.weight).then(() => {
+        const evidence = `批次 ${batch.no} 复磅+抽检+签收影像`;
+        const allBatchesReady = batches.value.every((item) => item.no === batch.no || item.status === "已验收");
+        if (!allBatchesReady) {
           batch.status = "已验收";
           batch.quality = "合格";
-          backendSync.value = "后台状态：验收合格，等待发票与结算";
-          uni.showToast({ title: "后台已记录验收", icon: "success" });
+          backendSync.value = "本批证据已记录；待全部批次完成后一次性提交逐项验收";
+          uni.showToast({ title: "本批证据已记录", icon: "success" });
+          return;
+        }
+        if (!backendItems.value.length) {
+          uni.showModal({ title: "验收未完成", content: "后台未返回订单明细，无法按商品明细逐项验收；请先刷新订单。", showCancel: false });
+          return;
+        }
+        acceptTrade(orderId.value, evidence, undefined, backendItems.value.map((item) => ({ order_item_id: item.id, accepted_qty: item.qty, evidence }))).then(() => {
+          batch.status = "已验收";
+          batch.quality = "合格";
+          backendSync.value = "后台状态：逐项验收合格，等待发票与结算";
+          uni.showToast({ title: "后台已记录逐项验收", icon: "success" });
         }).catch((error: Error) => uni.showModal({ title: "验收未完成", content: error.message || "后台未接受验收", showCancel: false }));
         return;
       }

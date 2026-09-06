@@ -114,6 +114,10 @@ try {
   productionServer = start(prodPort);
   await ready(productionServer, prodPort);
   const orderId = "SZGS-2026-850901";
+  const orderItemsDb = new DatabaseSync(dbPath);
+  const productionItems = orderItemsDb.prepare("SELECT id,qty FROM order_items WHERE order_id=? ORDER BY id").all(orderId);
+  orderItemsDb.close();
+  const fullAcceptanceItems = productionItems.map((item) => ({ order_item_id: Number(item.id), accepted_qty: Number(item.qty), evidence: "逐项复磅/抽检/签收证据" }));
   const readOnlyWorkflow = await request(prodPort, "/api/v1/operations/alliance/advance", financeToken, { evidence: "只读财务岗位不应推进业务流程" }, "outbox-readonly-workflow");
   add(readOnlyWorkflow.status === 403, "生产只读岗位禁止推进业务工作流", `HTTP ${readOnlyWorkflow.status}`);
   const readOnlyArea = await request(prodPort, "/api/v1/merchants/m-supplier/service-area", financeToken, { center_lat: 24.91, center_lng: 115.65, radius_km: 120, max_daily_orders: 80 }, "outbox-readonly-service-area");
@@ -186,13 +190,15 @@ try {
   add(mismatchedIdentity.status === 409, "机构指令主体代码错配阻断", `HTTP ${mismatchedIdentity.status}`);
   const shipment = await request(prodPort, `/api/v1/trades/${orderId}/shipments`, supplierToken, { provider: "carrier-prod", consignor: "赣南优品", consignee: "华中商贸", consignor_credit_code: "91360722MA8V85013X", consignee_credit_code: "91420100MA8V85013Y", consignor_address: "江西省赣州市寻乌县农产品仓", consignee_address: "湖北省武汉市洪山区团餐配送中心", goods: [{ product_id: "p-orange", name: "赣南脐橙", quantity: 10, unit: "箱" }] }, "outbox-logistics-000001");
   add(shipment.status === 202 && shipment.payload?.status === "待机构受理", "生产物流先建待受理运单", `HTTP ${shipment.status}`);
-  const acceptanceBeforeDelivery = await request(prodPort, `/api/v1/trades/${orderId}/accept`, buyerToken, { result: "accepted", accepted_qty: 4288, evidence: "尚未送达的验收尝试" }, "outbox-accept-before-delivery");
+  const acceptanceBeforeDelivery = await request(prodPort, `/api/v1/trades/${orderId}/accept`, buyerToken, { result: "accepted", accepted_items: fullAcceptanceItems, evidence: "尚未送达的验收尝试" }, "outbox-accept-before-delivery");
   add(acceptanceBeforeDelivery.status === 409, "生产未送达禁止提前验收", `HTTP ${acceptanceBeforeDelivery.status}`);
   const deliveredCallback = await webhook(prodPort, "logistics", { event_id: `outbox-logistics-delivered-${Date.now()}`, order_id: orderId, tracking_no: "OUTBOX-TRK-001", status: "delivered", temperature: 4.1, evidence: "第三方物流签收回单" }, baseEnv.LOGISTICS_WEBHOOK_SECRET);
   add(deliveredCallback.status === 202 && deliveredCallback.payload?.next_action?.includes("验收"), "物流送达回调推进验收节点", `HTTP ${deliveredCallback.status}${deliveredCallback.status !== 202 ? ` · ${JSON.stringify(deliveredCallback.payload)}` : ""}`);
-  const partialAcceptance = await request(prodPort, `/api/v1/trades/${orderId}/accept`, buyerToken, { result: "accepted", accepted_qty: 1, evidence: "部分到货不得直接合格" }, "outbox-accept-partial-reject");
+  const scalarAcceptance = await request(prodPort, `/api/v1/trades/${orderId}/accept`, buyerToken, { result: "accepted", accepted_qty: 4288, evidence: "不同单位不得合并验收" }, "outbox-accept-scalar-reject");
+  add(scalarAcceptance.status === 400, "生产禁止合并数量验收", `HTTP ${scalarAcceptance.status}`);
+  const partialAcceptance = await request(prodPort, `/api/v1/trades/${orderId}/accept`, buyerToken, { result: "accepted", accepted_items: [{ order_item_id: Number(productionItems[0]?.id), accepted_qty: 1, evidence: "部分到货不得直接合格" }], evidence: "部分到货不得直接合格" }, "outbox-accept-partial-reject");
   add(partialAcceptance.status === 400, "生产部分数量不得直接标记合格", `HTTP ${partialAcceptance.status}`);
-  const acceptanceAfterDelivery = await request(prodPort, `/api/v1/trades/${orderId}/accept`, buyerToken, { result: "accepted", accepted_qty: 4288, evidence: "复磅/抽检/签收证据" }, "outbox-accept-after-delivery");
+  const acceptanceAfterDelivery = await request(prodPort, `/api/v1/trades/${orderId}/accept`, buyerToken, { result: "accepted", accepted_items: fullAcceptanceItems, evidence: "复磅/抽检/签收证据" }, "outbox-accept-after-delivery");
   add(acceptanceAfterDelivery.status === 201, "生产送达后才允许验收", `HTTP ${acceptanceAfterDelivery.status}${acceptanceAfterDelivery.status !== 201 ? ` · ${JSON.stringify(acceptanceAfterDelivery.payload)}` : ""}`);
   const dbInvoiceMismatch = new DatabaseSync(dbPath);
   dbInvoiceMismatch.prepare("UPDATE invoices SET amount=amount+1 WHERE order_id=?").run(orderId);
@@ -252,7 +258,7 @@ try {
   add(invoiceAfterRefund.status === 409, "全额退款后禁止普通开票", `HTTP ${invoiceAfterRefund.status}`);
   const dbAfter = new DatabaseSync(dbPath);
   dbAfter.prepare("UPDATE contracts SET status='已签署',signed_at=? WHERE order_id=?").run(t, orderId);
-  dbAfter.prepare("UPDATE acceptances SET result='accepted',accepted_qty=4288,accepted_at=?,evidence='生产验收回执' WHERE order_id=?").run(t, orderId);
+  dbAfter.prepare("UPDATE acceptances SET result='accepted',accepted_qty=4288,accepted_at=?,evidence='生产验收回执' WHERE order_id=? AND id IN (SELECT acceptance_id FROM acceptance_items WHERE acceptance_id IN (SELECT id FROM acceptances WHERE order_id=?))").run(t, orderId, orderId);
   dbAfter.prepare("UPDATE invoices SET amount=276000 WHERE order_id=?").run(orderId);
   dbAfter.prepare("UPDATE payments SET status='已入金待验收',paid_at=? WHERE id=?").run(t, retryPaymentId);
   dbAfter.prepare("UPDATE payment_refunds SET status='退款失败',updated_at=? WHERE id=?").run(t, refundId);
