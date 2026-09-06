@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 
+const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBlocked = () => uni.showModal({
+  title: "需后台循环农业服务",
+  content: "正式环境的回收计量、财政补贴、绿色积分和碳减排量必须由后台凭真实称重、转运和持牌处置回执入账；当前不展示或修改本地积分。",
+  showCancel: false,
+});
+
 const ACRES = 100; // 测算基准 100 亩
 
 // 三类农业废弃物回收
@@ -79,6 +86,7 @@ const flow = [
 
 function nav(url: string) { uni.navigateTo({ url }); }
 function point() {
+  if (productionBuild) return productionBlocked();
   uni.showModal({
     title: "绿色积分兑换", showCancel: false, confirmText: "知道了",
     content: `本季 ${ACRES} 亩预计可得绿色积分 ${greenPoints.value} 分。\n\n可用于：抵扣农资集采货款、兑换生活用品、提升绿色信用评级。回收越规范、积分越多、信用越好。`,

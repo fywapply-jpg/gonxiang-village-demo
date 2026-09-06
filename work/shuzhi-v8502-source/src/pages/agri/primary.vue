@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 
+const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBlocked = () => uni.showModal({
+  title: "需后台初加工服务",
+  content: "正式环境的代加工下单必须由后台核验产能、批次、质量标准、合同和收货方后生成真实订单；当前不会创建本地订单。",
+  showCancel: false,
+});
+
 const TON = 10;          // 一批毛菜 10 吨
 const JIN = 2000;        // 斤/吨
 const BUY = 1.2;         // 毛菜收购价 元/斤
@@ -50,6 +57,7 @@ const chain = [
 function nav(url: string) { uni.navigateTo({ url }); }
 function toBom() { uni.navigateTo({ url: "/pages/trade/kitchen-bom" }); }
 function order() {
+  if (productionBuild) return productionBlocked();
   uni.showModal({
     title: "初加工代加工下单", showCancel: false, confirmText: "知道了",
     content: `${lv.value.name}\n一批 ${TON} 吨毛菜\n每吨净收益约 ¥${netCur.value.toLocaleString()}（比毛菜直卖多 ¥${gainPerTon.value.toLocaleString()}）\n\n可委托产地初加工中心代加工，或自建线接央厨订单。`,

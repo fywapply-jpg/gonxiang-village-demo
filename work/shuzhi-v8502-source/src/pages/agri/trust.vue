@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 
+const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBlocked = () => uni.showModal({
+  title: "需后台农业托管服务",
+  content: "正式环境的托管协议必须由后台核验土地/服务组织、作业范围、机构结算条件和授权签署后生成真实合同；当前不会在前台确认签约。",
+  showCancel: false,
+});
+
 // 土地托管（农业生产托管）：不流转土地，把"耕种防收烘储"环节委托给服务组织
 const ACRES = 100; // 测算基准：100 亩水稻
 
@@ -69,6 +76,7 @@ const flow = [
 
 function nav(url: string) { uni.navigateTo({ url }); }
 function sign() {
+  if (productionBuild) return productionBlocked();
   uni.showModal({
     title: "签订托管协议",
     content: `服务组织：${org.value.n}\n模式：${menuCount.value === menu.value.length ? "全程托管" : "菜单式半托管（" + menuCount.value + " 个环节）"}\n面积：${ACRES} 亩\n费用：约 ¥${(menuCount.value === menu.value.length ? FULL_PRICE : menuTotal.value) * ACRES / 10000} 万\n\n土地承包权不变、经营权不流转，仅委托作业环节；作业全程北斗监管、逐环节验收合格才结算。`,
