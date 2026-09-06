@@ -1,0 +1,11 @@
+[Unit]
+Description=数智供社 v8530 daily SQLite backup timer
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+RandomizedDelaySec=15m
+Unit=shuzhi-v8530-backup.service
+
+[Install]
+WantedBy=timers.target

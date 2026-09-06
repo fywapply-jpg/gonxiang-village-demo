@@ -1,0 +1,23 @@
+[Unit]
+Description=数智供社 v8530 SQLite backup
+After=local-fs.target
+Before=shutdown.target
+
+[Service]
+Type=oneshot
+User=shuzhi
+Group=shuzhi
+WorkingDirectory=/opt/shuzhi-v8530
+EnvironmentFile=/etc/shuzhi-v8530.env
+ExecStart=/usr/bin/node /opt/shuzhi-v8530/scripts/backup-shuzhi-local.mjs
+UMask=027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectControlGroups=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX
+ReadWritePaths=/var/lib/shuzhi-v8530 /var/backups/shuzhi-v8530
