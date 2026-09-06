@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "local-backend/**"
+      - "admin/App2.tsx"
       - "scripts/check-shuzhi-*.mjs"
       - "scripts/run-shuzhi-local-smoke.mjs"
       - "scripts/check-secret-hygiene.mjs"
@@ -16,6 +17,7 @@ on:
   pull_request:
     paths:
       - "local-backend/**"
+      - "admin/App2.tsx"
       - "scripts/check-shuzhi-*.mjs"
       - "scripts/run-shuzhi-local-smoke.mjs"
       - "scripts/check-secret-hygiene.mjs"
