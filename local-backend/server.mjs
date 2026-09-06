@@ -238,7 +238,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS payments (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, payer TEXT NOT NULL, payee TEXT NOT NULL, amount REAL NOT NULL, channel TEXT NOT NULL, status TEXT NOT NULL, paid_at TEXT, FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS settlement_records (id TEXT PRIMARY KEY, order_id TEXT NOT NULL UNIQUE, amount REAL NOT NULL, platform_fee REAL NOT NULL DEFAULT 0, status TEXT NOT NULL, instruction_ref TEXT NOT NULL, settled_at TEXT, created_at TEXT NOT NULL, FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS fulfillment_events (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id TEXT NOT NULL, step INTEGER NOT NULL, title TEXT NOT NULL, evidence TEXT NOT NULL, actor TEXT NOT NULL, created_at TEXT NOT NULL, FOREIGN KEY (order_id) REFERENCES orders(id));
-  CREATE TABLE IF NOT EXISTS invoices (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, invoice_no TEXT, amount REAL NOT NULL, status TEXT NOT NULL, issued_at TEXT, FOREIGN KEY (order_id) REFERENCES orders(id));
+  CREATE TABLE IF NOT EXISTS invoices (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, invoice_no TEXT, amount REAL NOT NULL, status TEXT NOT NULL, issued_at TEXT, invoice_type TEXT NOT NULL DEFAULT '', tax_category_code TEXT NOT NULL DEFAULT '', tax_rate REAL, seller_credit_code TEXT, buyer_credit_code TEXT, FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS shipments (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, provider TEXT NOT NULL, tracking_no TEXT NOT NULL, carrier_name TEXT, vehicle_no TEXT, temperature REAL, status TEXT NOT NULL, departed_at TEXT, arrived_at TEXT, evidence TEXT, updated_at TEXT NOT NULL, consignor_address TEXT NOT NULL DEFAULT '', consignee_address TEXT NOT NULL DEFAULT '', FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS acceptances (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, receiver TEXT NOT NULL, result TEXT NOT NULL, accepted_qty REAL, evidence TEXT, accepted_at TEXT, dispute_note TEXT, FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS merchant_credit (merchant_id TEXT PRIMARY KEY, star_level INTEGER NOT NULL DEFAULT 1, score REAL NOT NULL DEFAULT 60, completed_orders INTEGER NOT NULL DEFAULT 0, on_time_rate REAL NOT NULL DEFAULT 0, dispute_rate REAL NOT NULL DEFAULT 0, last_review_at TEXT, FOREIGN KEY (merchant_id) REFERENCES merchants(id));
@@ -274,6 +274,9 @@ if (!db.prepare("PRAGMA table_info(shipments)").all().some((column) => column.na
 }
 if (!db.prepare("PRAGMA table_info(shipments)").all().some((column) => column.name === "consignee_address")) {
   db.exec("ALTER TABLE shipments ADD COLUMN consignee_address TEXT NOT NULL DEFAULT ''");
+}
+for (const [name, definition] of [["invoice_type", "TEXT NOT NULL DEFAULT ''"], ["tax_category_code", "TEXT NOT NULL DEFAULT ''"], ["tax_rate", "REAL"], ["seller_credit_code", "TEXT"], ["buyer_credit_code", "TEXT"]]) {
+  if (!db.prepare("PRAGMA table_info(invoices)").all().some((column) => column.name === name)) db.exec(`ALTER TABLE invoices ADD COLUMN ${name} ${definition}`);
 }
 
 const now = () => new Date().toISOString();
@@ -315,7 +318,7 @@ const seed = () => {
     db.prepare("INSERT INTO contract_signatures(contract_id,order_id,party,signer_id,signer_name,certificate_ref,signed_at) VALUES (?,?,?,?,?,?,?)").run("CA-SZGS-850901", orderId, "buyer", "m-buyer", "华中商贸采购中心有限公司授权签约人", "CA-BUYER-DEMO", t);
     db.prepare("INSERT INTO contract_signatures(contract_id,order_id,party,signer_id,signer_name,certificate_ref,signed_at) VALUES (?,?,?,?,?,?,?)").run("CA-SZGS-850901", orderId, "supplier", "m-supplier", "赣南优品农业合作社授权签约人", "CA-SUPPLIER-DEMO", t);
     db.prepare("INSERT INTO payments VALUES (?,?,?,?,?,?,?,?)").run("PAY-SZGS-850901", orderId, "华中商贸采购中心有限公司", "持牌结算机构托管户", 276000, "机构监管结算", "待验收分账", null);
-    db.prepare("INSERT INTO invoices VALUES (?,?,?,?,?,?)").run("INV-SZGS-850901", orderId, null, 276000, "待开具", null);
+    db.prepare("INSERT INTO invoices(id,order_id,invoice_no,amount,status,issued_at,invoice_type,tax_category_code,tax_rate,seller_credit_code,buyer_credit_code) VALUES (?,?,?,?,?,?,?,?,?,?,?)").run("INV-SZGS-850901", orderId, null, 276000, "待开具", null, "增值税电子普通发票", "农业产品", null, "91360722MA8V85013X", "91420100MA8V85013Y");
     db.prepare("INSERT INTO shipments(id,order_id,provider,tracking_no,carrier_name,vehicle_no,temperature,status,departed_at,arrived_at,evidence,updated_at,consignor_address,consignee_address) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run("SHP-SZGS-850901", orderId, "third-party", "SF202608030001", "顺丰冷运", "鄂A·85013", 4.2, "运输中", t, null, "温控/GPS/签封已绑定", t, "江西省赣州市寻乌县农产品仓", "湖北省武汉市洪山区团餐配送中心");
     db.prepare("INSERT INTO acceptances VALUES (?,?,?,?,?,?,?,?)").run("ACC-SZGS-850901", orderId, "华中商贸采购中心有限公司验收岗", "pending", null, "待到货复磅、抽检和签收", null, null);
     db.prepare("INSERT INTO merchant_credit VALUES (?,?,?,?,?,?,?)").run("m-supplier", 4, 86.5, 128, 0.97, 0.012, t);
@@ -1357,7 +1360,7 @@ const server = createServer(async (req, res) => {
       }
       db.prepare("INSERT INTO contracts VALUES (?,?,?,?,?,?)").run(contractId, orderId, "主合同+子订单+质量附件", "待双方签署", null, `0x${randomUUID().replaceAll("-", "").slice(0, 16)}…c4`);
       db.prepare("INSERT INTO payments VALUES (?,?,?,?,?,?,?,?)").run(paymentId, orderId, buyer.name, supplier.name, amount, "持牌结算机构托管户", "待机构确认", null);
-      db.prepare("INSERT INTO invoices VALUES (?,?,?,?,?,?)").run(invoiceId, orderId, null, amount, "待开具", null);
+      db.prepare("INSERT INTO invoices(id,order_id,invoice_no,amount,status,issued_at,invoice_type,tax_category_code,tax_rate,seller_credit_code,buyer_credit_code) VALUES (?,?,?,?,?,?,?,?,?,?,?)").run(invoiceId, orderId, null, amount, "待开具", null, invoiceType, "", null, null, null);
       db.prepare("INSERT INTO acceptances VALUES (?,?,?,?,?,?,?,?)").run(acceptanceId, orderId, `${buyer.name}验收岗`, "pending", null, "待到货复磅、抽检和签收", null, null);
       db.prepare("INSERT INTO fulfillment_events(order_id,step,title,evidence,actor,created_at) VALUES (?,?,?,?,?,?)").run(orderId, 0, "批量清单拆单", `ORDER-CREATE-${orderId.slice(-8)}`, principal?.id || "交易创建岗", t);
       if (acceptedQuote) {
@@ -1772,7 +1775,7 @@ const server = createServer(async (req, res) => {
     const accepted = db.prepare("SELECT id FROM acceptances WHERE order_id=? AND result='accepted'").get(id);
     if (!accepted) return error(res, 409, "验收合格前不得开票");
     if (!productionMode && !payload.invoice_no) return error(res, 400, "发票号码不能为空");
-    const invoice = db.prepare("SELECT amount FROM invoices WHERE order_id=? LIMIT 1").get(id);
+    const invoice = db.prepare("SELECT id,amount FROM invoices WHERE order_id=? LIMIT 1").get(id);
     if (!invoice || (payload.amount !== undefined && (!finitePositive(payload.amount, 1e12) || Math.abs(Number(payload.amount) - Number(invoice.amount)) > 0.01))) return error(res, 409, "发票金额与订单金额不一致");
     if (productionMode && payload.amount === undefined) return error(res, 400, "生产开票必须提供 amount 用于四流核对");
     const t = now();
@@ -1780,11 +1783,17 @@ const server = createServer(async (req, res) => {
       const sellerCreditCode = String(payload.seller_credit_code || "").trim();
       const buyerCreditCode = String(payload.buyer_credit_code || "").trim();
       const taxRate = Number(payload.tax_rate);
-      if (!sellerCreditCode || !buyerCreditCode || !Number.isFinite(taxRate) || taxRate < 0 || taxRate > 1) return error(res, 400, "生产开票指令必须提供购销双方统一社会信用代码和税率");
+      const invoiceType = String(payload.invoice_type || "").trim().slice(0, 80);
+      const taxCategoryCode = String(payload.tax_category_code || "").trim().slice(0, 80);
+      if (!sellerCreditCode || !buyerCreditCode || !Number.isFinite(taxRate) || taxRate < 0 || taxRate > 1 || !invoiceType || !taxCategoryCode) return error(res, 400, "生产开票指令必须提供购销双方统一社会信用代码、税率、发票类型和税收分类编码");
       const itemRows = db.prepare("SELECT name,qty,unit_price FROM order_items WHERE order_id=? ORDER BY id").all(id);
       if (!itemRows.length) return error(res, 409, "生产开票缺少商品明细");
+      const goodsNet = Math.round(itemRows.reduce((sum, item) => sum + Number(item.qty) * Number(item.unit_price), 0) * 100) / 100;
+      if (!Number.isFinite(goodsNet) || goodsNet <= 0 || goodsNet > Number(invoice.amount) + 0.01) return error(res, 409, "生产开票商品明细金额超过应开金额，禁止开票");
+      const serviceFee = Math.round((Number(invoice.amount) - goodsNet) * 100) / 100;
       db.exec("BEGIN");
       try {
+        db.prepare("UPDATE invoices SET invoice_type=?,tax_category_code=?,tax_rate=?,seller_credit_code=?,buyer_credit_code=? WHERE id=?").run(invoiceType, taxCategoryCode, taxRate, sellerCreditCode.toUpperCase(), buyerCreditCode.toUpperCase(), invoice.id);
         const queued = enqueueProductionInstitutionCommand({
           provider: "invoice",
           aggregateType: "order",
@@ -1799,7 +1808,10 @@ const server = createServer(async (req, res) => {
             seller: merchantParty(order.supplier_id, sellerCreditCode),
             buyer: merchantParty(order.buyer_id, buyerCreditCode),
             money: { amount: Number(invoice.amount), currency: "CNY" },
-            items: itemRows.map((item) => ({ name: item.name, quantity: Number(item.qty), unit_price: Number(item.unit_price), tax_rate: taxRate })),
+            items: itemRows.map((item) => ({ name: item.name, quantity: Number(item.qty), unit_price: Number(item.unit_price), tax_rate: taxRate, tax_category_code: taxCategoryCode })),
+            service_fee: serviceFee,
+            invoice_type: invoiceType,
+            tax_category_code: taxCategoryCode,
             original_invoice_no: null,
           },
           now: t,

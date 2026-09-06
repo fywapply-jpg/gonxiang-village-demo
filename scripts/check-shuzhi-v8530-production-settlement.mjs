@@ -75,7 +75,7 @@ const seedIncompleteOrder = () => {
   db.prepare("INSERT INTO orders VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(orderId, "buyerSupply", "m-buyer", "m-supplier", "履约中", 10000, "CNY", "持牌机构条件结算（验收后分账）", "待验收分账", 9, "2026-09-01", "已开具", "已签署", t, t);
   db.prepare("INSERT INTO contracts VALUES (?,?,?,?,?,?)").run("CA-PROD-MISSING-ITEMS", orderId, "主合同", "已签署", t, "0xprod");
   db.prepare("INSERT INTO payments VALUES (?,?,?,?,?,?,?,?)").run("PAY-PROD-MISSING-ITEMS", orderId, "测试采购主体", "持牌结算机构托管户", 10000, "机构监管结算", "已支付", t);
-  db.prepare("INSERT INTO invoices VALUES (?,?,?,?,?,?)").run("INV-PROD-MISSING-ITEMS", orderId, "PROD-INV-1", 10000, "已开具", t);
+  db.prepare("INSERT INTO invoices(id,order_id,invoice_no,amount,status,issued_at,invoice_type,tax_category_code,tax_rate,seller_credit_code,buyer_credit_code) VALUES (?,?,?,?,?,?,?,?,?,?,?)").run("INV-PROD-MISSING-ITEMS", orderId, "PROD-INV-1", 10000, "已开具", t, "增值税电子普通发票", "农业产品", 0.09, "91360722MA8V85013X", "91420100MA8V85013Y");
   db.prepare("INSERT INTO acceptances VALUES (?,?,?,?,?,?,?,?)").run("ACC-PROD-MISSING-ITEMS", orderId, "测试采购验收岗", "accepted", 1, "验收证据", t, null);
   db.close();
   return orderId;

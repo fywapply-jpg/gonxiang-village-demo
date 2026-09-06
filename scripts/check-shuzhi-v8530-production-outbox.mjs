@@ -111,8 +111,10 @@ try {
   dbAfter.prepare("UPDATE invoices SET amount=276000 WHERE order_id=?").run(orderId);
   dbAfter.prepare("UPDATE payments SET status='已入金待验收',paid_at=? WHERE order_id=?").run(t, orderId);
   dbAfter.close();
-  const invoice = await request(prodPort, `/api/v1/trades/${orderId}/invoice`, supplierToken, { amount: 276000, seller_credit_code: "91360722MA8V85013X", buyer_credit_code: "91420100MA8V85013Y", tax_rate: 0.09 }, "outbox-invoice-000001");
-  add(invoice.status === 202, "生产发票先入 Outbox", `HTTP ${invoice.status}`);
+  const invoiceMissingTax = await request(prodPort, `/api/v1/trades/${orderId}/invoice`, supplierToken, { amount: 276000, seller_credit_code: "91360722MA8V85013X", buyer_credit_code: "91420100MA8V85013Y", tax_rate: 0.09 }, "outbox-invoice-missing-tax-fields");
+  add(invoiceMissingTax.status === 400, "生产开票缺少税务字段阻断", `HTTP ${invoiceMissingTax.status}`);
+  const invoice = await request(prodPort, `/api/v1/trades/${orderId}/invoice`, supplierToken, { amount: 276000, seller_credit_code: "91360722MA8V85013X", buyer_credit_code: "91420100MA8V85013Y", tax_rate: 0.09, invoice_type: "增值税电子普通发票", tax_category_code: "农业产品" }, "outbox-invoice-000001");
+  add(invoice.status === 202, "生产发票先入 Outbox", `HTTP ${invoice.status}${invoice.status !== 202 ? ` · ${JSON.stringify(invoice.payload)} · ${productionServer.output().slice(-900)}` : ""}`);
   const dbIssued = new DatabaseSync(dbPath);
   dbIssued.prepare("UPDATE invoices SET status='已开具',invoice_no='PROD-INVOICE-001',issued_at=? WHERE order_id=?").run(t, orderId);
   dbIssued.close();
