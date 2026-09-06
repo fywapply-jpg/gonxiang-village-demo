@@ -3,12 +3,12 @@
   "version": "1.8.1",
   "description": "数智供销 B2B 供应链+金融平台 微信小程序（uni-app 一套代码 → H5 + 微信小程序）",
   "scripts": {
-    "dev:h5": "uni",
-    "dev:mp-weixin": "uni -p mp-weixin",
+    "dev:h5": "VITE_LOCAL_DEMO_TOKEN=local-demo-token uni",
+    "dev:mp-weixin": "VITE_LOCAL_DEMO_TOKEN=local-demo-token uni -p mp-weixin",
     "build:h5": "uni build",
     "build:h5:production": "test -n \"$VITE_API_BASE\" || { echo 'VITE_API_BASE must be an HTTPS production API origin' >&2; exit 1; }; case \"$VITE_API_BASE\" in https://*) ;; *) echo 'VITE_API_BASE must start with https://' >&2; exit 1 ;; esac; uni build",
     "build:mp-weixin": "uni build -p mp-weixin",
-    "build:mp-weixin:local": "API_HOST=\"${VITE_API_HOST:-$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}')}\"; API_PORT=\"${VITE_API_PORT:-8787}\"; test -n \"$API_HOST\" || { echo '无法探测局域网地址，请设置 VITE_API_HOST'; exit 1; }; VITE_API_BASE=\"${VITE_API_BASE:-http://$API_HOST:$API_PORT}\" uni build -p mp-weixin",
+    "build:mp-weixin:local": "API_HOST=\"${VITE_API_HOST:-$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}')}\"; API_PORT=\"${VITE_API_PORT:-8787}\"; test -n \"$API_HOST\" || { echo '无法探测局域网地址，请设置 VITE_API_HOST'; exit 1; }; VITE_API_BASE=\"${VITE_API_BASE:-http://$API_HOST:$API_PORT}\" VITE_LOCAL_DEMO_TOKEN=\"${VITE_LOCAL_DEMO_TOKEN:-local-demo-token}\" uni build -p mp-weixin",
     "build:mp-weixin:production": "test -n \"$VITE_API_BASE\" || { echo 'VITE_API_BASE must be an HTTPS production API origin' >&2; exit 1; }; case \"$VITE_API_BASE\" in https://*) ;; *) echo 'VITE_API_BASE must start with https://' >&2; exit 1 ;; esac; uni build -p mp-weixin",
     "type-check": "vue-tsc --noEmit",
     "check:perms": "node scripts/check-perms.mjs"

@@ -58,7 +58,10 @@ if (mode === "local") {
 } else {
   add(/^https:\/\/[^/]+$/.test(apiBase) && !apiBase.includes("example.cn") && !apiBase.includes("CHANGE_ME"), "正式 HTTPS API 地址", apiBase || "未找到正式 HTTPS 根地址");
 }
-add(!apiSource.includes("local-demo-token"), "前端不内嵌演示令牌", "未发现 local-demo-token");
+const containsDemoToken = apiSource.includes("local-demo-token");
+add(mode === "local" ? containsDemoToken : !containsDemoToken, "演示令牌边界", mode === "local"
+  ? (containsDemoToken ? "仅本地 HTTP 联调包包含受控演示令牌" : "本地联调包缺少受控演示令牌")
+  : (containsDemoToken ? "正式 HTTPS 包不得包含 local-demo-token" : "正式 HTTPS 包未发现 local-demo-token"));
 add(!apiSource.includes("CHANGE_ME"), "前端不含占位配置", "未发现 CHANGE_ME");
 
 if (zipPath && existsSync(zipPath)) {
