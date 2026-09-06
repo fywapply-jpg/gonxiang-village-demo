@@ -40,7 +40,7 @@
       "requiredConfig": [],
       "readyEnv": "SHUZHI_CA_READY",
       "acceptanceRefEnv": "SHUZHI_CA_ACCEPTANCE_REF",
-      "missingAdapter": "缺少 CA 服务商出站签署、合同摘要验签和异步回调适配器；现有接口只保存证书引用",
+      "missingAdapter": "统一 HTTPS/HMAC 出站客户端已具备；仍缺 CA 服务商字段转换、合同摘要验签和异步回调适配器，现有接口只保存证书引用",
       "acceptanceEvidence": ["企业证书实名", "合同摘要一致", "双边签署回执", "回调验签与幂等"],
       "nextAction": "选定 CA/电子签服务商并取得正式接口文档后，实现独立机构适配器"
     },
@@ -51,7 +51,7 @@
       "requiredConfig": ["PAYMENT_WEBHOOK_SECRET"],
       "readyEnv": "SHUZHI_PAYMENT_READY",
       "acceptanceRefEnv": "SHUZHI_PAYMENT_ACCEPTANCE_REF",
-      "missingAdapter": "已有入站支付回调、金额核验和结算闸门，但缺少统一下单、托管入金、退款和分账出站适配器",
+      "missingAdapter": "统一 HTTPS/HMAC 出站客户端、入站回调和金额闸门已具备；仍缺具体机构的统一下单、托管入金、退款和分账字段转换",
       "acceptanceEvidence": ["托管入金流水", "分账回执", "退款/争议", "日终三方对账"],
       "nextAction": "与银行或持牌支付机构签约，按机构 API 实现出站指令并完成沙箱对账"
     },
@@ -62,7 +62,7 @@
       "requiredConfig": ["LOGISTICS_WEBHOOK_SECRET"],
       "readyEnv": "SHUZHI_LOGISTICS_READY",
       "acceptanceRefEnv": "SHUZHI_LOGISTICS_ACCEPTANCE_REF",
-      "missingAdapter": "已有运单登记和轨迹回调，但缺少承运商下单、取消、电子面单和主动查询出站适配器",
+      "missingAdapter": "统一 HTTPS/HMAC 出站客户端、运单登记和轨迹回调已具备；仍缺具体承运商的下单、取消、电子面单和主动查询字段转换",
       "acceptanceEvidence": ["真实运单号", "轨迹回调", "签收回单", "异常冻结与恢复"],
       "nextAction": "选定承运商或聚合物流服务商，取得测试账号后实现出站适配器"
     },
@@ -73,7 +73,7 @@
       "requiredConfig": ["INVOICE_WEBHOOK_SECRET"],
       "readyEnv": "SHUZHI_INVOICE_READY",
       "acceptanceRefEnv": "SHUZHI_INVOICE_ACCEPTANCE_REF",
-      "missingAdapter": "已有发票登记、金额核验和入站回调，但缺少开具、验真、红冲/作废出站适配器",
+      "missingAdapter": "统一 HTTPS/HMAC 出站客户端、金额核验和入站回调已具备；仍缺具体服务商的开具、验真、红冲/作废字段转换",
       "acceptanceEvidence": ["开票回执", "发票验真", "购销主体一致", "红冲/作废闭环"],
       "nextAction": "由纳税主体接入电子税务局或合规服务商，再实现开票及验真适配器"
     },
@@ -84,7 +84,7 @@
       "requiredConfig": ["REGULATOR_WEBHOOK_SECRET"],
       "readyEnv": "SHUZHI_REGULATOR_READY",
       "acceptanceRefEnv": "SHUZHI_REGULATOR_ACCEPTANCE_REF",
-      "missingAdapter": "已有监管回执留痕入口，但缺少属地监管/质检机构数据上报、证书校验和失败补偿出站适配器",
+      "missingAdapter": "统一 HTTPS/HMAC 出站客户端和监管回执入口已具备；仍缺属地监管/质检机构的数据字段转换、证书校验和失败补偿",
       "acceptanceEvidence": ["数据共享协议", "字段最小化清单", "机构回执", "失败重试与补偿"],
       "nextAction": "明确属地监管或检测机构及接口规范后实现独立出站适配器"
     }
