@@ -635,6 +635,11 @@ const orderGoodsNet = (orderId) => {
   const row = db.prepare("SELECT COALESCE(SUM(subtotal), 0) AS amount FROM order_items WHERE order_id=?").get(orderId);
   return Math.round(Number(row?.amount || 0) * 100) / 100;
 };
+const acceptanceCompleteForOrder = (orderId) => {
+  const orderedQty = Number(db.prepare("SELECT COALESCE(SUM(qty),0) AS qty FROM order_items WHERE order_id=?").get(orderId)?.qty || 0);
+  const acceptedQty = Number(db.prepare("SELECT COALESCE(MAX(accepted_qty),0) AS qty FROM acceptances WHERE order_id=? AND result='accepted'").get(orderId)?.qty || 0);
+  return orderedQty > 0 && Math.abs(acceptedQty - orderedQty) <= 0.000001;
+};
 const platformFeeForOrder = (orderId, orderAmount) => {
   // 只有商品明细才是平台费计费基数；物流、包装、检测等实际服务费不得并入基数。
   // 本地演示兼容没有明细的旧订单；生产结算必须补齐商品明细，不能用订单总额代替。
@@ -946,7 +951,7 @@ const processIntegrationWebhook = async (provider, req, res) => {
             moneyCents(paymentAmount, "托管金额");
             if (invoice) moneyCents(invoiceAmount, "发票金额");
           }
-          if (!contract || contract.status !== "已签署" || !accepted || !invoice || Math.abs(invoiceAmount - paymentAmount) > 0.01 || Math.abs(orderAmount - paymentAmount) > 0.01 || Math.abs(orderAmount - invoiceAmount) > 0.01) throw new HttpError(409, "合同、验收、发票和托管金额未全部一致，禁止机构分账回调落账");
+          if (!contract || contract.status !== "已签署" || !accepted || (productionMode && !acceptanceCompleteForOrder(orderId)) || !invoice || Math.abs(invoiceAmount - paymentAmount) > 0.01 || Math.abs(orderAmount - paymentAmount) > 0.01 || Math.abs(orderAmount - invoiceAmount) > 0.01) throw new HttpError(409, "合同、全量验收、发票和托管金额未全部一致，禁止机构分账回调落账");
           const feeCalc = platformFeeForOrder(orderId, Number(payment.amount));
           const instructionRef = String(payload.provider_transaction_id || payload.instruction_ref || eventId).trim().slice(0, 180);
           if (db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(orderId)) throw new HttpError(409, "交易已经存在分账记录，禁止重复分账");
@@ -984,7 +989,7 @@ const processIntegrationWebhook = async (provider, req, res) => {
         if (payload.amount !== undefined && (!finitePositive(payload.amount, 1e12) || Math.abs(Number(payload.amount) - Number(invoice.amount)) > 0.01)) throw new HttpError(409, "发票回调金额与订单发票金额不一致");
         if (productionMode && payload.amount === undefined) throw new HttpError(400, "生产发票回调必须提供 amount 用于四流核对");
         const accepted = db.prepare("SELECT id FROM acceptances WHERE order_id=? AND result='accepted' LIMIT 1").get(orderId);
-        if (!accepted) throw new HttpError(409, "验收合格前不得接收开票回调");
+        if (!accepted || (productionMode && !acceptanceCompleteForOrder(orderId))) throw new HttpError(409, "全量验收合格前不得接收开票回调");
         if (db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(orderId)) throw new HttpError(409, "交易已完成结算，禁止发票回调覆盖账本");
         if (invoice.status === "已开具" && invoiceState !== "verified") throw new HttpError(409, "发票已开具，禁止回调回退状态");
         const verified = invoiceState === "verified";
@@ -2055,8 +2060,9 @@ const server = createServer(async (req, res) => {
     if (existing) return error(res, 409, "该交易已完成结算，禁止重复分账");
     const contract = db.prepare("SELECT id,status FROM contracts WHERE order_id=? ORDER BY id LIMIT 1").get(orderId);
     if (!contract || contract.status !== "已签署") return error(res, 409, "合同双方签署完成前不得结算");
+    if (productionMode && orderGoodsNet(orderId) <= 0) return error(res, 409, "结算缺少商品明细，禁止按订单总额回退计费；请先补齐订单明细并复核");
     const accepted = db.prepare("SELECT id FROM acceptances WHERE order_id=? AND result='accepted' LIMIT 1").get(orderId);
-    if (!accepted) return error(res, 409, "验收合格前不得结算");
+    if (!accepted || (productionMode && !acceptanceCompleteForOrder(orderId))) return error(res, 409, "全量验收合格前不得结算");
     const invoice = db.prepare("SELECT id FROM invoices WHERE order_id=? AND status='已开具' LIMIT 1").get(orderId);
     if (!invoice) return error(res, 409, "发票验真前不得结算");
     const invoiceDetail = db.prepare("SELECT amount FROM invoices WHERE order_id=? AND status='已开具' LIMIT 1").get(orderId);
@@ -2220,7 +2226,7 @@ const server = createServer(async (req, res) => {
     if (db.prepare("SELECT id FROM acceptances WHERE order_id=? AND result IN ('accepted','disputed') LIMIT 1").get(id)) return error(res, 409, "该交易已存在最终验收结论，禁止重复提交");
     const acceptedQty = payload.accepted_qty == null ? null : Number(payload.accepted_qty);
     const orderedQty = Number(db.prepare("SELECT COALESCE(SUM(qty),0) AS qty FROM order_items WHERE order_id=?").get(id).qty);
-    if (result === "accepted" && (!finitePositive(acceptedQty) || acceptedQty > orderedQty)) return error(res, 400, "合格验收数量必须为正数且不得超过订单数量");
+    if (result === "accepted" && (!finitePositive(acceptedQty) || acceptedQty > orderedQty || (productionMode && Math.abs(acceptedQty - orderedQty) > 0.000001))) return error(res, 400, productionMode ? "生产全量合格验收数量必须等于订单总量；部分到货请提交争议并冻结差异" : "合格验收数量必须为正数且不得超过订单数量");
     if (result === "disputed" && acceptedQty != null && (!finiteNonNegative(acceptedQty) || acceptedQty > orderedQty)) return error(res, 400, "争议验收数量不合法");
     // 生产环境的最终验收必须建立在物流机构已确认送达的事实之上。
     // 本地演示仍保留原有的离线跑通能力；真实交易不能跳过发运、签收再进入开票/结算。
@@ -2255,7 +2261,7 @@ const server = createServer(async (req, res) => {
     if (productionMode && process.env.SHUZHI_INVOICE_READY !== "true") return error(res, 503, "发票机构尚未完成联调，暂不接受生产开票登记");
     if (db.prepare("SELECT id FROM invoices WHERE order_id=? AND status='已开具' LIMIT 1").get(id)) return error(res, 409, "该交易发票已开具，禁止重复登记");
     const accepted = db.prepare("SELECT id FROM acceptances WHERE order_id=? AND result='accepted'").get(id);
-    if (!accepted) return error(res, 409, "验收合格前不得开票");
+    if (!accepted || (productionMode && !acceptanceCompleteForOrder(id))) return error(res, 409, "全量验收合格前不得开票");
     if (!productionMode && !payload.invoice_no) return error(res, 400, "发票号码不能为空");
     const invoice = db.prepare("SELECT id,amount FROM invoices WHERE order_id=? LIMIT 1").get(id);
     if (productionMode) {
