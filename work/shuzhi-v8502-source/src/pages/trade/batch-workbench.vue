@@ -95,16 +95,31 @@ const logisticsFee = computed(() => Math.round(goodsAmount.value * 0.02));
 const testingFee = computed(() => new Set(tx.value?.items.map((x) => x.counterparty)).size * 380);
 const platformFee = computed(() => Math.round(goodsAmount.value * 0.04));
 const totalAmount = computed(() => goodsAmount.value + logisticsFee.value + testingFee.value + platformFee.value);
-const displayGoodsAmount = computed(() => backendLinked.value && backendGoodsNet.value != null ? backendGoodsNet.value : goodsAmount.value);
-const displayPlatformFee = computed(() => backendLinked.value && backendPlatformFee.value != null ? backendPlatformFee.value : platformFee.value);
-const displayTotalAmount = computed(() => backendLinked.value && backendOrderAmount.value != null ? backendOrderAmount.value : totalAmount.value);
-const displayServiceTotal = computed(() => Math.max(0, displayTotalAmount.value - displayGoodsAmount.value - displayPlatformFee.value));
+// 正式环境未取得后台订单快照时，金额必须保持空值；不能把离线工作台的样例金额显示成真实合同金额。
+const authoritativeTrade = computed(() => !productionBuild || backendLinked.value);
+const displayGoodsAmount = computed<number | null>(() => {
+  if (productionBuild) return backendLinked.value && backendGoodsNet.value != null ? backendGoodsNet.value : null;
+  return backendLinked.value && backendGoodsNet.value != null ? backendGoodsNet.value : goodsAmount.value;
+});
+const displayPlatformFee = computed<number | null>(() => {
+  if (productionBuild) return backendLinked.value && backendPlatformFee.value != null ? backendPlatformFee.value : null;
+  return backendLinked.value && backendPlatformFee.value != null ? backendPlatformFee.value : platformFee.value;
+});
+const displayTotalAmount = computed<number | null>(() => {
+  if (productionBuild) return backendLinked.value && backendOrderAmount.value != null ? backendOrderAmount.value : null;
+  return backendLinked.value && backendOrderAmount.value != null ? backendOrderAmount.value : totalAmount.value;
+});
+const displayServiceTotal = computed<number | null>(() => {
+  if (displayTotalAmount.value == null || displayGoodsAmount.value == null || displayPlatformFee.value == null) return null;
+  return Math.max(0, displayTotalAmount.value - displayGoodsAmount.value - displayPlatformFee.value);
+});
 const isBuyer = computed(() => tx.value?.scene === "buyerSupply");
-const orderCount = computed(() => tx.value?.items.length ?? 0);
-const invoiceCount = computed(() => current.value >= 9 ? orderCount.value : 0);
-const settledAmount = computed(() => current.value >= 10 ? displayTotalAmount.value : 0);
+const orderCount = computed(() => authoritativeTrade.value ? (tx.value?.items.length ?? 0) : 0);
+const invoiceCount = computed(() => authoritativeTrade.value && current.value >= 9 ? orderCount.value : 0);
+const settledAmount = computed<number | null>(() => authoritativeTrade.value && current.value >= 10 ? displayTotalAmount.value : productionBuild ? null : 0);
 
-function money(v: number) {
+function money(v: number | null | undefined) {
+  if (v == null || !Number.isFinite(Number(v))) return "—";
   return "¥" + v.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
@@ -125,7 +140,7 @@ async function executeNext(showToast = true) {
     try {
       if (index === 4) await signTradeContract(backendOrderId, isBuyer.value ? "buyer" : "supplier", `CA-${isBuyer.value ? "BUYER" : "SUPPLIER"}-V8533`);
       else if (index === 8) await acceptTrade(backendOrderId, evidence, undefined, backendOrderItems.value.map((item) => ({ order_item_id: Number(item.id), accepted_qty: Number(item.qty), evidence })));
-      else if (index === 9) await issueTradeInvoice(backendOrderId, `V8533-${Date.now().toString().slice(-8)}`, backendOrderAmount.value ?? displayTotalAmount.value);
+      else if (index === 9) await issueTradeInvoice(backendOrderId, `V8533-${Date.now().toString().slice(-8)}`, backendOrderAmount.value ?? displayTotalAmount.value ?? undefined);
       else if (index === 10) await settleTrade(backendOrderId, `SETTLE-V8533-${Date.now().toString().slice(-8)}`);
       else await recordPlatformEvent("trade", step.title, { reference_id: backendOrderId, evidence, batch_id: tx.value.id });
     } catch (error: any) {
@@ -283,7 +298,7 @@ function documentDetail(type: "contract" | "logistics" | "invoice" | "settlement
     settlement: {
       title: "机构结算回单",
       gate: 10,
-      content: `订单支付总额 ${money(displayTotalAmount.value)}\n商品货款 ${money(displayGoodsAmount.value)}\n平台技术服务费 ${money(displayPlatformFee.value)}\n平台货款余额 ¥0.00\n${current.value >= 10 ? "持牌机构已按真实收款主体完成分账。" : "尚未达到结算条件。"}`,
+      content: productionBuild && !backendLinked.value ? "生产订单金额和结算回单尚未由后台返回，当前不显示本地样例金额。" : `订单支付总额 ${money(displayTotalAmount.value)}\n商品货款 ${money(displayGoodsAmount.value)}\n平台技术服务费 ${money(displayPlatformFee.value)}\n平台货款余额 ¥0.00\n${current.value >= 10 ? "持牌机构已按真实收款主体完成分账。" : "尚未达到结算条件。"}`,
     },
   };
   const doc = map[type];
@@ -315,7 +330,7 @@ onUnload(() => { if (timer) clearInterval(timer); });
     <view class="hero">
       <view class="hero-top"><text>数智供社 v8533 · 批量交易工作台</text><text>{{ tx.roleName }}</text></view>
       <text class="hero-title">{{ isBuyer ? "采购商批量采购工作台" : "产地供货商批量接单工作台" }}</text>
-      <text class="hero-sub">{{ tx.org }} · {{ tx.id }}</text>
+      <text class="hero-sub">{{ productionBuild && !backendLinked ? "等待后台正式订单与主体快照" : `${tx.org} · ${tx.id}` }}</text>
       <text class="hero-sync">{{ backendLinked ? `后台已同步 · ${backendMode === 'production' ? '生产模式' : '本地联调'}` : "离线体验 · 未写入后台" }}</text>
       <view class="hero-kpi">
         <view><text>合同总额</text><text>{{ money(displayTotalAmount) }}</text></view>
@@ -331,14 +346,14 @@ onUnload(() => { if (timer) clearInterval(timer); });
 
     <view class="identity">
       <text>交易身份已锁定</text>
-      <view><text>{{ tx.roleName }}</text><text>{{ tx.org }}</text><text>企业认证通过</text></view>
+      <view><text>{{ tx.roleName }}</text><text>{{ productionBuild && !backendLinked ? "等待后台核验主体" : tx.org }}</text><text>{{ productionBuild && !backendLinked ? "未取得后台事实" : "企业认证通过" }}</text></view>
     </view>
 
     <view class="section-head">
       <view><text>批量交易清单</text></view>
       <text>{{ orderCount }} 单</text>
     </view>
-    <view class="lines">
+    <view v-if="!productionBuild || backendLinked" class="lines">
       <view v-for="item in tx.items" :key="item.id" class="line">
         <image v-if="item.pic" :src="item.pic" mode="aspectFill" />
         <view class="line-main">
@@ -357,6 +372,7 @@ onUnload(() => { if (timer) clearInterval(timer); });
         </view>
       </view>
     </view>
+    <view v-else class="backend-empty">正式交易清单等待后台订单快照返回；未连接后台时不展示离线样例商品、数量和价格。</view>
 
     <view class="section-head">
       <view><text>交易条件</text></view>
@@ -398,8 +414,8 @@ onUnload(() => { if (timer) clearInterval(timer); });
     </view>
     <view class="ledger">
       <view><text>商品货款</text><text>{{ isBuyer ? "各产地供应商" : "当前供货商" }}</text><text>{{ money(displayGoodsAmount) }}</text></view>
-      <view v-if="!backendLinked"><text>物流服务费</text><text>实际承运商</text><text>{{ money(logisticsFee) }}</text></view>
-      <view v-if="!backendLinked"><text>检验检测费</text><text>实际检测机构</text><text>{{ money(testingFee) }}</text></view>
+      <view v-if="!productionBuild && !backendLinked"><text>物流服务费</text><text>实际承运商</text><text>{{ money(logisticsFee) }}</text></view>
+      <view v-if="!productionBuild && !backendLinked"><text>检验检测费</text><text>实际检测机构</text><text>{{ money(testingFee) }}</text></view>
       <view v-else><text>物流/包装/检测等合同服务</text><text>按后台合同明细分项结算</text><text>{{ money(displayServiceTotal) }}</text></view>
       <view class="platform"><text>平台技术服务费</text><text>商品净额 × 4%</text><text>{{ money(displayPlatformFee) }}</text></view>
       <view class="total"><text>订单支付总额</text><text>{{ tx.settlementModel }}</text><text>{{ money(displayTotalAmount) }}</text></view>

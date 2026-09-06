@@ -240,6 +240,7 @@ add(mockPageGuardFailures.length === 0 ? "pass" : "fail", "页面 mock 生产隔
 add(unguardedActionPages.length === 0 ? "pass" : "fail", "前台动作门禁闭包", unguardedActionPages.length === 0 ? "业务状态变更页面均具备 productionBuild 或后台写入边界" : `存在未隔离动作：${unguardedActionPages.join(", ")}`);
 const batchSource = text("work/shuzhi-v8502-source/src/pages/trade/batch-workbench.vue");
 add(batchSource.includes("backendLinked") && batchSource.includes("backendMode.value === \"production\"") && batchSource.includes("生产后台未连接") && batchSource.includes("后台未放行") && batchSource.includes("await signTradeContract") && batchSource.includes("await settleTrade") && batchSource.includes("currentTx.backendOrderId || (backendMode.value === \"production\" ? \"\" : demoBackendOrderId)") && existsSync(resolve(root, "scripts/check-shuzhi-v8530-batch-gate.mjs")) ? "pass" : "fail", "批量工作台后台门禁", "批量核验关键节点必须先得到后台成功响应，生产后台不可用时不得推进本地状态，也不得回读固定演示订单");
+add(batchSource.includes("const authoritativeTrade") && batchSource.includes("computed<number | null>") && batchSource.includes("正式交易清单等待后台订单快照返回；未连接后台时不展示离线样例商品、数量和价格") && batchSource.includes("productionBuild && !backendLinked.value") ? "pass" : "fail", "批量金额与清单生产隔离", "生产后台未返回权威订单时不展示离线商品、数量、价格或金额样例；本地演示模式保持原有体验");
 const operationSource = text("work/shuzhi-v8502-source/src/pages/operation/index.vue");
 const fulfillmentSource = text("work/shuzhi-v8502-source/src/pages/trade/fulfillment.vue");
 const loanLifeSource = text("work/shuzhi-v8502-source/src/pages/finance/loanlife.vue");
