@@ -1,7 +1,12 @@
 /** 数智供社本地 BFF：H5 通过 Vite 代理访问，微信端可用 VITE_API_BASE 指向局域网地址。 */
 const API_BASE = (import.meta.env.VITE_API_BASE || "").replace(/\/$/, "");
 const BUILD_API_TOKEN = import.meta.env.VITE_API_TOKEN || "";
-const getApiToken = () => String(uni.getStorageSync("shuzhi-session-token") || BUILD_API_TOKEN || "local-demo-token");
+const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const getApiToken = () => String(uni.getStorageSync("shuzhi-session-token") || BUILD_API_TOKEN || (productionBuild ? "" : "local-demo-token"));
+const authHeader = () => {
+  const token = getApiToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
 export const setSessionToken = (token: string) => uni.setStorageSync("shuzhi-session-token", token);
 export const clearSessionToken = () => uni.removeStorageSync("shuzhi-session-token");
 const newIdempotencyKey = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -144,7 +149,7 @@ export function getTrade(orderId: string) {
   return new Promise<any>((resolve, reject) => {
     uni.request({
       url: `${API_BASE}/api/v1/trades/${encodeURIComponent(orderId)}`,
-      header: { Authorization: `Bearer ${getApiToken()}` },
+      header: authHeader(),
       success: (res) => {
         const p = res.data as any;
         if (res.statusCode >= 200 && res.statusCode < 300 && p?.code === 0) resolve(p.data);
@@ -168,7 +173,7 @@ export function getTrades() {
   return new Promise<any[]>((resolve, reject) => {
     uni.request({
       url: `${API_BASE}/api/v1/trades`,
-      header: { Authorization: `Bearer ${getApiToken()}` },
+      header: authHeader(),
       success: (res) => {
         const p = res.data as any;
         if (res.statusCode >= 200 && res.statusCode < 300 && p?.code === 0 && Array.isArray(p.data)) resolve(p.data);
@@ -204,7 +209,7 @@ export function getTradeLedger(orderId: string) {
   return new Promise<any>((resolve, reject) => {
     uni.request({
       url: `${API_BASE}/api/v1/trades/${encodeURIComponent(orderId)}/ledger`,
-      header: { Authorization: `Bearer ${getApiToken()}` },
+      header: authHeader(),
       success: (res) => {
         const p = res.data as any;
         if (res.statusCode >= 200 && res.statusCode < 300 && p?.code === 0) resolve(p.data);
@@ -217,7 +222,7 @@ export function getTradeLedger(orderId: string) {
 
 export function getMerchantServiceArea(merchantId: string) {
   return new Promise<any>((resolve, reject) => {
-    uni.request({ url: `${API_BASE}/api/v1/merchants/${encodeURIComponent(merchantId)}/service-area`, header: { Authorization: `Bearer ${getApiToken()}` }, success: (res) => { const p = res.data as any; p?.data ? resolve(p.data) : reject(new Error("服务区域读取失败")); }, fail: reject });
+    uni.request({ url: `${API_BASE}/api/v1/merchants/${encodeURIComponent(merchantId)}/service-area`, header: authHeader(), success: (res) => { const p = res.data as any; p?.data ? resolve(p.data) : reject(new Error("服务区域读取失败")); }, fail: reject });
   });
 }
 
@@ -239,7 +244,7 @@ export function submitMerchantApplication(payload: MerchantApplicationPayload) {
     uni.request({
       url: `${API_BASE}/api/v1/merchant-applications`,
       method: "POST",
-      header: { "Content-Type": "application/json", Authorization: `Bearer ${getApiToken()}`, "Idempotency-Key": newIdempotencyKey("merchant-application") },
+      header: { "Content-Type": "application/json", ...authHeader(), "Idempotency-Key": newIdempotencyKey("merchant-application") },
       data: payload,
       success: (res) => {
         const p = res.data as any;
@@ -255,7 +260,7 @@ export function submitProduct(payload: { merchant_id: string; name: string; cate
   return new Promise<{ id: string; status: string }>((resolve, reject) => {
     uni.request({
       url: `${API_BASE}/api/v1/products`, method: "POST",
-      header: { "Content-Type": "application/json", Authorization: `Bearer ${getApiToken()}`, "Idempotency-Key": newIdempotencyKey("product-submit") }, data: payload,
+      header: { "Content-Type": "application/json", ...authHeader(), "Idempotency-Key": newIdempotencyKey("product-submit") }, data: payload,
       success: (res) => { const p = res.data as any; if (res.statusCode >= 200 && res.statusCode < 300 && p?.code === 0) resolve(p.data); else reject(new Error(p?.message || "商品提交失败")); },
       fail: reject,
     });
@@ -280,7 +285,7 @@ function requestJson<T>(url: string, init: { method?: "GET" | "POST"; data?: any
     uni.request({
       url: `${API_BASE}${url}`,
       method,
-      header: { "Content-Type": "application/json", ...(init.auth === false ? {} : { Authorization: `Bearer ${getApiToken()}` }), ...(key ? { "Idempotency-Key": key } : {}) },
+      header: { "Content-Type": "application/json", ...(init.auth === false ? {} : authHeader()), ...(key ? { "Idempotency-Key": key } : {}) },
       data: init.data,
       success: (res) => {
         const payload = res.data as any;
