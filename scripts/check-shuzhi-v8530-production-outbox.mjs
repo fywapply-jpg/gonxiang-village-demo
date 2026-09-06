@@ -192,6 +192,14 @@ try {
   add(deliveredCallback.status === 202 && deliveredCallback.payload?.next_action?.includes("验收"), "物流送达回调推进验收节点", `HTTP ${deliveredCallback.status}${deliveredCallback.status !== 202 ? ` · ${JSON.stringify(deliveredCallback.payload)}` : ""}`);
   const acceptanceAfterDelivery = await request(prodPort, `/api/v1/trades/${orderId}/accept`, buyerToken, { result: "accepted", accepted_qty: 1, evidence: "复磅/抽检/签收证据" }, "outbox-accept-after-delivery");
   add(acceptanceAfterDelivery.status === 201, "生产送达后才允许验收", `HTTP ${acceptanceAfterDelivery.status}${acceptanceAfterDelivery.status !== 201 ? ` · ${JSON.stringify(acceptanceAfterDelivery.payload)}` : ""}`);
+  const dbInvoiceMismatch = new DatabaseSync(dbPath);
+  dbInvoiceMismatch.prepare("UPDATE invoices SET amount=amount+1 WHERE order_id=?").run(orderId);
+  dbInvoiceMismatch.close();
+  const invoiceAmountMismatch = await request(prodPort, `/api/v1/trades/${orderId}/invoice`, supplierToken, { amount: 276001, seller_credit_code: "91360722MA8V85013X", buyer_credit_code: "91420100MA8V85013Y", tax_rate: 0.09, invoice_type: "增值税电子普通发票", tax_category_code: "农业产品" }, "outbox-invoice-amount-mismatch");
+  add(invoiceAmountMismatch.status === 409, "发票与订单金额不一致禁止开票", `HTTP ${invoiceAmountMismatch.status}`);
+  const dbInvoiceRestore = new DatabaseSync(dbPath);
+  dbInvoiceRestore.prepare("UPDATE invoices SET amount=276000 WHERE order_id=?").run(orderId);
+  dbInvoiceRestore.close();
   const dbAmountMismatch = new DatabaseSync(dbPath);
   const originalOrderAmount = dbAmountMismatch.prepare("SELECT amount FROM orders WHERE id=?").get(orderId)?.amount;
   dbAmountMismatch.prepare("UPDATE orders SET amount=amount+1 WHERE id=?").run(orderId);

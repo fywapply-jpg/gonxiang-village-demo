@@ -973,6 +973,11 @@ const processIntegrationWebhook = async (provider, req, res) => {
         if (!invoice) throw new HttpError(404, "回调关联的发票记录不存在");
         const duplicateInvoice = db.prepare("SELECT id,order_id FROM invoices WHERE invoice_no=? AND id<>? LIMIT 1").get(invoiceNo, invoice.id);
         if (duplicateInvoice) throw new HttpError(409, "发票号码已绑定其他交易，禁止重复入账");
+        if (productionMode) {
+          moneyCents(invoice.amount, "订单发票金额");
+          moneyCents(order.amount, "订单金额");
+          if (Math.abs(Number(invoice.amount) - Number(order.amount)) > 0.01) throw new HttpError(409, "发票金额与订单金额不一致，禁止机构回调落账");
+        }
         if (productionMode && payload.amount !== undefined) moneyCents(payload.amount, "发票回调金额");
         if (payload.amount !== undefined && (!finitePositive(payload.amount, 1e12) || Math.abs(Number(payload.amount) - Number(invoice.amount)) > 0.01)) throw new HttpError(409, "发票回调金额与订单发票金额不一致");
         if (productionMode && payload.amount === undefined) throw new HttpError(400, "生产发票回调必须提供 amount 用于四流核对");
@@ -2248,6 +2253,16 @@ const server = createServer(async (req, res) => {
     if (!accepted) return error(res, 409, "验收合格前不得开票");
     if (!productionMode && !payload.invoice_no) return error(res, 400, "发票号码不能为空");
     const invoice = db.prepare("SELECT id,amount FROM invoices WHERE order_id=? LIMIT 1").get(id);
+    if (productionMode) {
+      try {
+        moneyCents(order.amount, "订单金额");
+        if (!invoice) return error(res, 404, "交易发票记录不存在");
+        moneyCents(invoice.amount, "订单发票金额");
+      } catch (cause) {
+        return error(res, cause.status || 400, cause.message);
+      }
+      if (Math.abs(Number(invoice.amount) - Number(order.amount)) > 0.01) return error(res, 409, "发票金额与订单金额不一致");
+    }
     if (productionMode && payload.amount !== undefined) {
       try { moneyCents(payload.amount, "开票金额"); } catch (cause) { return error(res, cause.status || 400, cause.message); }
     }
