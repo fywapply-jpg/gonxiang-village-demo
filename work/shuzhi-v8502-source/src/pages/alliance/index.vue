@@ -3,6 +3,8 @@ import { ref, computed } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useUserStore } from "@/store/user";
 
+const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+
 const user = useUserStore();
 
 // 六方角色——"我的一份"（延伸到每个商家和个体）
@@ -166,8 +168,10 @@ const shared = [
       <view class="ib-i"><text class="ib-n">当前为访客 / 消费者</text><text class="ib-s">登录企业身份后可查看"我的一份·本月到手"</text></view>
     </view>
 
+    <view v-if="productionBuild" class="backend-note">正式环境共同体账本、分配比例、贡献排名和分红榜必须由后台依据生效合同、验收证据、发票和持牌结算回执实时计算；当前未配置真实共同体账本，不展示本地金额样例。</view>
+
     <!-- 我的账本（按登录身份，本月到手）-->
-    <view v-if="myLedger" class="ledger">
+    <view v-if="myLedger && !productionBuild" class="ledger">
       <view class="lg-hd">
         <view><text class="lg-lb">{{ myLedger.unit }}<text v-if="isMe" class="me-tag">我</text></text><text class="lg-total">¥{{ myLedger.total }}</text></view>
         <view class="lg-contrib"><text class="lg-cv">{{ myLedger.contrib }}</text><text class="lg-cl">贡献值 · {{ myLedger.rank }}</text></view>
@@ -192,10 +196,12 @@ const shared = [
         <view class="mn-hi"><text class="mn-n">{{ role.name }}</text><text class="mn-who">{{ role.who }}</text></view>
       </view>
       <view class="mn-pos" :style="{ background: role.color }">{{ role.pos }}</view>
+      <template v-if="!productionBuild">
       <text class="mn-lb">💰 我的收益构成</text>
       <view class="inc" v-for="(x, i) in role.income" :key="i">
         <text class="inc-l">{{ x.label }}</text><text class="inc-v">{{ x.val }}</text>
       </view>
+      </template>
       <view class="mn-foot">
         <view class="mf"><text class="mf-k">🔗 绑定共同体</text><text class="mf-v">{{ role.bind }}</text></view>
         <view class="mf"><text class="mf-k">📋 我的责任</text><text class="mf-v">{{ role.duty }}</text></view>
@@ -204,6 +210,7 @@ const shared = [
     </view>
 
     <!-- 共同体增值收益池分配 -->
+    <template v-if="!productionBuild">
     <view class="sec">增值收益池 · 合计100%（示例 ¥{{ orderAmount }} 万）</view>
     <view class="waterfall">
       <view class="wf" v-for="a in alloc" :key="a.who">
@@ -224,6 +231,7 @@ const shared = [
       </view>
       <text class="bd-meta">{{ boardMeta }}</text>
     </view>
+    </template>
 
     <!-- 四大利益绑定机制 -->
     <view class="sec">利益绑定 · 四大机制</view>
@@ -318,4 +326,5 @@ const shared = [
 .shared { margin: 0 24rpx; }
 .sh { display: block; background: #fff; border-radius: $sg-radius; box-shadow: $sg-shadow; padding: 16rpx 18rpx; margin-bottom: 10rpx; font-size: 22rpx; color: $sg-text-2; line-height: 1.4; }
 .tip { margin: 20rpx 24rpx 40rpx; font-size: 21rpx; color: $sg-text-3; line-height: 1.6; }
+.backend-note { margin: 24rpx; padding: 24rpx; border-radius: $sg-radius-lg; background: #fff8e8; color: #8a5a00; line-height: 1.6; font-size: 24rpx; }
 </style>

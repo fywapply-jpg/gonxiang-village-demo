@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 
+const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+
 const cats = [
   { key: "orange", n: "赣南脐橙", cur: 4.8, unit: "元/斤", trend: 1 },
   { key: "apple", n: "红富士苹果", cur: 3.9, unit: "元/斤", trend: -1 },
@@ -57,6 +59,10 @@ const factors = computed(() => {
       <text class="hs">基于产区产量·天气·物流·节令 · 预测走势 + 买卖时机</text>
     </view>
 
+    <view v-if="productionBuild" class="backend-note">正式环境价格、预测模型、置信度和影响因素必须由后台模型服务按实时数据与审计时间戳返回；当前未配置真实模型接口，不展示本地预测样例。</view>
+
+    <template v-else>
+
     <!-- 品类 -->
     <scroll-view scroll-x class="cats">
       <text class="c" :class="{ on: ci === i }" v-for="(c, i) in cats" :key="c.key" @tap="ci = i">{{ c.n }}</text>
@@ -108,6 +114,7 @@ const factors = computed(() => {
     </view>
 
     <view class="tip">🤖 预测由国产时序大模型 + 供销价格库生成，仅供买卖参考；市场有波动，决策请结合实际。</view>
+    </template>
   </view>
 </template>
 
@@ -149,4 +156,5 @@ const factors = computed(() => {
 .f-v { font-size: 22rpx; color: $sg-text-3; font-weight: 600; }
 .f-v.up { color: #c0392b; } .f-v.down { color: #16884c; }
 .tip { margin: 20rpx 24rpx 30rpx; font-size: 20rpx; color: $sg-text-3; line-height: 1.6; }
+.backend-note { margin: 24rpx; padding: 24rpx; border-radius: $sg-radius-lg; background: #fff8e8; color: #8a5a00; line-height: 1.6; font-size: 24rpx; }
 </style>

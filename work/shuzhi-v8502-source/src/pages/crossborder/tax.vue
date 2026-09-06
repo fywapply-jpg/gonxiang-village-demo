@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 
+const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+
 const dir = ref<"import" | "export">("import");
 
 // 进口商品（关税/消费税/增值税率，%）——农产品多为低税率
@@ -56,6 +58,10 @@ const exp = computed(() => {
       <text class="hs">进口关税 + 增值税 + 消费税 · 出口退税 · 一键测成本</text>
     </view>
 
+    <view v-if="productionBuild" class="backend-note">正式环境税率、HS 归类、协定优惠、报关和退税结果必须由后台及海关/税务机构接口实时返回；当前未配置真实跨境接口，不展示本地测算样例。</view>
+
+    <template v-else>
+
     <!-- 进出口切换 -->
     <view class="tabs">
       <text class="tab" :class="{ on: dir === 'import' }" @tap="switchDir('import')">📥 进口测算</text>
@@ -109,6 +115,7 @@ const exp = computed(() => {
     </view>
 
     <view class="tip">🔗 税率随海关税则 / 自贸协定（RCEP 等可享优惠税率）动态调整；测算仅供参考，实际以海关归类与税务核定为准。依托五大枢纽 + 单一窗口一键报关退税。</view>
+    </template>
   </view>
 </template>
 
@@ -144,4 +151,5 @@ const exp = computed(() => {
 .landed.green-bg .ld-v { color: #16884c; }
 .formula { display: block; margin: 14rpx 24rpx 0; font-size: 19rpx; color: $sg-text-3; line-height: 1.6; }
 .tip { margin: 20rpx 24rpx 30rpx; font-size: 21rpx; color: $sg-text-3; line-height: 1.6; }
+.backend-note { margin: 24rpx; padding: 24rpx; border-radius: $sg-radius-lg; background: #fff8e8; color: #8a5a00; line-height: 1.6; font-size: 24rpx; }
 </style>
