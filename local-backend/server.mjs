@@ -785,14 +785,19 @@ const processIntegrationWebhook = async (provider, req, res) => {
         if (status === "已送达") db.prepare("UPDATE orders SET fulfillment_step=CASE WHEN fulfillment_step<8 THEN 8 ELSE fulfillment_step END,updated_at=? WHERE id=?").run(t, orderId);
         nextAction = status === "已送达" ? "待采购方复磅、抽检并验收" : "继续跟踪物流状态";
       } else if (provider === "payment") {
+        const action = String(payload.action || "").trim().toLowerCase();
+        const rawPaymentStatus = String(payload.status || "").trim().toLowerCase();
         const paymentState = normalizeWebhookStatus("payment", payload.status);
-        if (!paymentState) throw new HttpError(400, "支付回调状态不在允许范围");
+        const refundSuccessStates = new Set(["refunded", "refund_success", "success", "succeeded", "已退款", "退款成功"]);
+        const refundPendingStates = new Set(["pending", "processing", "refund_pending", "refund_processing", "待确认", "退款待受理", "退款处理中"]);
+        const refundFailedStates = new Set(["failed", "failure", "refund_failed", "rejected", "cancelled", "canceled", "支付失败", "退款失败"]);
+        if (!paymentState && action !== "refund") throw new HttpError(400, "支付回调状态不在允许范围");
+        if (action === "refund" && ![...refundSuccessStates, ...refundPendingStates, ...refundFailedStates].includes(rawPaymentStatus)) throw new HttpError(400, "退款回调状态不在允许范围");
         const paymentId = String(payload.payment_id || "").trim();
         if (productionMode && !paymentId) throw new HttpError(400, "生产支付回调必须提供 payment_id 以绑定支付尝试");
         const payment = db.prepare("SELECT * FROM payments WHERE order_id=? AND (?='' OR id=?) LIMIT 1").get(orderId, paymentId, paymentId);
         if (!payment) throw new HttpError(404, "回调关联的托管支付记录不存在");
         const providerTransactionId = String(payload.provider_transaction_id || "").trim();
-        const action = String(payload.action || "").trim().toLowerCase();
         if (productionMode && payload.amount === undefined) throw new HttpError(400, "生产支付回调必须提供 amount 用于资金核对");
         if (productionMode && !providerTransactionId) throw new HttpError(400, "生产支付回调必须提供机构交易号");
         if (providerTransactionId.length > 180) throw new HttpError(400, "机构交易号过长");
@@ -814,8 +819,7 @@ const processIntegrationWebhook = async (provider, req, res) => {
           if (!refundId) throw new HttpError(400, "退款回调缺少 refund_id");
           const refund = db.prepare("SELECT * FROM payment_refunds WHERE id=? AND order_id=? AND payment_id=? LIMIT 1").get(refundId, orderId, payment.id);
           if (!refund) throw new HttpError(404, "回调关联的退款记录不存在");
-          const refundStatus = paymentState === "failed" && ["refunded", "success", "succeeded", "已退款"].includes(String(payload.status || "").trim().toLowerCase()) ? "refunded" : paymentState;
-          const nextRefundStatus = refundStatus === "refunded" ? "已退款" : refundStatus === "failed" ? "退款失败" : "退款处理中";
+          const nextRefundStatus = refundSuccessStates.has(rawPaymentStatus) ? "已退款" : refundFailedStates.has(rawPaymentStatus) ? "退款失败" : "退款处理中";
           if (payload.amount !== undefined && Math.abs(Number(payload.amount) - Number(refund.amount)) > 0.01) throw new HttpError(409, "退款回调金额与退款申请不一致");
           if (refund.status === "已退款" && nextRefundStatus !== "已退款") throw new HttpError(409, "退款已完成，禁止回调回退状态");
           if (providerTransactionId) {
@@ -824,10 +828,13 @@ const processIntegrationWebhook = async (provider, req, res) => {
           }
           db.prepare("UPDATE payment_refunds SET status=?,provider_ref=COALESCE(provider_ref,?),updated_at=? WHERE id=?").run(nextRefundStatus, providerTransactionId || null, t, refund.id);
           if (nextRefundStatus === "已退款") {
-            db.prepare("UPDATE payments SET status='已退款' WHERE id=?").run(payment.id);
-            db.prepare("UPDATE orders SET payment_status='已退款',updated_at=? WHERE id=?").run(t, orderId);
+            const refundTotalCents = Math.round(Number(db.prepare("SELECT COALESCE(SUM(amount),0) AS amount FROM payment_refunds WHERE payment_id=? AND status='已退款'").get(payment.id)?.amount || 0) * 100);
+            const paymentCents = moneyCents(payment.amount, "原支付金额");
+            const fullyRefunded = refundTotalCents >= paymentCents;
+            db.prepare("UPDATE payments SET status=? WHERE id=?").run(fullyRefunded ? "已退款" : "部分退款", payment.id);
+            db.prepare("UPDATE orders SET payment_status=?,updated_at=? WHERE id=?").run(fullyRefunded ? "已退款" : "部分退款", t, orderId);
             db.prepare("INSERT INTO fulfillment_events(order_id,step,title,evidence,actor,created_at) VALUES (?,?,?,?,?,?)").run(orderId, Math.max(0, Number(order.fulfillment_step)), "机构退款已确认", refundId, `integration-payment:${providerTransactionId || eventId}`, t);
-            nextAction = "退款机构已确认，交易资金已退回";
+            nextAction = fullyRefunded ? "退款机构已确认，交易资金已全部退回" : "退款机构已确认，交易资金已部分退回，剩余金额仍在原支付账本中";
           } else if (nextRefundStatus === "退款失败") {
             db.prepare("UPDATE orders SET payment_status='退款失败',updated_at=? WHERE id=?").run(t, orderId);
             nextAction = "退款机构处理失败，进入财务复核";
@@ -1543,7 +1550,7 @@ const server = createServer(async (req, res) => {
     if (process.env.SHUZHI_PAYMENT_READY !== "true") return error(res, 503, "支付机构尚未完成联调，暂不接受生产退款");
     if (db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(id)) return error(res, 409, "交易已分账，退款必须进入争议人工流程，不得直接退款");
     const payment = db.prepare("SELECT * FROM payments WHERE order_id=? ORDER BY rowid DESC LIMIT 1").get(id);
-    if (!payment || !["已入金待验收", "机构已确认（验收后分账）", "已支付", "待验收分账"].includes(payment.status)) return error(res, 409, "当前资金状态不允许发起退款");
+    if (!payment || !["已入金待验收", "机构已确认（验收后分账）", "已支付", "待验收分账", "部分退款"].includes(payment.status)) return error(res, 409, "当前资金状态不允许发起退款");
     if (!payment.provider_transaction_id) return error(res, 409, "原支付尚未取得机构交易号，不能发起退款");
     const amount = Number(payload.amount === undefined ? payment.amount : payload.amount);
     if (productionMode) moneyCents(amount, "退款金额");
