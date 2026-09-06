@@ -371,6 +371,21 @@ export function issueTradeInvoice(orderId: string, invoiceNo: string, amount?: n
   });
 }
 
+/** 生产发票红冲/作废：仅财务岗位可发起，服务端会要求复核引用并等待机构回执。 */
+export function requestInvoiceAdjustment(orderId: string, payload: {
+  action: "red_letter" | "void";
+  amount?: number;
+  reason: string;
+  financial_review_ref: string;
+  items?: Array<{ name: string; quantity: number; unit_price: number }>;
+}) {
+  return requestJson<any>(`/api/v1/trades/${encodeURIComponent(orderId)}/invoice-adjustments`, {
+    method: "POST",
+    idempotencyKey: newIdempotencyKey(`invoice-${payload.action}`),
+    data: payload,
+  });
+}
+
 export function settleTrade(orderId: string, instructionRef?: string) {
   return requestJson<any>(`/api/v1/trades/${encodeURIComponent(orderId)}/settle`, {
     method: "POST",

@@ -73,7 +73,7 @@
       "requiredConfig": ["SHUZHI_INVOICE_ADAPTER_URL", "SHUZHI_INVOICE_ADAPTER_SECRET", "INVOICE_WEBHOOK_SECRET"],
       "readyEnv": "SHUZHI_INVOICE_READY",
       "acceptanceRefEnv": "SHUZHI_INVOICE_ACCEPTANCE_REF",
-      "missingAdapter": "统一 HTTPS/HMAC 出站客户端、金额核验和入站回调已具备；仍缺具体服务商的开具、验真、红冲/作废字段转换",
+      "missingAdapter": "统一 HTTPS/HMAC 出站客户端、金额核验、入站回调和平台侧红冲/作废申请台账已具备；仍缺具体服务商的开具、验真、红冲/作废字段转换",
       "acceptanceEvidence": ["开票回执", "发票验真", "购销主体一致", "红冲/作废闭环"],
       "nextAction": "由纳税主体接入电子税务局或合规服务商，再实现开票及验真适配器"
     },

@@ -312,6 +312,8 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS platform_fee_collections (id TEXT PRIMARY KEY, order_id TEXT NOT NULL UNIQUE, settlement_id TEXT NOT NULL UNIQUE, payer_type TEXT NOT NULL, payer_merchant_id TEXT, payer_name TEXT NOT NULL, payer_credit_code TEXT NOT NULL, service_contract_ref TEXT NOT NULL, invoice_ref TEXT NOT NULL, provider TEXT NOT NULL, provider_transaction_id TEXT NOT NULL UNIQUE, amount REAL NOT NULL, currency TEXT NOT NULL DEFAULT 'CNY', status TEXT NOT NULL, evidence_ref TEXT NOT NULL, collected_at TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY (order_id) REFERENCES orders(id), FOREIGN KEY (settlement_id) REFERENCES settlement_records(id), FOREIGN KEY (payer_merchant_id) REFERENCES merchants(id));
   CREATE TABLE IF NOT EXISTS fulfillment_events (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id TEXT NOT NULL, step INTEGER NOT NULL, title TEXT NOT NULL, evidence TEXT NOT NULL, actor TEXT NOT NULL, created_at TEXT NOT NULL, FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS invoices (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, invoice_no TEXT, amount REAL NOT NULL, status TEXT NOT NULL, issued_at TEXT, invoice_type TEXT NOT NULL DEFAULT '', tax_category_code TEXT NOT NULL DEFAULT '', tax_rate REAL, seller_credit_code TEXT, buyer_credit_code TEXT, FOREIGN KEY (order_id) REFERENCES orders(id));
+  CREATE TABLE IF NOT EXISTS invoice_adjustments (id TEXT PRIMARY KEY, invoice_id TEXT NOT NULL, order_id TEXT NOT NULL, action TEXT NOT NULL CHECK(action IN ('red_letter','void')), original_invoice_no TEXT NOT NULL, amount REAL NOT NULL, reason TEXT NOT NULL, financial_review_ref TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT '待机构受理' CHECK(status IN ('待机构受理','处理中','已完成','失败')), adjustment_invoice_no TEXT, provider_ref TEXT, evidence_ref TEXT, requested_by TEXT NOT NULL, completed_at TEXT, idempotency_key TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY (invoice_id) REFERENCES invoices(id), FOREIGN KEY (order_id) REFERENCES orders(id));
+  CREATE INDEX IF NOT EXISTS idx_invoice_adjustments_order ON invoice_adjustments(order_id,created_at);
   CREATE TABLE IF NOT EXISTS shipments (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, provider TEXT NOT NULL, tracking_no TEXT NOT NULL, carrier_name TEXT, vehicle_no TEXT, temperature REAL, status TEXT NOT NULL, departed_at TEXT, arrived_at TEXT, evidence TEXT, updated_at TEXT NOT NULL, consignor_address TEXT NOT NULL DEFAULT '', consignee_address TEXT NOT NULL DEFAULT '', FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS acceptances (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, receiver TEXT NOT NULL, result TEXT NOT NULL, accepted_qty REAL, evidence TEXT, accepted_at TEXT, dispute_note TEXT, FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS acceptance_items (id INTEGER PRIMARY KEY AUTOINCREMENT, acceptance_id TEXT NOT NULL, order_item_id INTEGER NOT NULL, accepted_qty REAL NOT NULL, result TEXT NOT NULL, evidence TEXT NOT NULL DEFAULT '', FOREIGN KEY (acceptance_id) REFERENCES acceptances(id), FOREIGN KEY (order_item_id) REFERENCES order_items(id), UNIQUE(acceptance_id,order_item_id));
@@ -679,7 +681,7 @@ const platformFeeCollectionView = (row) => row ? ({
 const orderView = (id) => {
   const order = db.prepare(`SELECT o.*, b.name buyer_name, s.name supplier_name FROM orders o JOIN merchants b ON b.id=o.buyer_id JOIN merchants s ON s.id=o.supplier_id WHERE o.id=?`).get(id);
   if (!order) return null;
-  return { ...order, items: db.prepare("SELECT oi.*,p.unit FROM order_items oi JOIN products p ON p.id=oi.product_id WHERE oi.order_id=?").all(id), inventory_reservations: db.prepare("SELECT id,product_id,qty,status,reserved_at,released_at,release_reason FROM inventory_reservations WHERE order_id=? ORDER BY id").all(id), events: db.prepare("SELECT * FROM fulfillment_events WHERE order_id=? ORDER BY step").all(id), contracts: db.prepare("SELECT * FROM contracts WHERE order_id=?").all(id).map((contract) => ({ ...contract, signatures: db.prepare("SELECT party,signer_id,signer_name,certificate_ref,signed_at FROM contract_signatures WHERE contract_id=? ORDER BY party").all(contract.id) })), payments: db.prepare("SELECT * FROM payments WHERE order_id=? ORDER BY rowid").all(id), refunds: db.prepare("SELECT * FROM payment_refunds WHERE order_id=? ORDER BY created_at").all(id), invoices: db.prepare("SELECT * FROM invoices WHERE order_id=?").all(id), shipments: db.prepare("SELECT * FROM shipments WHERE order_id=? ORDER BY updated_at DESC").all(id), acceptances: db.prepare("SELECT * FROM acceptances WHERE order_id=? ORDER BY accepted_at DESC").all(id).map((acceptance) => ({ ...acceptance, items: db.prepare("SELECT ai.*,oi.product_id,oi.name,oi.qty AS ordered_qty,p.unit FROM acceptance_items ai JOIN order_items oi ON oi.id=ai.order_item_id JOIN products p ON p.id=oi.product_id WHERE ai.acceptance_id=? ORDER BY ai.order_item_id").all(acceptance.id) })), delivery_constraint: db.prepare("SELECT * FROM order_delivery_constraints WHERE order_id=?").get(id) || null, settlement: db.prepare("SELECT * FROM settlement_records WHERE order_id=?").get(id) || null, platform_fee_collection: platformFeeCollectionView(db.prepare("SELECT * FROM platform_fee_collections WHERE order_id=?").get(id)) };
+  return { ...order, items: db.prepare("SELECT oi.*,p.unit FROM order_items oi JOIN products p ON p.id=oi.product_id WHERE oi.order_id=?").all(id), inventory_reservations: db.prepare("SELECT id,product_id,qty,status,reserved_at,released_at,release_reason FROM inventory_reservations WHERE order_id=? ORDER BY id").all(id), events: db.prepare("SELECT * FROM fulfillment_events WHERE order_id=? ORDER BY step").all(id), contracts: db.prepare("SELECT * FROM contracts WHERE order_id=?").all(id).map((contract) => ({ ...contract, signatures: db.prepare("SELECT party,signer_id,signer_name,certificate_ref,signed_at FROM contract_signatures WHERE contract_id=? ORDER BY party").all(contract.id) })), payments: db.prepare("SELECT * FROM payments WHERE order_id=? ORDER BY rowid").all(id), refunds: db.prepare("SELECT * FROM payment_refunds WHERE order_id=? ORDER BY created_at").all(id), invoices: db.prepare("SELECT * FROM invoices WHERE order_id=?").all(id), invoice_adjustments: db.prepare("SELECT * FROM invoice_adjustments WHERE order_id=? ORDER BY created_at").all(id), shipments: db.prepare("SELECT * FROM shipments WHERE order_id=? ORDER BY updated_at DESC").all(id), acceptances: db.prepare("SELECT * FROM acceptances WHERE order_id=? ORDER BY accepted_at DESC").all(id).map((acceptance) => ({ ...acceptance, items: db.prepare("SELECT ai.*,oi.product_id,oi.name,oi.qty AS ordered_qty,p.unit FROM acceptance_items ai JOIN order_items oi ON oi.id=ai.order_item_id JOIN products p ON p.id=oi.product_id WHERE ai.acceptance_id=? ORDER BY ai.order_item_id").all(acceptance.id) })), delivery_constraint: db.prepare("SELECT * FROM order_delivery_constraints WHERE order_id=?").get(id) || null, settlement: db.prepare("SELECT * FROM settlement_records WHERE order_id=?").get(id) || null, platform_fee_collection: platformFeeCollectionView(db.prepare("SELECT * FROM platform_fee_collections WHERE order_id=?").get(id)) };
 };
 const releaseOrderInventory = (orderId, reason) => {
   const reservations = db.prepare("SELECT id,product_id,qty FROM inventory_reservations WHERE order_id=? AND status='reserved'").all(orderId);
@@ -718,7 +720,8 @@ const tradeLedger = (id) => {
   if (!order) return null;
   const contractOrderMatch = order.contracts.length > 0 && order.contracts.every((contract) => String(contract.order_id) === String(order.id));
   // “有发票记录”不等于“发票流已完成”：待开具、待验真或缺少签发时间都不能显示四流通过。
-  const invoiceGate = order.invoices.length > 0 && order.invoices.every((invoice) => invoice.status === "已开具" && Boolean(invoice.issued_at) && String(invoice.invoice_no || "").trim() !== "");
+  const invoiceAdjustmentGate = order.invoice_adjustments.every((adjustment) => adjustment.status === "失败");
+  const invoiceGate = invoiceAdjustmentGate && order.invoices.length > 0 && order.invoices.every((invoice) => invoice.status === "已开具" && Boolean(invoice.issued_at) && String(invoice.invoice_no || "").trim() !== "");
   const paymentReady = order.payments.some((payment) => ["已入金待验收", "待验收分账", "机构已确认（验收后分账）", "已支付", "已分账"].includes(payment.status));
   const feeCollection = order.platform_fee_collection;
   return {
@@ -740,7 +743,7 @@ const tradeLedger = (id) => {
       payment: order.payments,
       acceptance: order.acceptances,
     },
-    reconciliation: { contract_order_match: contractOrderMatch, order_logistics_match: order.shipments.length > 0, acceptance_invoice_gate: invoiceGate, payment_release_gate: acceptanceCompleteForOrder(order.id) && invoiceGate && paymentReady, settlement_complete: order.settlement?.status === "settled" },
+    reconciliation: { contract_order_match: contractOrderMatch, order_logistics_match: order.shipments.length > 0, acceptance_invoice_gate: invoiceGate, invoice_adjustment_gate: invoiceAdjustmentGate, payment_release_gate: acceptanceCompleteForOrder(order.id) && invoiceGate && paymentReady, settlement_complete: order.settlement?.status === "settled" },
   };
 };
 const applicationView = (id) => {
@@ -1025,6 +1028,7 @@ const processIntegrationWebhook = async (provider, req, res) => {
           const contract = db.prepare("SELECT id,status FROM contracts WHERE order_id=? ORDER BY id LIMIT 1").get(orderId);
           const accepted = db.prepare("SELECT id FROM acceptances WHERE order_id=? AND result='accepted' LIMIT 1").get(orderId);
           const invoice = db.prepare("SELECT id,amount,status,invoice_no,issued_at FROM invoices WHERE order_id=? AND status='已开具' AND issued_at IS NOT NULL AND TRIM(COALESCE(invoice_no,''))<>'' LIMIT 1").get(orderId);
+          const invoiceAdjustment = db.prepare("SELECT id,status FROM invoice_adjustments WHERE order_id=? AND status IN ('待机构受理','处理中','已完成') LIMIT 1").get(orderId);
           const orderAmount = Number(order.amount);
           const paymentAmount = Number(payment.amount);
           const invoiceAmount = Number(invoice?.amount);
@@ -1033,7 +1037,7 @@ const processIntegrationWebhook = async (provider, req, res) => {
             moneyCents(paymentAmount, "托管金额");
             if (invoice) moneyCents(invoiceAmount, "发票金额");
           }
-          if (!contract || contract.status !== "已签署" || !accepted || (productionMode && !acceptanceCompleteForOrder(orderId)) || !invoice || amountsDiffer(invoiceAmount, paymentAmount) || amountsDiffer(orderAmount, paymentAmount) || amountsDiffer(orderAmount, invoiceAmount)) throw new HttpError(409, "合同、全量验收、发票和托管金额未全部一致，禁止机构分账回调落账");
+          if (!contract || contract.status !== "已签署" || !accepted || (productionMode && !acceptanceCompleteForOrder(orderId)) || !invoice || invoiceAdjustment || amountsDiffer(invoiceAmount, paymentAmount) || amountsDiffer(orderAmount, paymentAmount) || amountsDiffer(orderAmount, invoiceAmount)) throw new HttpError(409, "合同、全量验收、发票和托管金额未全部一致，禁止机构分账回调落账");
           const feeCalc = platformFeeForOrder(orderId, Number(payment.amount));
           const instructionRef = String(payload.provider_transaction_id || payload.instruction_ref || eventId).trim().slice(0, 180);
           if (db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(orderId)) throw new HttpError(409, "交易已经存在分账记录，禁止重复分账");
@@ -1053,13 +1057,40 @@ const processIntegrationWebhook = async (provider, req, res) => {
         nextAction = paid ? "资金已入托管，验收合格后才能分账" : nextPaymentStatus === "支付失败" ? "支付失败，请按机构退款/重试流程处理" : "等待支付机构最终确认";
         }
       } else if (provider === "invoice") {
+        const invoiceState = normalizeWebhookStatus("invoice", payload.status);
+        if (!invoiceState) throw new HttpError(400, "发票回调状态不在允许范围");
+        const invoiceAction = String(payload.action || "issue").trim().toLowerCase();
+        if (!["issue", "red_letter", "void"].includes(invoiceAction)) throw new HttpError(400, "发票回调 action 不在允许范围");
         const invoiceNo = String(payload.invoice_no || "").trim();
         if (!invoiceNo) throw new HttpError(400, "发票回调缺少 invoice_no");
         if (invoiceNo.length > 80) throw new HttpError(400, "发票号码过长");
-        const invoiceState = normalizeWebhookStatus("invoice", payload.status);
-        if (!invoiceState) throw new HttpError(400, "发票回调状态不在允许范围");
         const invoice = db.prepare("SELECT * FROM invoices WHERE order_id=? LIMIT 1").get(orderId);
         if (!invoice) throw new HttpError(404, "回调关联的发票记录不存在");
+        if (invoiceAction !== "issue") {
+          const adjustmentId = String(payload.adjustment_id || "").trim();
+          if (!adjustmentId) throw new HttpError(400, "红冲/作废回调缺少 adjustment_id");
+          const adjustment = db.prepare("SELECT * FROM invoice_adjustments WHERE id=? AND order_id=? AND invoice_id=? AND action=? LIMIT 1").get(adjustmentId, orderId, invoice.id, invoiceAction);
+          if (!adjustment) throw new HttpError(404, "回调关联的发票红冲/作废申请不存在");
+          if (String(payload.original_invoice_no || adjustment.original_invoice_no).trim() !== adjustment.original_invoice_no) throw new HttpError(409, "红冲/作废回调原发票号码与申请不一致");
+          if (productionMode) {
+            moneyCents(adjustment.amount, "红冲/作废金额");
+            if (payload.amount === undefined) throw new HttpError(400, "生产红冲/作废回调必须提供 amount");
+            moneyCents(payload.amount, "红冲/作废回调金额");
+          }
+          if (payload.amount !== undefined && amountsDiffer(payload.amount, adjustment.amount)) throw new HttpError(409, "红冲/作废回调金额与申请不一致");
+          if (adjustment.adjustment_invoice_no && adjustment.adjustment_invoice_no !== invoiceNo) throw new HttpError(409, "红冲/作废发票号码已锁定，禁止回调替换");
+          const completed = invoiceState === "verified";
+          const nextAdjustmentStatus = completed ? "已完成" : invoiceState === "failed" ? "失败" : "处理中";
+          if (adjustment.status === "已完成" && nextAdjustmentStatus !== "已完成") throw new HttpError(409, "红冲/作废申请已完成，禁止回调回退状态");
+          const evidenceRef = String(payload.evidence_ref || payload.verification_ref || "").trim().slice(0, 180);
+          db.prepare("UPDATE invoice_adjustments SET status=?,adjustment_invoice_no=?,provider_ref=?,evidence_ref=?,completed_at=?,updated_at=? WHERE id=?").run(nextAdjustmentStatus, invoiceNo, String(payload.provider_transaction_id || payload.event_id || "").trim().slice(0, 180), evidenceRef, completed ? (adjustment.completed_at || t) : adjustment.completed_at, t, adjustment.id);
+          if (completed) {
+            const invoiceStatus = invoiceAction === "void" ? "已作废" : "已红冲";
+            db.prepare("UPDATE invoices SET status=? WHERE id=?").run(invoiceStatus, invoice.id);
+            db.prepare("UPDATE orders SET invoice_status=?,updated_at=? WHERE id=?").run(invoiceStatus, t, orderId);
+          }
+          nextAction = completed ? (invoiceAction === "void" ? "发票已作废，原蓝票不再作为有效结算凭证" : "发票已红冲，原蓝票不再作为有效结算凭证") : nextAdjustmentStatus === "失败" ? "红冲/作废处理失败，进入财务复核" : "等待发票机构完成红冲/作废回执";
+        } else {
         const duplicateInvoice = db.prepare("SELECT id,order_id FROM invoices WHERE invoice_no=? AND id<>? LIMIT 1").get(invoiceNo, invoice.id);
         if (duplicateInvoice) throw new HttpError(409, "发票号码已绑定其他交易，禁止重复入账");
         if (productionMode) {
@@ -1080,6 +1111,7 @@ const processIntegrationWebhook = async (provider, req, res) => {
         db.prepare("UPDATE invoices SET invoice_no=?,status=?,issued_at=? WHERE id=?").run(invoiceNo, nextInvoiceStatus, verified ? (invoice.issued_at || t) : invoice.issued_at, invoice.id);
         db.prepare("UPDATE orders SET invoice_status=?,updated_at=? WHERE id=?").run(verified ? "已验真" : nextInvoiceStatus === "开票失败" ? "开票失败" : "待验真", t, orderId);
         nextAction = verified ? "发票已验真，进入四流对账" : nextInvoiceStatus === "开票失败" ? "发票处理失败，请由开票机构重试" : "等待发票验真结果";
+        }
       }
     }
     if (provider === "regulator") {
@@ -1126,7 +1158,7 @@ const server = createServer(async (req, res) => {
   const path = url.pathname;
   if (path === "/health" || path === "/health/live") return json(res, 200, { status: "ok", database: "sqlite", dbPath: productionMode ? undefined : dbPath, version: healthVersion, platform_version: platformVersion, api_version: apiReleaseVersion, runtime_mode: runtimeMode, reserved_ports: integrationPorts });
   if (path === "/health/ready") {
-    const requiredTables = ["organizations", "merchants", "merchant_identity", "products", "orders", "order_items", "inventory_reservations", "contracts", "payments", "payment_refunds", "invoices", "shipments", "acceptances", "acceptance_items", "merchant_service_areas", "order_delivery_constraints", "regulatory_submissions", "audit_logs", "operation_progress", "request_idempotency", "integration_callbacks", "institution_outbox", "user_sessions", "platform_fee_collections"];
+    const requiredTables = ["organizations", "merchants", "merchant_identity", "products", "orders", "order_items", "inventory_reservations", "contracts", "payments", "payment_refunds", "invoices", "invoice_adjustments", "shipments", "acceptances", "acceptance_items", "merchant_service_areas", "order_delivery_constraints", "regulatory_submissions", "audit_logs", "operation_progress", "request_idempotency", "integration_callbacks", "institution_outbox", "user_sessions", "platform_fee_collections"];
     const placeholders = requiredTables.map(() => "?").join(",");
     const rows = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name IN (${placeholders})`).all(...requiredTables);
     const present = new Set(rows.map((row) => row.name));
@@ -2224,6 +2256,8 @@ const server = createServer(async (req, res) => {
     if (productionMode && orderGoodsNet(orderId) <= 0) return error(res, 409, "结算缺少商品明细，禁止按订单总额回退计费；请先补齐订单明细并复核");
     const accepted = db.prepare("SELECT id FROM acceptances WHERE order_id=? AND result='accepted' LIMIT 1").get(orderId);
     if (!accepted || (productionMode && !acceptanceCompleteForOrder(orderId))) return error(res, 409, "全量验收合格前不得结算");
+    const invoiceAdjustment = db.prepare("SELECT id,status FROM invoice_adjustments WHERE order_id=? AND status IN ('待机构受理','处理中','已完成') LIMIT 1").get(orderId);
+    if (invoiceAdjustment) return error(res, 409, "发票存在红冲/作废申请或已完成调整，禁止分账");
     const invoice = db.prepare("SELECT id FROM invoices WHERE order_id=? AND status='已开具' AND issued_at IS NOT NULL AND TRIM(COALESCE(invoice_no,''))<>'' LIMIT 1").get(orderId);
     if (!invoice) return error(res, 409, "发票验真前不得结算");
     const invoiceDetail = db.prepare("SELECT amount FROM invoices WHERE order_id=? AND status='已开具' AND issued_at IS NOT NULL AND TRIM(COALESCE(invoice_no,''))<>'' LIMIT 1").get(orderId);
@@ -2432,6 +2466,100 @@ const server = createServer(async (req, res) => {
     saveIdempotent(req, idemKey, 201, data, payload);
     return json(res, 201, data);
   }
+  const invoiceAdjustmentMatch = path.match(/^\/api\/v1\/trades\/([^/]+)\/invoice-adjustments$/);
+  if (invoiceAdjustmentMatch && req.method === "POST") {
+    if (!authorized(req)) return error(res, 401, "需要发票调整授权");
+    if (!hasAdminPermission(req, "finance", true)) return error(res, 403, "只有财务结算岗位可以申请发票红冲或作废");
+    const payload = await body(req), id = invoiceAdjustmentMatch[1], idemKey = requestKey(req, payload);
+    if (productionMode && !idemKey) return error(res, 400, "生产发票调整必须提供 Idempotency-Key");
+    if (replayIdempotent(req, res, idemKey, payload)) return;
+    if (!productionMode) return error(res, 409, "本地演示请使用演示重置，不创建发票机构调整指令");
+    if (process.env.SHUZHI_INVOICE_READY !== "true") return error(res, 503, "发票机构尚未完成联调，暂不接受红冲/作废申请");
+    const action = String(payload.action || "").trim().toLowerCase();
+    if (!["red_letter", "void"].includes(action)) return error(res, 400, "发票调整 action 必须是 red_letter 或 void");
+    const order = db.prepare("SELECT * FROM orders WHERE id=?").get(id);
+    if (!order) return error(res, 404, "交易不存在");
+    if (order.status === "已取消") return error(res, 409, "交易已取消，不能新增发票调整");
+    const invoice = db.prepare("SELECT * FROM invoices WHERE order_id=? LIMIT 1").get(id);
+    if (!invoice || invoice.status !== "已开具" || !invoice.issued_at || !String(invoice.invoice_no || "").trim()) return error(res, 409, "只有已开具且有签发事实的发票才能红冲或作废");
+    if (db.prepare("SELECT id FROM invoice_adjustments WHERE order_id=? AND status IN ('待机构受理','处理中','已完成') LIMIT 1").get(id)) return error(res, 409, "该交易已有未完成或已完成的发票调整");
+    const reviewRef = String(payload.financial_review_ref || "").trim().slice(0, 180);
+    if (reviewRef.length < 3) return error(res, 400, "生产发票调整必须提供财务复核引用");
+    const amount = payload.amount === undefined ? Number(invoice.amount) : Number(payload.amount);
+    try { moneyCents(amount, "发票调整金额"); } catch (cause) { return error(res, cause.status || 400, cause.message); }
+    if (action === "void" && amountsDiffer(amount, invoice.amount)) return error(res, 409, "作废必须覆盖原发票全额");
+    if (amount > Number(invoice.amount)) return error(res, 409, "发票调整金额不得超过原发票金额");
+    if (action === "red_letter") {
+      const reservedCents = Math.round(Number(db.prepare("SELECT COALESCE(SUM(amount),0) AS amount FROM invoice_adjustments WHERE invoice_id=? AND action='red_letter' AND status IN ('待机构受理','处理中','已完成')").get(invoice.id)?.amount || 0) * 100);
+      if (reservedCents + moneyCents(amount, "发票调整金额") > moneyCents(invoice.amount, "原发票金额")) return error(res, 409, "累计红冲金额不得超过原发票金额");
+    }
+    const sellerIdentity = db.prepare("SELECT credit_code FROM merchant_identity WHERE merchant_id=? AND status='verified'").get(order.supplier_id);
+    const buyerIdentity = db.prepare("SELECT credit_code FROM merchant_identity WHERE merchant_id=? AND status='verified'").get(order.buyer_id);
+    const sellerCode = String(invoice.seller_credit_code || sellerIdentity?.credit_code || "").trim();
+    const buyerCode = String(invoice.buyer_credit_code || buyerIdentity?.credit_code || "").trim();
+    if (!sellerCode || !buyerCode) return error(res, 409, "发票调整缺少已核验的购销双方主体代码");
+    const sourceItems = db.prepare("SELECT name,qty,unit_price FROM order_items WHERE order_id=? ORDER BY id").all(id);
+    if (!sourceItems.length) return error(res, 409, "发票调整缺少订单商品明细");
+    const rawItems = action === "void" ? sourceItems : payload.items;
+    if (!Array.isArray(rawItems) || rawItems.length < 1) return error(res, 400, "红冲必须提供实际调整商品明细");
+    const taxRate = Number(invoice.tax_rate);
+    const taxCategoryCode = String(invoice.tax_category_code || "").trim();
+    if (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 1 || !taxCategoryCode) return error(res, 409, "原发票缺少税率或税收分类编码，不能发起调整");
+    const items = [];
+    let goodsNet = 0;
+    for (const rawItem of rawItems) {
+      const name = String(rawItem?.name || "").trim().slice(0, 120);
+      const quantity = Number(rawItem?.quantity ?? rawItem?.qty);
+      const unitPrice = Number(rawItem?.unit_price ?? rawItem?.unitPrice);
+      if (!name || !finitePositive(quantity, 1e9) || !finiteNonNegative(unitPrice, 1e12)) return error(res, 400, "发票调整商品明细不合法");
+      try { moneyCents(unitPrice, "发票调整商品单价", { allowZero: true }); } catch (cause) { return error(res, cause.status || 400, cause.message); }
+      const subtotal = Math.round(quantity * unitPrice * 100) / 100;
+      goodsNet += subtotal;
+      items.push({ name, quantity, unit_price: unitPrice, tax_rate: taxRate, tax_category_code: taxCategoryCode });
+    }
+    goodsNet = Math.round(goodsNet * 100) / 100;
+    if (!Number.isFinite(goodsNet) || goodsNet <= 0 || amountsDiffer(goodsNet, amount) && goodsNet > amount) return error(res, 409, "发票调整商品明细金额不得超过调整金额");
+    const serviceFee = Math.round((amount - goodsNet) * 100) / 100;
+    const adjustmentId = `IADJ-${id}-${randomUUID().slice(0, 12).toUpperCase()}`;
+    const t = now();
+    db.exec("BEGIN");
+    try {
+      db.prepare("INSERT INTO invoice_adjustments(id,invoice_id,order_id,action,original_invoice_no,amount,reason,financial_review_ref,status,requested_by,idempotency_key,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)").run(adjustmentId, invoice.id, id, action, String(invoice.invoice_no), amount, String(payload.reason || "财务复核后的发票调整").trim().slice(0, 240), reviewRef, "待机构受理", actorFor(req, "财务结算岗"), idemKey || `INVOICE-ADJUST:${adjustmentId}`, t, t);
+      const queued = enqueueProductionInstitutionCommand({
+        provider: "invoice",
+        aggregateType: "invoice_adjustment",
+        aggregateId: adjustmentId,
+        commandType: action,
+        idempotencyKey: `INVOICE:${action.toUpperCase()}:${adjustmentId}`,
+        command: {
+          command_id: `CMD-INVOICE-${action.toUpperCase()}-${adjustmentId}`,
+          action,
+          order_id: id,
+          invoice_id: invoice.id,
+          adjustment_id: adjustmentId,
+          original_invoice_no: String(invoice.invoice_no),
+          seller: merchantParty(order.supplier_id, sellerCode),
+          buyer: merchantParty(order.buyer_id, buyerCode),
+          money: { amount, currency: "CNY" },
+          items,
+          service_fee: serviceFee,
+          invoice_type: String(invoice.invoice_type || "").trim(),
+          tax_category_code: taxCategoryCode,
+          reason: String(payload.reason || "财务复核后的发票调整").trim().slice(0, 240),
+          financial_review_ref: reviewRef,
+        },
+        now: t,
+      });
+      log(actorFor(req, "财务结算岗"), "QUEUE_INVOICE_ADJUSTMENT", id, `${action} · ${adjustmentId}`);
+      const data = { ...orderView(id), invoice_adjustment_pending: true, invoice_adjustment_id: adjustmentId, institution_outbox: publicInstitutionCommand(queued) };
+      saveIdempotent(req, idemKey, 202, data, payload);
+      db.exec("COMMIT");
+      return json(res, 202, data);
+    } catch (cause) {
+      db.exec("ROLLBACK");
+      throw cause;
+    }
+  }
   const invoiceMatch = path.match(/^\/api\/v1\/trades\/([^/]+)\/invoice$/);
   if (invoiceMatch && req.method === "POST") {
     if (!authorized(req)) return error(res, 401, "需要开票授权");
@@ -2443,13 +2571,14 @@ const server = createServer(async (req, res) => {
     if (!order) return error(res, 404, "交易不存在");
     if (!canActForOrder(req, order, "supplier")) return error(res, 403, "只有供货方或授权后台岗位可以登记发票");
     if (["已取消", "已完成"].includes(order.status) || db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(id)) return error(res, 409, "交易已取消或已关账，禁止新增发票");
-    if (productionMode && ["退款待机构受理", "退款处理中", "部分退款", "已退款", "退款失败"].includes(String(order.payment_status || ""))) return error(res, 409, "交易存在退款或退款异常，普通发票暂不得开具；请先完成财务复核或走红冲流程");
+    if (productionMode && ["退款待机构受理", "退款处理中", "部分退款", "已退款", "退款失败"].includes(String(order.payment_status || "")) && !db.prepare("SELECT id FROM invoices WHERE order_id=? AND status IN ('已红冲','已作废') LIMIT 1").get(id)) return error(res, 409, "交易存在退款或退款异常，普通发票暂不得开具；请先完成财务复核或走红冲流程");
     if (productionMode && process.env.SHUZHI_INVOICE_READY !== "true") return error(res, 503, "发票机构尚未完成联调，暂不接受生产开票登记");
     if (db.prepare("SELECT id FROM invoices WHERE order_id=? AND status='已开具' LIMIT 1").get(id)) return error(res, 409, "该交易发票已开具，禁止重复登记");
     const accepted = db.prepare("SELECT id FROM acceptances WHERE order_id=? AND result='accepted'").get(id);
     if (!accepted || (productionMode && !acceptanceCompleteForOrder(id))) return error(res, 409, "全量验收合格前不得开票");
     if (!productionMode && !payload.invoice_no) return error(res, 400, "发票号码不能为空");
-    const invoice = db.prepare("SELECT id,amount FROM invoices WHERE order_id=? LIMIT 1").get(id);
+    const invoice = db.prepare("SELECT id,amount,status,invoice_no,issued_at FROM invoices WHERE order_id=? LIMIT 1").get(id);
+    if (invoice && ["已红冲", "已作废"].includes(invoice.status) && db.prepare("SELECT id FROM invoice_adjustments WHERE invoice_id=? AND status IN ('待机构受理','处理中') LIMIT 1").get(invoice.id)) return error(res, 409, "上一笔发票调整尚未完成，不能重新开票");
     if (productionMode) {
       try {
         moneyCents(order.amount, "订单金额");
@@ -2480,6 +2609,7 @@ const server = createServer(async (req, res) => {
       const serviceFee = Math.round((Number(invoice.amount) - goodsNet) * 100) / 100;
       db.exec("BEGIN");
       try {
+        if (invoice.status === "已红冲" || invoice.status === "已作废") db.prepare("UPDATE invoices SET invoice_no=NULL,status='待开具',issued_at=NULL WHERE id=?").run(invoice.id);
         db.prepare("UPDATE invoices SET invoice_type=?,tax_category_code=?,tax_rate=?,seller_credit_code=?,buyer_credit_code=? WHERE id=?").run(invoiceType, taxCategoryCode, taxRate, sellerCreditCode.toUpperCase(), buyerCreditCode.toUpperCase(), invoice.id);
         const queued = enqueueProductionInstitutionCommand({
           provider: "invoice",
