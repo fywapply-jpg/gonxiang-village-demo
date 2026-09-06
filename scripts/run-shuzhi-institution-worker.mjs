@@ -11,19 +11,21 @@ if (String(process.env.SHUZHI_RUNTIME_MODE || "") !== "production") throw new Er
 const dbPath = resolve(String(process.env.SHUZHI_DB || "").trim());
 if (!dbPath || dbPath === "." || dbPath === "/") throw new Error("SHUZHI_DB 必须是生产数据库绝对路径");
 const providerConfig = {
-  ca: ["SHUZHI_CA_ADAPTER_URL", "SHUZHI_CA_ADAPTER_SECRET"],
-  payment: ["SHUZHI_PAYMENT_ADAPTER_URL", "SHUZHI_PAYMENT_ADAPTER_SECRET"],
-  logistics: ["SHUZHI_LOGISTICS_ADAPTER_URL", "SHUZHI_LOGISTICS_ADAPTER_SECRET"],
-  invoice: ["SHUZHI_INVOICE_ADAPTER_URL", "SHUZHI_INVOICE_ADAPTER_SECRET"],
-  regulator: ["SHUZHI_REGULATOR_ADAPTER_URL", "SHUZHI_REGULATOR_ADAPTER_SECRET"],
+  ca: ["SHUZHI_CA_READY", "SHUZHI_CA_ADAPTER_URL", "SHUZHI_CA_ADAPTER_SECRET"],
+  payment: ["SHUZHI_PAYMENT_READY", "SHUZHI_PAYMENT_ADAPTER_URL", "SHUZHI_PAYMENT_ADAPTER_SECRET"],
+  logistics: ["SHUZHI_LOGISTICS_READY", "SHUZHI_LOGISTICS_ADAPTER_URL", "SHUZHI_LOGISTICS_ADAPTER_SECRET"],
+  invoice: ["SHUZHI_INVOICE_READY", "SHUZHI_INVOICE_ADAPTER_URL", "SHUZHI_INVOICE_ADAPTER_SECRET"],
+  regulator: ["SHUZHI_REGULATOR_READY", "SHUZHI_REGULATOR_ADAPTER_URL", "SHUZHI_REGULATOR_ADAPTER_SECRET"],
 };
 const clients = {};
-for (const [provider, [urlKey, secretKey]] of Object.entries(providerConfig)) {
+for (const [provider, [readyKey, urlKey, secretKey]] of Object.entries(providerConfig)) {
+  if (String(process.env[readyKey] || "") !== "true") continue;
   const baseUrl = String(process.env[urlKey] || "").trim();
   const secret = String(process.env[secretKey] || "").trim();
   if (!baseUrl || baseUrl.includes("CHANGE_ME") || !secret || secret.includes("CHANGE_ME")) throw new Error(`${provider} 机构出站地址或独立密钥未配置`);
   clients[provider] = createInstitutionAdapterClient({ provider, baseUrl, secret });
 }
+if (!Object.keys(clients).length) throw new Error("没有已 ready 的机构适配器；先完成至少一类机构联调，再启动 Outbox 工作进程");
 
 mkdirSync(dirname(dbPath), { recursive: true });
 const db = new DatabaseSync(dbPath);
