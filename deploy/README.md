@@ -18,7 +18,7 @@ nginx-shuzhi-api-v8530.conf.example
 1. 使用 `scripts/create-shuzhi-production-env.mjs` 在服务器受限目录生成 `/etc/shuzhi-v8530.env`。
 2. 填入域名、微信、CA、支付、物流、发票和监管机构签发的真实凭证；不要把密钥写入前端或 Git 仓库。
 3. 使用 `scripts/render-shuzhi-nginx.mjs` 渲染 API-only Nginx 配置，避免 API 域名误返回历史前台页面。
-4. 运行 `npm run check:shuzhi-production-env`，所有字段通过后再启动 `shuzhi-v8530.service`。
+4. 首次或分阶段部署先运行 `SHUZHI_ENV_FILE=/etc/shuzhi-v8530.env npm run check:shuzhi-bootstrap`；它允许未 ready 的机构能力保持关闭，但拒绝危险核心配置。全部能力推广前仍须运行 `npm run check:shuzhi-production-env` 和 `npm run check:shuzhi-production`。
 5. 完成微信及各机构签名、幂等、对账和恢复演练后，才把对应 `SHUZHI_*_READY` 开关改为 `true`。
 6. API 服务和 `shuzhi-v8530-institution-worker.service` 必须同时启用；前者接收业务和回调，后者从事务性 Outbox 投递 CA、支付、物流、发票和监管指令。两者必须使用同一生产数据库文件和同一受限环境文件。
 
