@@ -109,6 +109,8 @@ try {
   productionServer = start(prodPort);
   await ready(productionServer, prodPort);
   const orderId = "SZGS-2026-850901";
+  const fractionalMoney = await request(prodPort, "/api/v1/trades", buyerToken, { scene: "buyerSupply", supplier_id: "m-supplier", items: [{ product_id: "p-orange", qty: 1 }], service_amount: 0.001 }, "outbox-money-fraction-000001");
+  add(fractionalMoney.status === 400, "生产金额拒绝半分值", `HTTP ${fractionalMoney.status}`);
   const caBuyer = await request(prodPort, `/api/v1/trades/${orderId}/contract/sign`, buyerToken, { party: "buyer", certificate_ref: "CA-BUYER-PROD", signer_authorization_ref: "AUTH-BUYER-PROD" }, "outbox-ca-buyer-000001");
   add(caBuyer.status === 202 && caBuyer.payload?.institution_outbox?.status === "pending", "生产 CA 签署先入 Outbox", `HTTP ${caBuyer.status}`);
   const caSupplier = await request(prodPort, `/api/v1/trades/${orderId}/contract/sign`, supplierToken, { party: "supplier", certificate_ref: "CA-SUPPLIER-PROD", signer_authorization_ref: "AUTH-SUPPLIER-PROD" }, "outbox-ca-supplier-000001");

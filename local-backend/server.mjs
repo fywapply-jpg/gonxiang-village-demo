@@ -589,8 +589,9 @@ const platformFeeForOrder = (orderId, orderAmount) => {
   const goodsNet = orderGoodsNet(orderId);
   if (goodsNet <= 0 && productionMode) throw new HttpError(409, "结算缺少商品明细，禁止按订单总额回退计费；请先补齐订单明细并复核");
   const base = goodsNet > 0 ? goodsNet : Math.round(Number(orderAmount || 0) * 100) / 100;
-  const fee = Math.round(base * Number(tradeConfig.fee_rules.platform_rate) * 100) / 100;
-  return { base, fee, fallback: goodsNet <= 0 };
+  const baseCents = productionMode ? moneyCents(base, "平台费计费基数") : Math.round(base * 100);
+  const feeCents = Math.round(baseCents * Number(tradeConfig.fee_rules.platform_rate));
+  return { base: centsMoney(baseCents), fee: centsMoney(feeCents), fallback: goodsNet <= 0 };
 };
 const tradeLedger = (id) => {
   const order = orderView(id);
@@ -637,6 +638,16 @@ const distanceKm = (lat1, lng1, lat2, lng2) => {
 };
 const finitePositive = (value, max = Number.MAX_SAFE_INTEGER) => Number.isFinite(Number(value)) && Number(value) > 0 && Number(value) <= max;
 const finiteNonNegative = (value, max = Number.MAX_SAFE_INTEGER) => Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= max;
+// 生产账务金额必须精确到人民币分；内部仍保留现有 DTO 和 SQLite 字段，
+// 但所有关键边界先用整数分校验，避免二进制浮点造成四流金额不一致。
+const moneyCents = (value, label = "金额", { allowZero = false } = {}) => {
+  const number = Number(value);
+  if (!Number.isFinite(number) || (allowZero ? number < 0 : number <= 0) || number > 1e12) throw new HttpError(400, `${label}必须为合法金额`);
+  const cents = Math.round(number * 100);
+  if (Math.abs(number * 100 - cents) > 1e-7) throw new HttpError(400, `${label}必须精确到人民币分`);
+  return cents;
+};
+const centsMoney = (cents) => Math.round(Number(cents)) / 100;
 // 第三方回调只接受明确的状态词，并按单向状态机落账；未知状态或回退
 // 不能覆盖已经确认、已送达或已分账的事实，避免供应商重试/异常回调改写账本。
 const normalizeWebhookStatus = (provider, value) => {
@@ -788,6 +799,7 @@ const processIntegrationWebhook = async (provider, req, res) => {
           const duplicateTransaction = db.prepare("SELECT id,order_id FROM payments WHERE provider_transaction_id=? AND id<>? LIMIT 1").get(providerTransactionId, payment.id);
           if (duplicateTransaction) throw new HttpError(409, "机构交易号已绑定其他托管支付，禁止重复落账");
         }
+        if (productionMode && payload.amount !== undefined) moneyCents(payload.amount, "支付回调金额");
         if (payload.amount !== undefined && (!finitePositive(payload.amount, 1e12) || Math.abs(Number(payload.amount) - Number(payment.amount)) > 0.01)) throw new HttpError(409, "支付回调金额与托管记录不一致");
         if (db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(orderId)) throw new HttpError(409, "交易已完成结算，禁止支付回调覆盖账本");
         const paidStates = new Set(["已入金待验收", "待验收分账", "机构已确认（验收后分账）", "已支付"]);
@@ -828,6 +840,7 @@ const processIntegrationWebhook = async (provider, req, res) => {
         if (!invoice) throw new HttpError(404, "回调关联的发票记录不存在");
         const duplicateInvoice = db.prepare("SELECT id,order_id FROM invoices WHERE invoice_no=? AND id<>? LIMIT 1").get(invoiceNo, invoice.id);
         if (duplicateInvoice) throw new HttpError(409, "发票号码已绑定其他交易，禁止重复入账");
+        if (productionMode && payload.amount !== undefined) moneyCents(payload.amount, "发票回调金额");
         if (payload.amount !== undefined && (!finitePositive(payload.amount, 1e12) || Math.abs(Number(payload.amount) - Number(invoice.amount)) > 0.01)) throw new HttpError(409, "发票回调金额与订单发票金额不一致");
         if (productionMode && payload.amount === undefined) throw new HttpError(400, "生产发票回调必须提供 amount 用于四流核对");
         const accepted = db.prepare("SELECT id FROM acceptances WHERE order_id=? AND result='accepted' LIMIT 1").get(orderId);
@@ -1256,6 +1269,10 @@ const server = createServer(async (req, res) => {
     if (existing) return error(res, 409, "同一需求、供货主体和商品只能保留一份有效报价");
     const quoteId = `QUOTE-${randomUUID().slice(0, 12).toUpperCase()}`;
     const amount = Math.round(qty * unitPrice * 100) / 100;
+    if (productionMode) {
+      moneyCents(unitPrice, "报价单价");
+      moneyCents(amount, "报价金额");
+    }
     const t = now();
     db.exec("BEGIN");
     try {
@@ -1342,13 +1359,22 @@ const server = createServer(async (req, res) => {
       const unitPrice = acceptedQuote ? Number(raw?.quoted_unit_price) : Number(product.price);
       if (!finitePositive(unitPrice, 1e9)) return error(res, 400, "成交单价不合法");
       const subtotal = Math.round(unitPrice * qty * 100) / 100;
+      if (productionMode) {
+        moneyCents(unitPrice, "成交单价");
+        moneyCents(subtotal, "商品明细金额");
+      }
       goodsNet += subtotal;
       normalized.push({ product, qty, unitPrice, subtotal });
     }
     goodsNet = Math.round(goodsNet * 100) / 100;
     const serviceAmount = payload.service_amount === undefined ? 0 : Number(payload.service_amount);
     if (!finiteNonNegative(serviceAmount, 1e12)) return error(res, 400, "合同服务费用必须为合法非负金额");
+    if (productionMode) {
+      moneyCents(goodsNet, "商品明细净额");
+      moneyCents(serviceAmount, "合同服务费用", { allowZero: true });
+    }
     const amount = Math.round((goodsNet + serviceAmount) * 100) / 100;
+    if (productionMode) moneyCents(amount, "订单金额");
     if (payload.amount !== undefined && (!finitePositive(payload.amount, 1e12) || Math.abs(Number(payload.amount) - amount) > 0.01)) return error(res, 409, "订单金额必须等于商品明细净额与合同服务费用之和");
     const scene = String(payload.scene || (acceptedQuote ? "supplierDemand" : "buyerSupply")).trim();
     if (!["buyerSupply", "supplierDemand"].includes(scene)) return error(res, 400, "交易场景不合法");
@@ -1572,6 +1598,7 @@ const server = createServer(async (req, res) => {
     if (!canAccessMerchant(req, merchant.id)) return error(res, 403, "无权以该商户身份发布商品");
     const price = Number(payload.price), stock = Number(payload.stock), name = String(payload.name).trim(), category = String(payload.category).trim();
     if (!name || name.length > 120 || !category || category.length > 40 || !finitePositive(price, 1e9) || !finitePositive(stock, 1e9)) return error(res, 400, "商品名称、品类、价格和库存必须为合法正数");
+    if (productionMode) moneyCents(price, "商品单价");
     const media = Array.isArray(payload.media) ? payload.media : [];
     if (media.length > 8 || media.some((item) => !item || !["image", "video"].includes(String(item.media_type || "image")) || !String(item.url || "").trim() || String(item.url).length > 2048)) return error(res, 400, "商品媒体最多 8 个，类型和地址不合法");
     // 先完成全部字段校验，再写入商品和媒体，避免无效媒体留下孤立的待审核商品。
@@ -1689,6 +1716,10 @@ const server = createServer(async (req, res) => {
     const invoice = db.prepare("SELECT id FROM invoices WHERE order_id=? AND status='已开具' LIMIT 1").get(orderId);
     if (!invoice) return error(res, 409, "发票验真前不得结算");
     const invoiceDetail = db.prepare("SELECT amount FROM invoices WHERE order_id=? AND status='已开具' LIMIT 1").get(orderId);
+    if (productionMode) {
+      moneyCents(order.amount, "订单金额");
+      if (invoiceDetail) moneyCents(invoiceDetail.amount, "发票金额");
+    }
     if (!invoiceDetail || Math.abs(Number(invoiceDetail.amount) - Number(order.amount)) > 0.01) return error(res, 409, "发票金额与订单金额不一致，禁止结算");
     const payment = db.prepare("SELECT * FROM payments WHERE order_id=? ORDER BY rowid DESC LIMIT 1").get(orderId);
     if (!payment || !["已入金待验收", "待验收分账", "机构已确认（验收后分账）", "已支付"].includes(payment.status)) return error(res, 409, "托管资金尚未确认，禁止结算");
@@ -1857,6 +1888,9 @@ const server = createServer(async (req, res) => {
     if (!accepted) return error(res, 409, "验收合格前不得开票");
     if (!productionMode && !payload.invoice_no) return error(res, 400, "发票号码不能为空");
     const invoice = db.prepare("SELECT id,amount FROM invoices WHERE order_id=? LIMIT 1").get(id);
+    if (productionMode && payload.amount !== undefined) {
+      try { moneyCents(payload.amount, "开票金额"); } catch (cause) { return error(res, cause.status || 400, cause.message); }
+    }
     if (!invoice || (payload.amount !== undefined && (!finitePositive(payload.amount, 1e12) || Math.abs(Number(payload.amount) - Number(invoice.amount)) > 0.01))) return error(res, 409, "发票金额与订单金额不一致");
     if (productionMode && payload.amount === undefined) return error(res, 400, "生产开票必须提供 amount 用于四流核对");
     const t = now();
