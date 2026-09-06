@@ -125,6 +125,8 @@ try {
   add(regulatorySubmission.status === 202 && regulatorySubmission.payload?.institution_outbox?.provider === "regulator", "生产监管提交先入 Outbox", `HTTP ${regulatorySubmission.status}`);
   const regulatoryCallback = await webhook(prodPort, "regulator", { event_id: `outbox-regulator-callback-${Date.now()}`, provider: "regulator", submission_id: regulatoryId, subject_type: "merchant", subject_id: "m-supplier", authority_code: "AQSIQ-TEST", receipt_ref: "REG-RECEIPT-001", status: "accepted" }, baseEnv.REGULATOR_WEBHOOK_SECRET);
   add(regulatoryCallback.status === 202 && regulatoryCallback.payload?.next_action?.includes("已回执"), "监管回执推进提交状态", `HTTP ${regulatoryCallback.status} · ${JSON.stringify(regulatoryCallback.payload)}`);
+  const regulatoryOverwrite = await webhook(prodPort, "regulator", { event_id: `outbox-regulator-overwrite-${Date.now()}`, provider: "regulator", submission_id: regulatoryId, subject_type: "merchant", subject_id: "m-supplier", authority_code: "AQSIQ-TEST", receipt_ref: "REG-RECEIPT-OTHER", status: "accepted" }, baseEnv.REGULATOR_WEBHOOK_SECRET);
+  add(regulatoryOverwrite.status === 409, "监管终态回执证据禁止覆盖", `HTTP ${regulatoryOverwrite.status}`);
   const dbPayment = new DatabaseSync(dbPath);
   dbPayment.prepare("UPDATE payments SET status='待机构确认',paid_at=NULL WHERE order_id=?").run(orderId);
   dbPayment.close();

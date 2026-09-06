@@ -919,8 +919,10 @@ const processIntegrationWebhook = async (provider, req, res) => {
         ? db.prepare("SELECT * FROM regulatory_submissions WHERE id=? AND subject_type=? AND subject_id=? AND authority_code=? LIMIT 1").get(requestedSubmissionId, subjectType, subjectId, authorityCode)
         : db.prepare("SELECT * FROM regulatory_submissions WHERE subject_type=? AND subject_id=? AND authority_code=? AND status NOT IN ('已回执','已撤回') ORDER BY created_at DESC LIMIT 1").get(subjectType, subjectId, authorityCode);
       if (!submission) throw new HttpError(404, "回调关联的监管提交记录不存在");
-      const terminal = new Set(["已回执", "已撤回"]);
-      if (terminal.has(submission.status) && regulatorState !== "accepted" && !(regulatorState === "withdrawn" && submission.status === "已撤回")) throw new HttpError(409, "监管提交已完成，禁止回调回退状态");
+      if (submission.status === "已撤回" && regulatorState !== "withdrawn") throw new HttpError(409, "监管提交已撤回，禁止回调重新打开");
+      if (submission.status === "已回执") {
+        if (regulatorState !== "accepted" || submission.receipt_ref !== receiptRef) throw new HttpError(409, "监管提交已完成，禁止回调覆盖回执证据");
+      }
       const nextStatus = regulatorState === "accepted" ? "已回执" : regulatorState === "withdrawn" ? "已撤回" : regulatorState === "failed" ? "失败" : "处理中";
       const failureCode = regulatorState === "failed" ? String(payload.failure_code || "REGULATOR_REJECTED").slice(0, 80) : null;
       const failureMessage = regulatorState === "failed" ? String(payload.failure_message || "监管机构未受理").slice(0, 240) : null;
