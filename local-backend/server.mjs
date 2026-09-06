@@ -677,7 +677,9 @@ const productionDeliveryConstraint = ({ supplierId, destination, lat, lng, order
   const distance = distanceKm(area.center_lat, area.center_lng, lat, lng);
   if (distance > area.radius_km) throw new HttpError(409, `收货地超出供货商服务半径（${distance.toFixed(2)}km > ${area.radius_km}km），需先完成后台人工扩围审批`);
   const dayStart = `${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`;
-  const dailyCount = Number(db.prepare("SELECT COUNT(*) AS n FROM order_delivery_constraints WHERE supplier_id=? AND created_at>=? AND status='within_radius'").get(supplierId, dayStart)?.n || 0);
+  // 以订单事实统计当日占用量，而不是只统计本版本写入的约束表；这样升级旧库时，
+  // 没有历史坐标证据的订单也不会被错误地排除在日单量限制之外。
+  const dailyCount = Number(db.prepare("SELECT COUNT(*) AS n FROM orders WHERE supplier_id=? AND created_at>=? AND status NOT IN ('已取消','已驳回')").get(supplierId, dayStart)?.n || 0);
   if (area.max_daily_orders > 0 && dailyCount >= area.max_daily_orders) throw new HttpError(409, `供货商已达到当日服务上限（${area.max_daily_orders}单），不能继续创建订单`);
   return { supplier_id: supplierId, destination: String(destination || "待补充").trim().slice(0, 240), destination_lat: lat, destination_lng: lng, distance_km: Number(distance.toFixed(2)), radius_km: area.radius_km, max_daily_orders: area.max_daily_orders, daily_order_count: dailyCount + 1, status: "within_radius", evidence_ref: `AREA-CHECK-${orderId}` };
 };

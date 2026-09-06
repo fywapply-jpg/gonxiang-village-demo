@@ -18,11 +18,12 @@ const buyerToken = "production-outbox-buyer-123456789012";
 const supplierToken = "production-outbox-supplier-123456789";
 const financeToken = "production-outbox-finance-123456789";
 const auditToken = "production-outbox-audit-123456789";
+const superToken = "production-outbox-super-123456789";
 const baseEnv = {
   SHUZHI_RUNTIME_MODE: "production",
   SHUZHI_DB: dbPath,
   SHUZHI_API_TOKEN: "production-outbox-internal-12345678901234567890",
-  SHUZHI_ADMIN_TOKEN_ROLES: JSON.stringify({ [financeToken]: "finance", [auditToken]: "audit" }),
+  SHUZHI_ADMIN_TOKEN_ROLES: JSON.stringify({ [financeToken]: "finance", [auditToken]: "audit", [superToken]: "super" }),
   SHUZHI_USER_TOKEN_PRINCIPALS: JSON.stringify({
     [buyerToken]: { id: "buyer-user", name: "采购经办人", role: "buyer", merchant_id: "m-buyer" },
     [supplierToken]: { id: "supplier-user", name: "供货经办人", role: "supplier", merchant_id: "m-supplier" },
@@ -117,12 +118,16 @@ try {
   add(readOnlyWorkflow.status === 403, "生产只读岗位禁止推进业务工作流", `HTTP ${readOnlyWorkflow.status}`);
   const readOnlyArea = await request(prodPort, "/api/v1/merchants/m-supplier/service-area", financeToken, { center_lat: 24.91, center_lng: 115.65, radius_km: 120, max_daily_orders: 80 }, "outbox-readonly-service-area");
   add(readOnlyArea.status === 403, "生产只读岗位禁止维护服务区域", `HTTP ${readOnlyArea.status}`);
+  const areaUpdate = await request(prodPort, "/api/v1/merchants/m-supplier/service-area", superToken, { center_lat: 24.9105, center_lng: 115.6528, radius_km: 120, max_daily_orders: 2, regions: ["赣州"], delivery_modes: ["冷链整车"] }, "outbox-super-service-area");
+  add(areaUpdate.status === 200 && areaUpdate.payload?.max_daily_orders === 2, "后台商户管理岗维护服务区域", `HTTP ${areaUpdate.status}`);
   const missingDeliveryLocation = await request(prodPort, "/api/v1/trades", buyerToken, { scene: "buyerSupply", supplier_id: "m-supplier", items: [{ product_id: "p-orange", qty: 1 }], delivery_address: "湖北省武汉市洪山区团餐配送中心", settlement_model: "持牌机构条件结算（验收后分账）" }, "outbox-delivery-location-missing");
   add(missingDeliveryLocation.status === 400, "生产订单缺收货坐标阻断", `HTTP ${missingDeliveryLocation.status}`);
   const outsideArea = await request(prodPort, "/api/v1/trades", buyerToken, { scene: "buyerSupply", supplier_id: "m-supplier", items: [{ product_id: "p-orange", qty: 1 }], delivery_address: "北京市朝阳区测试仓", delivery_lat: 39.9042, delivery_lng: 116.4074, settlement_model: "持牌机构条件结算（验收后分账）" }, "outbox-delivery-outside-area");
   add(outsideArea.status === 409, "生产订单超服务半径阻断", `HTTP ${outsideArea.status}`);
   const withinArea = await request(prodPort, "/api/v1/trades", buyerToken, { scene: "buyerSupply", supplier_id: "m-supplier", items: [{ product_id: "p-orange", qty: 1 }], delivery_address: "江西省赣州市寻乌县测试仓", delivery_lat: 24.91, delivery_lng: 115.65, settlement_model: "持牌机构条件结算（验收后分账）" }, "outbox-delivery-within-area");
   add(withinArea.status === 201 && withinArea.payload?.delivery_constraint?.status === "within_radius", "生产订单落库服务半径证据", `HTTP ${withinArea.status}`);
+  const dailyLimit = await request(prodPort, "/api/v1/trades", buyerToken, { scene: "buyerSupply", supplier_id: "m-supplier", items: [{ product_id: "p-orange", qty: 1 }], delivery_address: "江西省赣州市寻乌县测试仓2", delivery_lat: 24.91, delivery_lng: 115.65, settlement_model: "持牌机构条件结算（验收后分账）" }, "outbox-delivery-daily-limit");
+  add(dailyLimit.status === 409, "生产订单超过日单量阻断", `HTTP ${dailyLimit.status}`);
   const fractionalMoney = await request(prodPort, "/api/v1/trades", buyerToken, { scene: "buyerSupply", supplier_id: "m-supplier", items: [{ product_id: "p-orange", qty: 1 }], service_amount: 0.001 }, "outbox-money-fraction-000001");
   add(fractionalMoney.status === 400, "生产金额拒绝半分值", `HTTP ${fractionalMoney.status}`);
   const caBuyer = await request(prodPort, `/api/v1/trades/${orderId}/contract/sign`, buyerToken, { party: "buyer", certificate_ref: "CA-BUYER-PROD", signer_authorization_ref: "AUTH-BUYER-PROD" }, "outbox-ca-buyer-000001");
