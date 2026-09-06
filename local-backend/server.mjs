@@ -950,6 +950,8 @@ const processIntegrationWebhook = async (provider, req, res) => {
           const feeCalc = platformFeeForOrder(orderId, Number(payment.amount));
           const instructionRef = String(payload.provider_transaction_id || payload.instruction_ref || eventId).trim().slice(0, 180);
           if (db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(orderId)) throw new HttpError(409, "交易已经存在分账记录，禁止重复分账");
+          const duplicateSettlementRef = db.prepare("SELECT id,order_id FROM settlement_records WHERE (id=? OR instruction_ref=?) AND order_id<>? LIMIT 1").get(instructionRef, instructionRef, orderId);
+          if (duplicateSettlementRef) throw new HttpError(409, "机构分账流水号已绑定其他交易，禁止重复入账");
           db.prepare("INSERT INTO settlement_records(id,order_id,amount,platform_fee,platform_fee_base,status,instruction_ref,settled_at,created_at) VALUES (?,?,?,?,?,?,?,?,?)").run(instructionRef, orderId, Number(payment.amount), feeCalc.fee, feeCalc.base, "settled", instructionRef, t, t);
           db.prepare("UPDATE payments SET status='已分账',paid_at=COALESCE(paid_at,?),provider_transaction_id=COALESCE(provider_transaction_id,?) WHERE id=?").run(t, providerTransactionId || null, payment.id);
           db.prepare("UPDATE orders SET status='已完成',payment_status='已分账',fulfillment_step=CASE WHEN fulfillment_step<11 THEN 11 ELSE fulfillment_step END,updated_at=? WHERE id=?").run(t, orderId);
@@ -2075,6 +2077,8 @@ const server = createServer(async (req, res) => {
     const feeCalc = platformFeeForOrder(orderId, amount);
     const platformFee = feeCalc.fee;
     const instructionRef = String(payload.instruction_ref || `SETTLE-${orderId}-${Date.now()}`).trim();
+    const duplicateSettlementRef = db.prepare("SELECT id,order_id FROM settlement_records WHERE (id=? OR instruction_ref=?) AND order_id<>? LIMIT 1").get(instructionRef, instructionRef, orderId);
+    if (duplicateSettlementRef) return error(res, 409, "机构分账流水号已绑定其他交易，禁止重复入账");
     const t = now();
     if (productionMode) {
       const payerCreditCode = String(payload.payer_credit_code || "").trim();
@@ -2093,6 +2097,7 @@ const server = createServer(async (req, res) => {
             action: "release",
             order_id: orderId,
             payment_id: payment.id,
+            instruction_ref: instructionRef,
             payer: merchantParty(order.buyer_id, payerCreditCode),
             payee: merchantParty(order.supplier_id, payeeCreditCode),
             money: { amount, currency: "CNY" },

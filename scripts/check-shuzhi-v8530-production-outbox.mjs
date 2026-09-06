@@ -200,6 +200,16 @@ try {
   const dbInvoiceRestore = new DatabaseSync(dbPath);
   dbInvoiceRestore.prepare("UPDATE invoices SET amount=276000 WHERE order_id=?").run(orderId);
   dbInvoiceRestore.close();
+  const dbSettlementRefConflict = new DatabaseSync(dbPath);
+  dbSettlementRefConflict.prepare("UPDATE invoices SET status='已开具',amount=276000 WHERE order_id=?").run(orderId);
+  dbSettlementRefConflict.prepare("INSERT INTO settlement_records(id,order_id,amount,platform_fee,platform_fee_base,status,instruction_ref,settled_at,created_at) VALUES (?,?,?,?,?,?,?,?,?)").run("PROVIDER-DEPOSIT-001", cancelledOrderId, 1, 0, 1, "settled", "PROVIDER-DEPOSIT-001", t, t);
+  dbSettlementRefConflict.close();
+  const settlementRefConflict = await webhook(prodPort, "payment", { event_id: `outbox-payment-release-ref-conflict-${Date.now()}`, action: "release", order_id: orderId, payment_id: retryPaymentId, status: "paid", amount: 276000, provider_transaction_id: "PROVIDER-DEPOSIT-001" }, baseEnv.PAYMENT_WEBHOOK_SECRET);
+  add(settlementRefConflict.status === 409, "机构分账流水号跨交易复用阻断", `HTTP ${settlementRefConflict.status}`);
+  const dbSettlementRefRestore = new DatabaseSync(dbPath);
+  dbSettlementRefRestore.prepare("DELETE FROM settlement_records WHERE order_id=?").run(cancelledOrderId);
+  dbSettlementRefRestore.prepare("UPDATE invoices SET status='待开具' WHERE order_id=?").run(orderId);
+  dbSettlementRefRestore.close();
   const dbAmountMismatch = new DatabaseSync(dbPath);
   const originalOrderAmount = dbAmountMismatch.prepare("SELECT amount FROM orders WHERE id=?").get(orderId)?.amount;
   dbAmountMismatch.prepare("UPDATE orders SET amount=amount+1 WHERE id=?").run(orderId);
