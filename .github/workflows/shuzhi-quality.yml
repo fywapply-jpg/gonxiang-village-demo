@@ -73,6 +73,7 @@ jobs:
       - name: Check v8533 readiness and release assets
         run: |
           npm run check:shuzhi-readiness
+          npm run check:shuzhi-production-env-staged
           npm run check:shuzhi-release-integrity
       - name: Run isolated local transaction smoke tests
         run: npm run smoke:shuzhi-local

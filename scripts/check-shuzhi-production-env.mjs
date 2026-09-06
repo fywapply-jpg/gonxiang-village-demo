@@ -52,26 +52,8 @@ if (!existsSync(file)) {
     ["SHUZHI_DB"],
     ["SHUZHI_API_TOKEN"],
     ["SHUZHI_ADMIN_TOKEN_ROLES"],
-    ["WECHAT_APP_ID"],
-    ["WECHAT_APP_SECRET"],
-    ["SHUZHI_WECHAT_OPENID_PRINCIPALS"],
     ["SHUZHI_ALLOWED_ORIGIN"],
     ["VITE_API_BASE"],
-    ["SHUZHI_CA_ADAPTER_URL"],
-    ["SHUZHI_CA_ADAPTER_SECRET"],
-    ["SHUZHI_PAYMENT_ADAPTER_URL"],
-    ["SHUZHI_PAYMENT_ADAPTER_SECRET"],
-    ["SHUZHI_LOGISTICS_ADAPTER_URL"],
-    ["SHUZHI_LOGISTICS_ADAPTER_SECRET"],
-    ["SHUZHI_INVOICE_ADAPTER_URL"],
-    ["SHUZHI_INVOICE_ADAPTER_SECRET"],
-    ["SHUZHI_REGULATOR_ADAPTER_URL"],
-    ["SHUZHI_REGULATOR_ADAPTER_SECRET"],
-    ["CA_WEBHOOK_SECRET"],
-    ["LOGISTICS_WEBHOOK_SECRET"],
-    ["PAYMENT_WEBHOOK_SECRET"],
-    ["INVOICE_WEBHOOK_SECRET"],
-    ["REGULATOR_WEBHOOK_SECRET"],
   ];
   for (const [key, expected] of required) {
     const value = String(values[key] || "");
@@ -79,7 +61,19 @@ if (!existsSync(file)) {
     add(ok, `字段 ${key}`, ok ? "已填写且非占位值" : "缺失、占位值或版本不匹配");
   }
 
+  const readyKeys = ["SHUZHI_WECHAT_AUTH_READY", "SHUZHI_CA_READY", "SHUZHI_PAYMENT_READY", "SHUZHI_LOGISTICS_READY", "SHUZHI_INVOICE_READY", "SHUZHI_REGULATOR_READY"];
+  for (const key of readyKeys) {
+    const value = String(values[key] || "");
+    add(value === "true" || value === "false", `${key} 开关`, value ? "布尔值" : "未填写（必须明确 true/false）");
+  }
+
   const wechatReady = String(values.SHUZHI_WECHAT_AUTH_READY || "") === "true";
+  if (wechatReady) {
+    for (const key of ["WECHAT_APP_ID", "WECHAT_APP_SECRET"]) {
+      const value = String(values[key] || "");
+      add(Boolean(value) && !value.includes("CHANGE_ME"), `字段 ${key}`, value ? "已填写且非占位值" : "缺失或占位值");
+    }
+  }
   const userPrincipalText = String(values.SHUZHI_USER_TOKEN_PRINCIPALS || "");
   const hasTemporaryPrincipals = Boolean(userPrincipalText) && !userPrincipalText.includes("CHANGE_ME") && userPrincipalText !== "{}";
   add(wechatReady || hasTemporaryPrincipals, "用户会话来源", wechatReady ? "微信认证已 ready，可不配置长期静态用户令牌" : (hasTemporaryPrincipals ? "微信认证未 ready，已配置临时用户主体令牌" : "微信认证未 ready，必须配置临时用户主体令牌"));
@@ -100,13 +94,22 @@ if (!existsSync(file)) {
 
   const adminRoles = parseJsonField("SHUZHI_ADMIN_TOKEN_ROLES", "object");
   const userPrincipals = parseJsonField("SHUZHI_USER_TOKEN_PRINCIPALS", "object");
-  parseJsonField("SHUZHI_WECHAT_OPENID_PRINCIPALS", "object");
+  const wechatPrincipals = parseJsonField("SHUZHI_WECHAT_OPENID_PRINCIPALS", "object");
+  if (wechatReady) add(Object.keys(wechatPrincipals).length > 0, "微信主体绑定", Object.keys(wechatPrincipals).length > 0 ? "已配置 OpenID—主体映射" : "微信认证 ready 时必须配置至少一个主体映射");
 
   const apiToken = String(values.SHUZHI_API_TOKEN || "");
   const adminTokens = Object.keys(adminRoles);
   const userTokens = Object.keys(userPrincipals);
-  const webhookKeys = ["CA_WEBHOOK_SECRET", "LOGISTICS_WEBHOOK_SECRET", "PAYMENT_WEBHOOK_SECRET", "INVOICE_WEBHOOK_SECRET", "REGULATOR_WEBHOOK_SECRET"];
-  const adapterSecretKeys = ["SHUZHI_CA_ADAPTER_SECRET", "SHUZHI_PAYMENT_ADAPTER_SECRET", "SHUZHI_LOGISTICS_ADAPTER_SECRET", "SHUZHI_INVOICE_ADAPTER_SECRET", "SHUZHI_REGULATOR_ADAPTER_SECRET"];
+  const providerDefinitions = [
+    ["CA", "SHUZHI_CA_ADAPTER_URL", "SHUZHI_CA_ADAPTER_SECRET", "CA_WEBHOOK_SECRET", "SHUZHI_CA_ACCEPTANCE_REF"],
+    ["PAYMENT", "SHUZHI_PAYMENT_ADAPTER_URL", "SHUZHI_PAYMENT_ADAPTER_SECRET", "PAYMENT_WEBHOOK_SECRET", "SHUZHI_PAYMENT_ACCEPTANCE_REF"],
+    ["LOGISTICS", "SHUZHI_LOGISTICS_ADAPTER_URL", "SHUZHI_LOGISTICS_ADAPTER_SECRET", "LOGISTICS_WEBHOOK_SECRET", "SHUZHI_LOGISTICS_ACCEPTANCE_REF"],
+    ["INVOICE", "SHUZHI_INVOICE_ADAPTER_URL", "SHUZHI_INVOICE_ADAPTER_SECRET", "INVOICE_WEBHOOK_SECRET", "SHUZHI_INVOICE_ACCEPTANCE_REF"],
+    ["REGULATOR", "SHUZHI_REGULATOR_ADAPTER_URL", "SHUZHI_REGULATOR_ADAPTER_SECRET", "REGULATOR_WEBHOOK_SECRET", "SHUZHI_REGULATOR_ACCEPTANCE_REF"],
+  ];
+  const enabledProviders = providerDefinitions.filter(([name]) => values[`SHUZHI_${name}_READY`] === "true");
+  const webhookKeys = enabledProviders.map(([, , , webhookKey]) => webhookKey);
+  const adapterSecretKeys = enabledProviders.map(([, , adapterKey]) => adapterKey);
   const webhookValues = webhookKeys.map((key) => String(values[key] || ""));
   const adapterSecretValues = adapterSecretKeys.map((key) => String(values[key] || ""));
   const tokenValues = [apiToken, ...adminTokens, ...userTokens, ...webhookValues].filter(Boolean);
@@ -125,18 +128,13 @@ if (!existsSync(file)) {
   };
   checkHttpsOrigin("SHUZHI_ALLOWED_ORIGIN", "CORS 来源", false);
   checkHttpsOrigin("VITE_API_BASE", "API 根地址", true);
-  for (const key of ["SHUZHI_CA_ADAPTER_URL", "SHUZHI_PAYMENT_ADAPTER_URL", "SHUZHI_LOGISTICS_ADAPTER_URL", "SHUZHI_INVOICE_ADAPTER_URL", "SHUZHI_REGULATOR_ADAPTER_URL"]) checkHttpsOrigin(key, `${key} HTTPS 地址`, true);
+  for (const [, urlKey] of enabledProviders) checkHttpsOrigin(urlKey, `${urlKey} HTTPS 地址`, true);
 
   const dbPath = String(values.SHUZHI_DB || "");
   const projectRoot = resolve(new URL("..", import.meta.url).pathname);
   add(isAbsolute(dbPath) && dbPath !== ":memory:" && !dbPath.includes(`${projectRoot}/local-backend/`), "生产数据库路径", "必须是绝对路径，且不得指向仓库内演示数据库");
 
-  for (const key of ["SHUZHI_WECHAT_AUTH_READY", "SHUZHI_CA_READY", "SHUZHI_PAYMENT_READY", "SHUZHI_LOGISTICS_READY", "SHUZHI_INVOICE_READY", "SHUZHI_REGULATOR_READY"]) {
-    const value = String(values[key] || "");
-    add(value === "true" || value === "false", `${key} 开关`, value ? "布尔值" : "未填写（必须明确 true/false）");
-  }
-
-  for (const key of ["SHUZHI_HTTPS_ACCEPTANCE_REF", "SHUZHI_DATABASE_ACCEPTANCE_REF", "SHUZHI_WECHAT_ACCEPTANCE_REF", "SHUZHI_CA_ACCEPTANCE_REF", "SHUZHI_PAYMENT_ACCEPTANCE_REF", "SHUZHI_LOGISTICS_ACCEPTANCE_REF", "SHUZHI_INVOICE_ACCEPTANCE_REF", "SHUZHI_REGULATOR_ACCEPTANCE_REF"]) {
+  for (const key of ["SHUZHI_HTTPS_ACCEPTANCE_REF", "SHUZHI_DATABASE_ACCEPTANCE_REF", ...(wechatReady ? ["SHUZHI_WECHAT_ACCEPTANCE_REF"] : []), ...enabledProviders.map(([, , , , evidenceKey]) => evidenceKey)]) {
     const value = String(values[key] || "");
     const ok = Boolean(value) && !value.includes("CHANGE_ME");
     add(ok, `验收证据 ${key}`, ok ? "已登记受控证据编号或路径" : "未登记真实验收证据；不得用密钥或敏感报文代替");

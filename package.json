@@ -28,6 +28,7 @@
     "check:shuzhi-production": "node scripts/check-shuzhi-v8530-readiness.mjs --production",
     "check:shuzhi-bootstrap": "node scripts/check-shuzhi-production-bootstrap.mjs",
     "check:shuzhi-production-env": "node scripts/check-shuzhi-production-env.mjs",
+    "check:shuzhi-production-env-staged": "node scripts/check-shuzhi-production-env-staged.mjs",
     "check:shuzhi-activation": "node scripts/check-shuzhi-production-activation.mjs",
     "check:shuzhi-institution-contract": "node scripts/check-shuzhi-institution-contract.mjs",
     "check:shuzhi-institution-client": "node scripts/check-shuzhi-institution-client.mjs",
