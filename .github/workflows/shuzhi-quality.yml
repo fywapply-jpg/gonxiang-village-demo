@@ -78,13 +78,16 @@ jobs:
         run: npm run build:local-admin
       - name: Check credential hygiene
         run: npm run check:secret-hygiene
-      - name: Check v8533 readiness and release assets
-        run: |
-          npm run check:shuzhi-readiness
-          npm run check:shuzhi-production-env-staged
-          npm run check:shuzhi-release-integrity
-          npm run check:shuzhi-frontend-backend
-          npm run check:shuzhi-startup
+      - name: Check v8533 readiness
+        run: npm run check:shuzhi-readiness
+      - name: Check staged production environment
+        run: npm run check:shuzhi-production-env-staged
+      - name: Check release integrity
+        run: npm run check:shuzhi-release-integrity
+      - name: Check frontend-backend compatibility
+        run: npm run check:shuzhi-frontend-backend
+      - name: Check production startup
+        run: npm run check:shuzhi-startup
       - name: Check institution contracts and asynchronous boundaries
         run: |
           npm run check:shuzhi-institution-contract
