@@ -14,9 +14,10 @@ async function request(path, options = {}) {
   return { status: response.status, payload };
 }
 async function webhook(provider, payload) {
-  const raw = JSON.stringify(payload);
+  const normalizedPayload = { provider, ...payload };
+  const raw = JSON.stringify(normalizedPayload);
   const timestamp = Math.floor(Date.now() / 1000);
-  const eventId = payload.event_id;
+  const eventId = normalizedPayload.event_id;
   const secret = process.env[`${provider.toUpperCase()}_WEBHOOK_SECRET`] || `local-demo-${provider}-secret`;
   const signature = createHmac("sha256", secret).update(`${timestamp}.${raw}`).digest("hex");
   const response = await fetch(`${base}/api/v1/integrations/${provider}/webhook`, { method: "POST", headers: { "Content-Type": "application/json", "X-Webhook-Timestamp": String(timestamp), "X-Webhook-Signature": signature, "X-Webhook-Id": eventId, "Idempotency-Key": `settlement-${provider}-${eventId}` }, body: raw });

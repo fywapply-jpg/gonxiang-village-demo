@@ -740,6 +740,8 @@ const processIntegrationWebhook = async (provider, req, res) => {
   const raw = await rawBody(req);
   verifyWebhook(provider, req, raw);
   const payload = parseObject(raw);
+  const declaredProvider = String(payload.provider || "").trim().toLowerCase();
+  if (declaredProvider !== provider) throw new HttpError(400, "回调 provider 与路径机构不一致");
   const eventId = String(req.headers["x-webhook-id"] || payload.event_id || "").trim();
   const idemKey = requestKey(req, payload) || eventId;
   if (!eventId || !idemKey) throw new HttpError(400, "回调必须提供 event_id 和 Idempotency-Key（或使用 X-Webhook-Id）");

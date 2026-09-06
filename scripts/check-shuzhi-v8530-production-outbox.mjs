@@ -78,12 +78,13 @@ const request = async (port, path, token, body, key) => {
   return { status: response.status, payload: payload?.data || payload };
 };
 const webhook = async (port, provider, payload, secret) => {
-  const raw = JSON.stringify(payload);
+  const normalizedPayload = { provider, ...payload };
+  const raw = JSON.stringify(normalizedPayload);
   const timestamp = Math.floor(Date.now() / 1000);
   const signature = createHmac("sha256", secret).update(`${timestamp}.${raw}`).digest("hex");
   const response = await fetch(`http://127.0.0.1:${port}/api/v1/integrations/${provider}/webhook`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-Webhook-Timestamp": String(timestamp), "X-Webhook-Signature": signature, "X-Webhook-Id": payload.event_id, "Idempotency-Key": `production-${payload.event_id}` },
+    headers: { "Content-Type": "application/json", "X-Webhook-Timestamp": String(timestamp), "X-Webhook-Signature": signature, "X-Webhook-Id": normalizedPayload.event_id, "Idempotency-Key": `production-${normalizedPayload.event_id}` },
     body: raw,
   });
   let body = {}; try { body = await response.json(); } catch {}

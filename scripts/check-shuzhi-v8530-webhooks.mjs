@@ -14,9 +14,10 @@ const secrets = {
 const checks = [];
 const add = (ok, name, detail) => { checks.push(ok); console.log(`${ok ? "PASS" : "FAIL"}  ${name}  ${detail}`); };
 const send = async (provider, payload, options = {}) => {
-  const raw = JSON.stringify(payload);
+  const normalizedPayload = { provider, ...payload };
+  const raw = JSON.stringify(normalizedPayload);
   const timestamp = options.timestamp || Math.floor(Date.now() / 1000);
-  const eventId = options.eventId || payload.event_id || randomUUID();
+  const eventId = options.eventId || normalizedPayload.event_id || randomUUID();
   const key = options.idempotencyKey || `webhook-${provider}-${eventId}`;
   const signature = createHmac("sha256", secrets[provider]).update(`${timestamp}.${raw}`).digest("hex");
   const headers = {
@@ -51,6 +52,8 @@ const stale = await send("regulator", { event_id: `v8530-stale-${Date.now()}`, a
 add(stale.status === 401, "过期时间戳拦截", `HTTP ${stale.status}`);
 const payment = await send("payment", { event_id: `v8530-payment-${Date.now()}`, order_id: orderId, payment_id: "PAY-SZGS-850901", status: "paid", amount: 276000 });
 add(payment.status === 202, "支付入金回调", `HTTP ${payment.status}`);
+const mismatchedProvider = await send("payment", { provider: "logistics", event_id: `v8530-provider-mismatch-${Date.now()}`, order_id: orderId, payment_id: "PAY-SZGS-850901", status: "paid", amount: 276000 });
+add(mismatchedProvider.status === 400, "回调机构与路径绑定", `HTTP ${mismatchedProvider.status}`);
 const paymentRegression = await send("payment", { event_id: `v8530-payment-regression-${Date.now()}`, order_id: orderId, payment_id: "PAY-SZGS-850901", status: "pending", amount: 276000 });
 add(paymentRegression.status === 409, "支付已确认后禁止状态回退", `HTTP ${paymentRegression.status}`);
 const paymentUnknown = await send("payment", { event_id: `v8530-payment-unknown-${Date.now()}`, order_id: orderId, payment_id: "PAY-SZGS-850901", status: "provider_new_state", amount: 276000 });
