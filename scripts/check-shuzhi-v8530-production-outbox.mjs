@@ -78,14 +78,14 @@ const request = async (port, path, token, body, key) => {
   let payload = {}; try { payload = await response.json(); } catch {}
   return { status: response.status, payload: payload?.data || payload };
 };
-const webhook = async (port, provider, payload, secret) => {
+const webhook = async (port, provider, payload, secret, idempotencyKey = `production-${payload.event_id}`) => {
   const normalizedPayload = { provider, ...payload };
   const raw = JSON.stringify(normalizedPayload);
   const timestamp = Math.floor(Date.now() / 1000);
   const signature = createHmac("sha256", secret).update(`${timestamp}.${raw}`).digest("hex");
   const response = await fetch(`http://127.0.0.1:${port}/api/v1/integrations/${provider}/webhook`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-Webhook-Timestamp": String(timestamp), "X-Webhook-Signature": signature, "X-Webhook-Id": normalizedPayload.event_id, "Idempotency-Key": `production-${normalizedPayload.event_id}` },
+    headers: { "Content-Type": "application/json", "X-Webhook-Timestamp": String(timestamp), "X-Webhook-Signature": signature, "X-Webhook-Id": normalizedPayload.event_id, "Idempotency-Key": idempotencyKey },
     body: raw,
   });
   let body = {}; try { body = await response.json(); } catch {}
@@ -118,7 +118,7 @@ try {
   add(readOnlyWorkflow.status === 403, "生产只读岗位禁止推进业务工作流", `HTTP ${readOnlyWorkflow.status}`);
   const readOnlyArea = await request(prodPort, "/api/v1/merchants/m-supplier/service-area", financeToken, { center_lat: 24.91, center_lng: 115.65, radius_km: 120, max_daily_orders: 80 }, "outbox-readonly-service-area");
   add(readOnlyArea.status === 403, "生产只读岗位禁止维护服务区域", `HTTP ${readOnlyArea.status}`);
-  const areaUpdate = await request(prodPort, "/api/v1/merchants/m-supplier/service-area", superToken, { center_lat: 24.9105, center_lng: 115.6528, radius_km: 120, max_daily_orders: 2, regions: ["赣州"], delivery_modes: ["冷链整车"] }, "outbox-super-service-area");
+  const areaUpdate = await request(prodPort, "/api/v1/merchants/m-supplier/service-area", superToken, { center_lat: 24.9105, center_lng: 115.6528, radius_km: 120, max_daily_orders: 2, regions: ["赣州"], delivery_modes: ["冷链整车"], evidence_ref: "AREA-APPROVAL-OUTBOX-001" }, "outbox-super-service-area");
   add(areaUpdate.status === 200 && areaUpdate.payload?.max_daily_orders === 2, "后台商户管理岗维护服务区域", `HTTP ${areaUpdate.status}`);
   const missingDeliveryLocation = await request(prodPort, "/api/v1/trades", buyerToken, { scene: "buyerSupply", supplier_id: "m-supplier", items: [{ product_id: "p-orange", qty: 1 }], delivery_address: "湖北省武汉市洪山区团餐配送中心", settlement_model: "持牌机构条件结算（验收后分账）" }, "outbox-delivery-location-missing");
   add(missingDeliveryLocation.status === 400, "生产订单缺收货坐标阻断", `HTTP ${missingDeliveryLocation.status}`);
@@ -170,6 +170,14 @@ try {
   const dbRefund = new DatabaseSync(dbPath);
   dbRefund.prepare("UPDATE payments SET status='已入金待验收',provider_transaction_id=? WHERE id=?").run("PROVIDER-DEPOSIT-001", retryPaymentId);
   dbRefund.close();
+  // 兼容旧版本未带 provider 前缀的幂等记录，但同一字符串若属于物流机构，
+  // 不得吞掉支付机构的真实回调。
+  const dbLegacyCallback = new DatabaseSync(dbPath);
+  dbLegacyCallback.prepare("INSERT INTO integration_callbacks(provider,event_id,idempotency_key,signature,payload,status,received_at) VALUES (?,?,?,?,?,?,?)")
+    .run("logistics", `legacy-logistics-${Date.now()}`, "legacy-cross-provider-key", "legacy-signature", "{}", "processed", new Date().toISOString());
+  dbLegacyCallback.close();
+  const paymentAfterLegacyKey = await webhook(prodPort, "payment", { event_id: `outbox-payment-legacy-key-${Date.now()}`, order_id: orderId, payment_id: retryPaymentId, status: "paid", amount: 276000, provider_transaction_id: "PROVIDER-DEPOSIT-001" }, baseEnv.PAYMENT_WEBHOOK_SECRET, "legacy-cross-provider-key");
+  add(paymentAfterLegacyKey.status === 202 && paymentAfterLegacyKey.payload?.replayed === false, "跨机构旧幂等键不得吞掉支付回调", `HTTP ${paymentAfterLegacyKey.status}`);
   const unknownPaymentAction = await webhook(prodPort, "payment", { event_id: `outbox-payment-unknown-action-${Date.now()}`, action: "capture", order_id: orderId, payment_id: retryPaymentId, status: "paid", amount: 276000, provider_transaction_id: "PROVIDER-TX-UNKNOWN-ACTION" }, baseEnv.PAYMENT_WEBHOOK_SECRET);
   add(unknownPaymentAction.status === 400, "生产支付回调拒绝未知 action", `HTTP ${unknownPaymentAction.status}`);
   const failedRelease = await webhook(prodPort, "payment", { event_id: `outbox-payment-release-failed-${Date.now()}`, action: "release", order_id: orderId, payment_id: retryPaymentId, status: "failed", amount: 276000, provider_transaction_id: "PROVIDER-RELEASE-FAILED" }, baseEnv.PAYMENT_WEBHOOK_SECRET);

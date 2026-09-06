@@ -792,7 +792,9 @@ const processIntegrationWebhook = async (provider, req, res) => {
   // 回调幂等键在机构域内生效；存储时增加 provider 命名空间，避免支付机构和
   // 监管机构恰好使用同一字符串时互相吞掉回调。旧版本未加前缀的记录仍兼容读取。
   const callbackStorageKey = `${provider}:${idemKey}`;
-  const existing = db.prepare("SELECT provider,event_id,status FROM integration_callbacks WHERE idempotency_key IN (?,?) OR (provider=? AND event_id=?) LIMIT 1").get(callbackStorageKey, idemKey, provider, eventId);
+  // 旧版本可能保存过未加 provider 前缀的幂等键；兼容读取时也必须限定同一机构，
+  // 否则支付机构复用物流机构的旧 key 会被误判为已处理，导致回调事实丢失。
+  const existing = db.prepare("SELECT provider,event_id,status FROM integration_callbacks WHERE (provider=? AND idempotency_key IN (?,?)) OR (provider=? AND event_id=?) LIMIT 1").get(provider, callbackStorageKey, idemKey, provider, eventId);
   if (existing) return json(res, 200, { accepted: true, provider, event_id: existing.event_id, replayed: true, status: existing.status });
   const t = now();
   db.exec("BEGIN");
@@ -1261,10 +1263,17 @@ const server = createServer(async (req, res) => {
     const merchant = db.prepare("SELECT id FROM merchants WHERE id=?").get(areaMatch[1]);
     if (!merchant) return error(res, 404, "商户不存在");
     const lat = Number(payload.center_lat), lng = Number(payload.center_lng), radius = Number(payload.radius_km), maxDailyOrders = Number(payload.max_daily_orders || 0);
-    if (![lat, lng, radius].every(Number.isFinite) || lat < -90 || lat > 90 || lng < -180 || lng > 180 || radius <= 0 || radius > 500 || !Number.isInteger(maxDailyOrders) || maxDailyOrders < 0 || maxDailyOrders > 100000) return error(res, 400, "服务中心坐标、半径或日订单上限不合法");
+    const areaType = String(payload.area_type || "radius").trim();
+    const regions = Array.isArray(payload.regions) ? payload.regions.map((item) => String(item || "").trim()).filter(Boolean).slice(0, 50) : [];
+    const deliveryModes = Array.isArray(payload.delivery_modes) ? payload.delivery_modes.map((item) => String(item || "").trim()).filter(Boolean).slice(0, 20) : [];
+    const evidenceRef = String(payload.evidence_ref || "").trim().slice(0, 180);
+    const regionsValid = payload.regions === undefined || payload.regions === null || Array.isArray(payload.regions);
+    const deliveryModesValid = payload.delivery_modes === undefined || payload.delivery_modes === null || Array.isArray(payload.delivery_modes);
+    if (!regionsValid || !deliveryModesValid || !["radius", "region"].includes(areaType) || ![lat, lng, radius].every(Number.isFinite) || lat < -90 || lat > 90 || lng < -180 || lng > 180 || radius <= 0 || radius > 500 || !Number.isInteger(maxDailyOrders) || maxDailyOrders < 0 || maxDailyOrders > 100000) return error(res, 400, "服务中心类型、坐标、半径、区域或日订单上限不合法");
+    if (productionMode && !evidenceRef) return error(res, 400, "生产服务区域维护必须提供后台/机构验收证据引用");
     const t = now();
-    db.prepare("INSERT INTO merchant_service_areas VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET center_lat=excluded.center_lat,center_lng=excluded.center_lng,radius_km=excluded.radius_km,regions=excluded.regions,delivery_modes=excluded.delivery_modes,max_daily_orders=excluded.max_daily_orders,status='active',updated_at=excluded.updated_at").run(`AREA-${merchant.id}`, merchant.id, String(payload.area_type || "radius"), lat, lng, radius, JSON.stringify(payload.regions || []), JSON.stringify(payload.delivery_modes || []), maxDailyOrders, "active", t);
-    log(actorFor(req, "服务区域管理员"), "UPDATE_SERVICE_AREA", merchant.id, `半径${radius}km`);
+    db.prepare("INSERT INTO merchant_service_areas VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET area_type=excluded.area_type,center_lat=excluded.center_lat,center_lng=excluded.center_lng,radius_km=excluded.radius_km,regions=excluded.regions,delivery_modes=excluded.delivery_modes,max_daily_orders=excluded.max_daily_orders,status='active',updated_at=excluded.updated_at").run(`AREA-${merchant.id}`, merchant.id, areaType, lat, lng, radius, JSON.stringify(regions), JSON.stringify(deliveryModes), maxDailyOrders, "active", t);
+    log(actorFor(req, "服务区域管理员"), "UPDATE_SERVICE_AREA", merchant.id, `类型${areaType} · 半径${radius}km · 证据${evidenceRef || "本地演示"}`);
     const data = serviceAreaView(merchant.id);
     saveIdempotent(req, idemKey, 200, data, payload);
     return json(res, 200, data);
