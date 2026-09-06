@@ -20,6 +20,8 @@
     "build:shuzhi-mp": "npm --prefix work/shuzhi-v8502-source run build:mp-weixin:local",
     "build:shuzhi-mp-production": "npm --prefix work/shuzhi-v8502-source run build:mp-weixin:production",
     "build:shuzhi-mp-preview-zip": "node scripts/build-shuzhi-mp-preview-zip.mjs",
+    "check:shuzhi-mp-local": "node scripts/check-shuzhi-mp-artifact.mjs --mode local",
+    "check:shuzhi-mp-production": "node scripts/check-shuzhi-mp-artifact.mjs --mode production",
     "sync:shuzhi-h5": "node scripts/sync-shuzhi-h5.mjs",
     "create:shuzhi-production-env": "node scripts/create-shuzhi-production-env.mjs",
     "render:shuzhi-nginx": "node scripts/render-shuzhi-nginx.mjs",
