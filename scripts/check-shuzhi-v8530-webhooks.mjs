@@ -65,7 +65,17 @@ try {
 } catch {}
 const invoice = await send("invoice", { event_id: `v8530-invoice-gate-${Date.now()}`, order_id: orderId, invoice_no: "V8530-GATE", status: "issued" });
 add(invoice.status === (alreadyAccepted ? 202 : 409), alreadyAccepted ? "验收后发票回调" : "验收前发票回调闸门", `HTTP ${invoice.status}`);
-const regulator = await send("regulator", { event_id: `v8530-regulator-${Date.now()}`, action: "reconcile", batch_no: "BATCH-V8530" });
+let regulatorySubmissionId = "";
+try {
+  const response = await fetch(`${base}/api/v1/regulatory/submissions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.SHUZHI_TEST_TOKEN || "local-demo-token"}`, "Idempotency-Key": `v8530-regulator-submit-${Date.now()}` },
+    body: JSON.stringify({ action: "submit", subject_type: "merchant", subject_id: "m-supplier", authority_code: "AQSIQ-DEMO", data_minimization_version: "2026-01", evidence_refs: ["DEMO-MERCHANT-EVIDENCE"] }),
+  });
+  const body = await response.json();
+  regulatorySubmissionId = String(body?.data?.id || "");
+} catch {}
+const regulator = await send("regulator", { event_id: `v8530-regulator-${Date.now()}`, provider: "regulator", submission_id: regulatorySubmissionId, subject_type: "merchant", subject_id: "m-supplier", authority_code: "AQSIQ-DEMO", receipt_ref: "REG-DEMO-001", status: "accepted" });
 add(regulator.status === 202, "监管留痕回调", `HTTP ${regulator.status}`);
 
 const failures = checks.filter((ok) => !ok).length;

@@ -17,11 +17,12 @@ const wait = (ms) => new Promise((resolvePromise) => setTimeout(resolvePromise, 
 const buyerToken = "production-outbox-buyer-123456789012";
 const supplierToken = "production-outbox-supplier-123456789";
 const financeToken = "production-outbox-finance-123456789";
+const auditToken = "production-outbox-audit-123456789";
 const baseEnv = {
   SHUZHI_RUNTIME_MODE: "production",
   SHUZHI_DB: dbPath,
   SHUZHI_API_TOKEN: "production-outbox-internal-12345678901234567890",
-  SHUZHI_ADMIN_TOKEN_ROLES: JSON.stringify({ [financeToken]: "finance" }),
+  SHUZHI_ADMIN_TOKEN_ROLES: JSON.stringify({ [financeToken]: "finance", [auditToken]: "audit" }),
   SHUZHI_USER_TOKEN_PRINCIPALS: JSON.stringify({
     [buyerToken]: { id: "buyer-user", name: "采购经办人", role: "buyer", merchant_id: "m-buyer" },
     [supplierToken]: { id: "supplier-user", name: "供货经办人", role: "supplier", merchant_id: "m-supplier" },
@@ -119,6 +120,11 @@ try {
   add(mismatchedIdentity.status === 409, "机构指令主体代码错配阻断", `HTTP ${mismatchedIdentity.status}`);
   const shipment = await request(prodPort, `/api/v1/trades/${orderId}/shipments`, supplierToken, { provider: "carrier-prod", consignor: "赣南优品", consignee: "华中商贸", consignor_credit_code: "91360722MA8V85013X", consignee_credit_code: "91420100MA8V85013Y", consignor_address: "江西省赣州市寻乌县农产品仓", consignee_address: "湖北省武汉市洪山区团餐配送中心", goods: [{ product_id: "p-orange", name: "赣南脐橙", quantity: 10, unit: "箱" }] }, "outbox-logistics-000001");
   add(shipment.status === 202 && shipment.payload?.status === "待机构受理", "生产物流先建待受理运单", `HTTP ${shipment.status}`);
+  const regulatorySubmission = await request(prodPort, "/api/v1/regulatory/submissions", auditToken, { action: "submit", subject_type: "merchant", subject_id: "m-supplier", authority_code: "AQSIQ-TEST", data_minimization_version: "2026-01", evidence_refs: ["MERCHANT-LICENSE-TEST", "PRODUCT-QUALITY-TEST"] }, "outbox-regulator-submit-000001");
+  const regulatoryId = regulatorySubmission.payload?.id;
+  add(regulatorySubmission.status === 202 && regulatorySubmission.payload?.institution_outbox?.provider === "regulator", "生产监管提交先入 Outbox", `HTTP ${regulatorySubmission.status}`);
+  const regulatoryCallback = await webhook(prodPort, "regulator", { event_id: `outbox-regulator-callback-${Date.now()}`, provider: "regulator", submission_id: regulatoryId, subject_type: "merchant", subject_id: "m-supplier", authority_code: "AQSIQ-TEST", receipt_ref: "REG-RECEIPT-001", status: "accepted" }, baseEnv.REGULATOR_WEBHOOK_SECRET);
+  add(regulatoryCallback.status === 202 && regulatoryCallback.payload?.next_action?.includes("已回执"), "监管回执推进提交状态", `HTTP ${regulatoryCallback.status} · ${JSON.stringify(regulatoryCallback.payload)}`);
   const dbPayment = new DatabaseSync(dbPath);
   dbPayment.prepare("UPDATE payments SET status='待机构确认',paid_at=NULL WHERE order_id=?").run(orderId);
   dbPayment.close();
@@ -171,7 +177,7 @@ try {
   add(settlement.status === 202 && settlement.payload?.settlement_pending === true, "生产分账先入 Outbox", `HTTP ${settlement.status}${settlement.status !== 202 ? ` · ${JSON.stringify(settlement.payload)} · ${productionServer.output().slice(-600)}` : ""}`);
   const outbox = new DatabaseSync(dbPath).prepare("SELECT provider,command_type,status FROM institution_outbox ORDER BY provider,command_type").all();
   const providers = [...new Set(outbox.map((row) => row.provider))].sort();
-  add(providers.join(",") === "ca,invoice,logistics,payment" && outbox.some((row) => row.provider === "payment" && row.command_type === "refund"), "五类机构写操作使用异步边界", JSON.stringify(outbox));
+  add(providers.join(",") === "ca,invoice,logistics,payment,regulator" && outbox.some((row) => row.provider === "payment" && row.command_type === "refund") && outbox.some((row) => row.provider === "regulator" && row.command_type === "submit"), "五类机构写操作使用异步边界", JSON.stringify(outbox));
 } catch (error) {
   add(false, "生产 Outbox 回归启动", `${error instanceof Error ? error.message : String(error)}${productionServer?.output?.() ? ` · ${productionServer.output().slice(-1200)}` : ""}`);
 } finally {

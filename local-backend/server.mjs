@@ -253,6 +253,8 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS request_idempotency (idempotency_key TEXT PRIMARY KEY, principal_id TEXT NOT NULL, method TEXT NOT NULL, path TEXT NOT NULL, request_hash TEXT, response_status INTEGER NOT NULL, response_data TEXT NOT NULL, created_at TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS user_sessions (token_hash TEXT PRIMARY KEY, principal_json TEXT NOT NULL, expires_at TEXT NOT NULL, created_at TEXT NOT NULL, revoked_at TEXT);
   CREATE TABLE IF NOT EXISTS integration_callbacks (id INTEGER PRIMARY KEY AUTOINCREMENT, provider TEXT NOT NULL, event_id TEXT NOT NULL, idempotency_key TEXT NOT NULL UNIQUE, signature TEXT NOT NULL, payload TEXT NOT NULL, status TEXT NOT NULL, received_at TEXT NOT NULL, processed_at TEXT, UNIQUE(provider,event_id));
+  CREATE TABLE IF NOT EXISTS regulatory_submissions (id TEXT PRIMARY KEY, action TEXT NOT NULL CHECK(action IN ('submit','query','withdraw')), subject_type TEXT NOT NULL, subject_id TEXT NOT NULL, authority_code TEXT NOT NULL, data_minimization_version TEXT NOT NULL, evidence_refs TEXT NOT NULL, status TEXT NOT NULL, receipt_ref TEXT, failure_code TEXT, failure_message TEXT, idempotency_key TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+  CREATE INDEX IF NOT EXISTS idx_regulatory_submissions_subject ON regulatory_submissions(subject_type, subject_id, authority_code, created_at);
 `);
 ensureInstitutionOutboxSchema(db);
 // v8533 结算审计迁移：把平台技术服务费的计费基数与费额一起落库，
@@ -674,6 +676,12 @@ const normalizeWebhookStatus = (provider, value) => {
       ["pending", "pending"], ["processing", "pending"], ["待验真", "pending"], ["待开具", "pending"],
       ["failed", "failed"], ["rejected", "failed"], ["开票失败", "failed"], ["验真失败", "failed"],
     ]),
+    regulator: new Map([
+      ["accepted", "accepted"], ["received", "accepted"], ["submitted", "accepted"], ["success", "accepted"], ["succeeded", "accepted"], ["completed", "accepted"], ["verified", "accepted"], ["已受理", "accepted"], ["已提交", "accepted"], ["已回执", "accepted"],
+      ["pending", "pending"], ["processing", "pending"], ["待受理", "pending"], ["处理中", "pending"], ["待回执", "pending"],
+      ["failed", "failed"], ["failure", "failed"], ["rejected", "failed"], ["cancelled", "failed"], ["canceled", "failed"], ["提交失败", "failed"], ["监管驳回", "failed"],
+      ["withdrawn", "withdrawn"], ["撤回", "withdrawn"], ["已撤回", "withdrawn"],
+    ]),
   };
   return maps[provider]?.get(incoming) || null;
 };
@@ -696,6 +704,10 @@ const featureView = (item) => ({
   last_event_at: db.prepare("SELECT MAX(created_at) AS t FROM business_events WHERE feature_key=?").get(item.key).t || null,
 });
 const businessEventView = (row) => ({ ...row, payload: JSON.parse(row.payload || "{}") });
+const regulatorySubmissionView = (row) => row ? ({
+  ...row,
+  evidence_refs: JSON.parse(row.evidence_refs || "[]"),
+}) : null;
 const institutionCallbackUrl = (provider) => {
   const base = String(process.env.VITE_API_BASE || "").trim().replace(/\/+$/, "");
   try {
@@ -891,6 +903,27 @@ const processIntegrationWebhook = async (provider, req, res) => {
         nextAction = verified ? "发票已验真，进入四流对账" : nextInvoiceStatus === "开票失败" ? "发票处理失败，请由开票机构重试" : "等待发票验真结果";
       }
     }
+    if (provider === "regulator") {
+      const subjectType = String(payload.subject_type || "").trim();
+      const subjectId = String(payload.subject_id || "").trim();
+      const authorityCode = String(payload.authority_code || "").trim();
+      const receiptRef = String(payload.receipt_ref || "").trim();
+      const regulatorState = normalizeWebhookStatus("regulator", payload.status);
+      if (!subjectType || !subjectId || !authorityCode || !receiptRef || !regulatorState) throw new HttpError(400, "监管回调字段或状态不完整");
+      if (subjectType.length > 40 || subjectId.length > 160 || authorityCode.length > 80 || receiptRef.length > 180) throw new HttpError(400, "监管回调字段长度不合法");
+      const requestedSubmissionId = String(payload.submission_id || "").trim();
+      const submission = requestedSubmissionId
+        ? db.prepare("SELECT * FROM regulatory_submissions WHERE id=? AND subject_type=? AND subject_id=? AND authority_code=? LIMIT 1").get(requestedSubmissionId, subjectType, subjectId, authorityCode)
+        : db.prepare("SELECT * FROM regulatory_submissions WHERE subject_type=? AND subject_id=? AND authority_code=? AND status NOT IN ('已回执','已撤回') ORDER BY created_at DESC LIMIT 1").get(subjectType, subjectId, authorityCode);
+      if (!submission) throw new HttpError(404, "回调关联的监管提交记录不存在");
+      const terminal = new Set(["已回执", "已撤回"]);
+      if (terminal.has(submission.status) && regulatorState !== "accepted" && !(regulatorState === "withdrawn" && submission.status === "已撤回")) throw new HttpError(409, "监管提交已完成，禁止回调回退状态");
+      const nextStatus = regulatorState === "accepted" ? "已回执" : regulatorState === "withdrawn" ? "已撤回" : regulatorState === "failed" ? "失败" : "处理中";
+      const failureCode = regulatorState === "failed" ? String(payload.failure_code || "REGULATOR_REJECTED").slice(0, 80) : null;
+      const failureMessage = regulatorState === "failed" ? String(payload.failure_message || "监管机构未受理").slice(0, 240) : null;
+      db.prepare("UPDATE regulatory_submissions SET status=?,receipt_ref=?,failure_code=?,failure_message=?,updated_at=? WHERE id=?").run(nextStatus, receiptRef, failureCode, failureMessage, t, submission.id);
+      nextAction = nextStatus === "已回执" ? "监管/检测机构已回执，数据提交完成" : nextStatus === "失败" ? "监管/检测机构处理失败，进入复核与补偿" : nextStatus === "已撤回" ? "监管提交已撤回" : "监管/检测机构处理中，等待最终回执";
+    }
     db.prepare("UPDATE integration_callbacks SET status='processed',processed_at=? WHERE idempotency_key=?").run(t, idemKey);
     log(`integration-${provider}`, "WEBHOOK_ACCEPTED", orderId || eventId, `${eventId} · ${nextAction}`);
     db.exec("COMMIT");
@@ -908,7 +941,7 @@ const server = createServer(async (req, res) => {
   const path = url.pathname;
   if (path === "/health" || path === "/health/live") return json(res, 200, { status: "ok", database: "sqlite", dbPath: productionMode ? undefined : dbPath, version: healthVersion, platform_version: platformVersion, api_version: apiReleaseVersion, runtime_mode: runtimeMode, reserved_ports: integrationPorts });
   if (path === "/health/ready") {
-    const requiredTables = ["organizations", "merchants", "merchant_identity", "products", "orders", "order_items", "inventory_reservations", "contracts", "payments", "payment_refunds", "invoices", "shipments", "acceptances", "audit_logs", "operation_progress", "request_idempotency", "integration_callbacks", "institution_outbox", "user_sessions"];
+    const requiredTables = ["organizations", "merchants", "merchant_identity", "products", "orders", "order_items", "inventory_reservations", "contracts", "payments", "payment_refunds", "invoices", "shipments", "acceptances", "regulatory_submissions", "audit_logs", "operation_progress", "request_idempotency", "integration_callbacks", "institution_outbox", "user_sessions"];
     const placeholders = requiredTables.map(() => "?").join(",");
     const rows = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name IN (${placeholders})`).all(...requiredTables);
     const present = new Set(rows.map((row) => row.name));
@@ -1022,6 +1055,84 @@ const server = createServer(async (req, res) => {
     const data = businessEventView(db.prepare("SELECT * FROM business_events WHERE id=?").get(result.lastInsertRowid));
     saveIdempotent(req, idemKey, 201, data, payload);
     return json(res, 201, data);
+  }
+  const regulatorySubmissionMatch = path.match(/^\/api\/v1\/regulatory\/submissions(?:\/([^/]+))?$/);
+  if (regulatorySubmissionMatch && req.method === "GET") {
+    if (!authorized(req)) return error(res, 401, "需要监管数据查看授权");
+    if (productionMode && !hasAdminPermission(req, "audit")) return error(res, 403, "只有审核岗位或超级管理员可以查看监管提交");
+    const id = regulatorySubmissionMatch[1];
+    if (id) {
+      const row = db.prepare("SELECT * FROM regulatory_submissions WHERE id=?").get(id);
+      return row ? json(res, 200, regulatorySubmissionView(row)) : error(res, 404, "监管提交记录不存在");
+    }
+    return json(res, 200, db.prepare("SELECT * FROM regulatory_submissions ORDER BY created_at DESC LIMIT 200").all().map(regulatorySubmissionView));
+  }
+  if (regulatorySubmissionMatch && req.method === "POST" && !regulatorySubmissionMatch[1]) {
+    if (!authorized(req)) return error(res, 401, "需要监管数据提交授权");
+    if (productionMode && !hasAdminPermission(req, "audit", true)) return error(res, 403, "只有审核岗位或超级管理员可以提交监管数据");
+    const payload = await body(req);
+    const idemKey = requestKey(req, payload);
+    if (productionMode && !idemKey) return error(res, 400, "生产监管提交必须提供 Idempotency-Key");
+    if (replayIdempotent(req, res, idemKey, payload)) return;
+    if (productionMode && process.env.SHUZHI_REGULATOR_READY !== "true") return error(res, 503, "监管/检测机构尚未完成联调，暂不接受生产提交");
+    const action = String(payload.action || "").trim().toLowerCase();
+    const subjectType = String(payload.subject_type || "").trim().toLowerCase();
+    const subjectId = String(payload.subject_id || "").trim();
+    const authorityCode = String(payload.authority_code || "").trim();
+    const minimizationVersion = String(payload.data_minimization_version || "").trim();
+    const evidenceRefs = Array.isArray(payload.evidence_refs) ? payload.evidence_refs.map((item) => String(item || "").trim()).filter(Boolean) : [];
+    if (!["submit", "query", "withdraw"].includes(action)) return error(res, 400, "监管提交 action 必须为 submit、query 或 withdraw");
+    if (!["merchant", "product", "batch", "shipment", "inspection", "quarantine"].includes(subjectType)) return error(res, 400, "监管提交 subject_type 不在允许范围");
+    if (!subjectId || subjectId.length > 160 || !authorityCode || authorityCode.length > 80 || !minimizationVersion || minimizationVersion.length > 80) return error(res, 400, "监管提交主体、机构编码和最小化版本不能为空且长度不合法");
+    if (!evidenceRefs.length || evidenceRefs.length > 20 || evidenceRefs.some((item) => item.length > 240)) return error(res, 400, "监管提交必须提供 1—20 条证据引用");
+    if (subjectType === "merchant") {
+      const merchant = db.prepare("SELECT id FROM merchants WHERE id=?").get(subjectId);
+      if (!merchant) return error(res, 404, "监管提交关联的商户不存在");
+      if (productionMode && !merchantVerificationReady(subjectId)) return error(res, 409, "商户主体尚未完成资质与对公账户核验，禁止提交监管数据");
+    }
+    if (subjectType === "product" && !db.prepare("SELECT id FROM products WHERE id=?").get(subjectId)) return error(res, 404, "监管提交关联的商品不存在");
+    if (subjectType === "shipment" && !db.prepare("SELECT id FROM shipments WHERE id=?").get(subjectId)) return error(res, 404, "监管提交关联的运单不存在");
+    const prior = db.prepare("SELECT * FROM regulatory_submissions WHERE subject_type=? AND subject_id=? AND authority_code=? AND status NOT IN ('失败','已撤回') ORDER BY created_at DESC LIMIT 1").get(subjectType, subjectId, authorityCode);
+    if (action !== "submit" && !prior) return error(res, 409, `监管 ${action} 必须关联一条未完成的提交记录`);
+    const submissionId = `REG-${randomUUID().replaceAll("-", "").slice(0, 24).toUpperCase()}`;
+    const t = now();
+    db.exec("BEGIN");
+    try {
+      db.prepare("INSERT INTO regulatory_submissions(id,action,subject_type,subject_id,authority_code,data_minimization_version,evidence_refs,status,receipt_ref,failure_code,failure_message,idempotency_key,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(submissionId, action, subjectType, subjectId, authorityCode, minimizationVersion, JSON.stringify(evidenceRefs), "待机构受理", null, null, null, idemKey || `LOCAL-REG-${submissionId}`, t, t);
+      if (productionMode) {
+        const queued = enqueueProductionInstitutionCommand({
+          provider: "regulator",
+          aggregateType: "regulatory_submission",
+          aggregateId: submissionId,
+          commandType: action,
+          idempotencyKey: `REGULATOR:${action}:${submissionId}`,
+          command: {
+            command_id: `CMD-REGULATOR-${submissionId}`,
+            action,
+            submission_id: submissionId,
+            subject_type: subjectType,
+            subject_id: subjectId,
+            authority_code: authorityCode,
+            data_minimization_version: minimizationVersion,
+            evidence_refs: evidenceRefs,
+          },
+          now: t,
+        });
+        const data = { ...regulatorySubmissionView(db.prepare("SELECT * FROM regulatory_submissions WHERE id=?").get(submissionId)), institution_outbox: publicInstitutionCommand(queued) };
+        log(actorFor(req, "监管数据审核岗"), "QUEUE_REGULATORY_SUBMISSION", submissionId, `${action} · ${subjectType}/${subjectId} · ${authorityCode}`);
+        saveIdempotent(req, idemKey, 202, data, payload);
+        db.exec("COMMIT");
+        return json(res, 202, data);
+      }
+      log(actorFor(req, "监管数据审核岗"), "CREATE_LOCAL_REGULATORY_SUBMISSION", submissionId, `${action} · ${subjectType}/${subjectId} · ${authorityCode}`);
+      const data = regulatorySubmissionView(db.prepare("SELECT * FROM regulatory_submissions WHERE id=?").get(submissionId));
+      saveIdempotent(req, idemKey, 201, data, payload);
+      db.exec("COMMIT");
+      return json(res, 201, data);
+    } catch (cause) {
+      db.exec("ROLLBACK");
+      throw cause;
+    }
   }
   const webhookMatch = path.match(/^\/api\/v1\/integrations\/(ca|logistics|payment|invoice|regulator)\/webhook$/);
   if (webhookMatch && req.method === "POST") return await processIntegrationWebhook(webhookMatch[1], req, res);
