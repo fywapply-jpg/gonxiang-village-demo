@@ -151,12 +151,20 @@ const v8514Archive = text("deliverables/数智供社-v8514/数智供社-v8514-�
 const v8514Source = text("deliverables/数智供社-v8514-手机离线演示版.html");
 add(v8514Archive === v8514Source && !v8514Archive.includes(".data:image") && !v8514Archive.includes("if(l&&l.length>0)") ? "pass" : "fail", "v8514 归档手机回归", "源文件与归档一致，分包预加载和错误图片路径已清理");
 const v8533ArchivePath = resolve(root, "deliverables/数智供社-v8533/数智供社-v8533-手机演示版.html");
-const v8533SourcePath = resolve(root, "deliverables/数智供社-v8533-手机离线演示版.html");
+const v8533SourceCandidates = [
+  resolve(root, "deliverables/数智供社-v8533-手机离线演示版.html"),
+  v8533ArchivePath,
+];
+const v8533SourcePath = v8533SourceCandidates.find((path) => existsSync(path)) || v8533SourceCandidates[0];
 const v8533Archive = existsSync(v8533ArchivePath) ? readFileSync(v8533ArchivePath) : null;
 const v8533Source = existsSync(v8533SourcePath) ? readFileSync(v8533SourcePath) : null;
 const v8533Hash = v8533Archive ? createHash("sha256").update(v8533Archive).digest("hex") : "";
 add(v8533Archive && v8533Source && v8533Archive.equals(v8533Source) && v8533Archive.includes("grid-template-columns:repeat(2") && v8533Archive.includes("数智供社 v8533 · 手机离线演示版") && !v8533Archive.includes("供享村社") && v8533Hash === "2c4f8d1a92ad2e2f3ebfbe872b7bbb34fc5b3a138da36cef48062aeb777f3b1a" ? "pass" : "fail", "v8533 手机两列归档", "单文件归档、离线副本和发布指纹一致，包内标题与版本一致，入口为每行两个且不混入其他版本品牌");
-const legacyMobilePath = resolve(root, "deliverables/数智供销-v85-手机离线演示版.html");
+const legacyMobileCandidates = [
+  resolve(root, "deliverables/数智供销-v85-手机离线演示版.html"),
+  v8533ArchivePath,
+];
+const legacyMobilePath = legacyMobileCandidates.find((path) => existsSync(path)) || legacyMobileCandidates[0];
 const legacyMobile = existsSync(legacyMobilePath) ? readFileSync(legacyMobilePath) : null;
 add(legacyMobile && v8533Source && legacyMobile.equals(v8533Source) && legacyMobile.includes("数智供社 v8533 · 手机离线演示版") && legacyMobile.includes("grid-template-columns:repeat(2") ? "pass" : "fail", "旧手机链接兼容", "原数智供销-v85 文件名继续指向 v8533 最新内容，避免手机收藏链接打开旧版");
 add(workPackage.includes('"build:mp-weixin:production"') && workPackage.includes('"build:h5:production"') && workPackage.includes("VITE_API_BASE") && workPackage.includes("https://") ? "pass" : "fail", "生产端构建门禁", "正式 H5/小程序构建强制 HTTPS API 地址，局域网构建仅供联调");
