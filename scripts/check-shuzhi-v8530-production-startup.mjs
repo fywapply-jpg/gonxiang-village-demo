@@ -114,7 +114,7 @@ try {
       const overview = body?.data || body;
       const controls = Array.isArray(overview?.security?.controls) ? overview.security.controls : [];
       const statusOf = (key) => controls.find((item) => item.key === key)?.status;
-      add(response.ok && statusOf("主体与对公账户") === "暂无真实主体" && statusOf("支付双人复核") === "未开通" && statusOf("验收后分账") === "未开通", "后端总览不虚报生产状态", "空生产库显示暂无真实主体，支付/分账机构未 ready 显示未开通");
+      add(response.ok && statusOf("主体与对公账户") === "暂无真实主体" && statusOf("支付双人复核") === "未开通" && statusOf("验收后分账") === "未开通" && statusOf("物流验收与争议") === "未开通", "后端总览不虚报生产状态", "空生产库显示暂无真实主体，支付/分账/物流机构未 ready 显示未开通");
     } catch (error) {
       add(false, "后端总览不虚报生产状态", error instanceof Error ? error.message : String(error));
     }

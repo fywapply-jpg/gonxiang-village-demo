@@ -260,9 +260,9 @@ const adminControlStatuses = ({ stats, merchantStats, riskStats }) => {
   const productStatus = Number(riskStats.pending_products || 0)
     ? "有待处理"
     : Number(riskStats.product_total || 0) === 0 ? productionEmpty("商品") : "正常";
-  const logisticsStatus = Number(riskStats.disputes || 0)
-    ? "有待处理"
-    : !capabilityReady("LOGISTICS_CALLBACK") ? "未开通" : Number(stats.orders || 0) === 0 ? productionEmpty("交易") : "正常";
+  const logisticsStatus = !capabilityReady("LOGISTICS_CALLBACK")
+    ? "未开通"
+    : Number(riskStats.disputes || 0) ? "有待处理" : Number(stats.orders || 0) === 0 ? productionEmpty("交易") : "正常";
   const paymentStatus = !capabilityReady("ESCROW_PAYMENT")
     ? "未开通"
     : Number(stats.pending_payment || 0) ? "有待处理" : Number(stats.orders || 0) === 0 ? productionEmpty("交易") : "正常";
