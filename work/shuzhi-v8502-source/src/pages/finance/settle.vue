@@ -139,6 +139,11 @@ onUnmounted(stop);
 
 <template>
   <view class="sg-page settle-page">
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">暂无后台结算流水</text>
+      <text class="production-empty-text">正式环境的订单、CA 合同、托管入金、验收、发票、退款和三账对账结果，只能由后台及持牌机构回执返回。本页不展示本地演示订单，也不会在前台推进资金状态。</text>
+    </view>
+    <template v-else>
     <view class="hero">
       <view class="hero-top">
         <view class="live"><text></text><text>机构结算接入</text></view>
@@ -270,11 +275,15 @@ onUnmounted(stop);
       <view><text>3</text><text>生产回调进入平台后端消息队列，验签、查单、幂等后才更新订单</text></view>
       <view><text>4</text><text>每日自动三账对账，差异进入人工复核，任何系统不得自动补扣</text></view>
     </view>
+    </template>
   </view>
 </template>
 
 <style lang="scss" scoped>
 .settle-page { padding-bottom: 42rpx; background: #eef2f5; }
+.production-empty { margin: 40rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 .hero { padding: 30rpx 24rpx 27rpx; color: #fff; background: linear-gradient(145deg, #092f49, #0c4d6c 54%, #146a4a); border-radius: 0 0 30rpx 30rpx; }
 .hero-top { display: flex; align-items: center; justify-content: space-between; font-size: 18rpx; opacity: .9; }
 .live { display: flex; align-items: center; gap: 8rpx; padding: 6rpx 12rpx; border-radius: 999rpx; background: rgba(255,255,255,.12); }
