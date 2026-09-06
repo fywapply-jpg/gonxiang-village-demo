@@ -239,7 +239,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS settlement_records (id TEXT PRIMARY KEY, order_id TEXT NOT NULL UNIQUE, amount REAL NOT NULL, platform_fee REAL NOT NULL DEFAULT 0, status TEXT NOT NULL, instruction_ref TEXT NOT NULL, settled_at TEXT, created_at TEXT NOT NULL, FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS fulfillment_events (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id TEXT NOT NULL, step INTEGER NOT NULL, title TEXT NOT NULL, evidence TEXT NOT NULL, actor TEXT NOT NULL, created_at TEXT NOT NULL, FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS invoices (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, invoice_no TEXT, amount REAL NOT NULL, status TEXT NOT NULL, issued_at TEXT, FOREIGN KEY (order_id) REFERENCES orders(id));
-  CREATE TABLE IF NOT EXISTS shipments (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, provider TEXT NOT NULL, tracking_no TEXT NOT NULL, carrier_name TEXT, vehicle_no TEXT, temperature REAL, status TEXT NOT NULL, departed_at TEXT, arrived_at TEXT, evidence TEXT, updated_at TEXT NOT NULL, FOREIGN KEY (order_id) REFERENCES orders(id));
+  CREATE TABLE IF NOT EXISTS shipments (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, provider TEXT NOT NULL, tracking_no TEXT NOT NULL, carrier_name TEXT, vehicle_no TEXT, temperature REAL, status TEXT NOT NULL, departed_at TEXT, arrived_at TEXT, evidence TEXT, updated_at TEXT NOT NULL, consignor_address TEXT NOT NULL DEFAULT '', consignee_address TEXT NOT NULL DEFAULT '', FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS acceptances (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, receiver TEXT NOT NULL, result TEXT NOT NULL, accepted_qty REAL, evidence TEXT, accepted_at TEXT, dispute_note TEXT, FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS merchant_credit (merchant_id TEXT PRIMARY KEY, star_level INTEGER NOT NULL DEFAULT 1, score REAL NOT NULL DEFAULT 60, completed_orders INTEGER NOT NULL DEFAULT 0, on_time_rate REAL NOT NULL DEFAULT 0, dispute_rate REAL NOT NULL DEFAULT 0, last_review_at TEXT, FOREIGN KEY (merchant_id) REFERENCES merchants(id));
   CREATE TABLE IF NOT EXISTS merchant_rewards (id INTEGER PRIMARY KEY AUTOINCREMENT, merchant_id TEXT NOT NULL, type TEXT NOT NULL, points INTEGER NOT NULL, reason TEXT NOT NULL, created_at TEXT NOT NULL, FOREIGN KEY (merchant_id) REFERENCES merchants(id));
@@ -268,6 +268,12 @@ if (!db.prepare("PRAGMA table_info(merchant_applications)").all().some((column) 
 // 服务端会返回旧响应，掩盖真实冲突。旧记录保留 NULL 以兼容升级，新请求全部写入 SHA-256。
 if (!db.prepare("PRAGMA table_info(request_idempotency)").all().some((column) => column.name === "request_hash")) {
   db.exec("ALTER TABLE request_idempotency ADD COLUMN request_hash TEXT");
+}
+if (!db.prepare("PRAGMA table_info(shipments)").all().some((column) => column.name === "consignor_address")) {
+  db.exec("ALTER TABLE shipments ADD COLUMN consignor_address TEXT NOT NULL DEFAULT ''");
+}
+if (!db.prepare("PRAGMA table_info(shipments)").all().some((column) => column.name === "consignee_address")) {
+  db.exec("ALTER TABLE shipments ADD COLUMN consignee_address TEXT NOT NULL DEFAULT ''");
 }
 
 const now = () => new Date().toISOString();
@@ -310,7 +316,7 @@ const seed = () => {
     db.prepare("INSERT INTO contract_signatures(contract_id,order_id,party,signer_id,signer_name,certificate_ref,signed_at) VALUES (?,?,?,?,?,?,?)").run("CA-SZGS-850901", orderId, "supplier", "m-supplier", "赣南优品农业合作社授权签约人", "CA-SUPPLIER-DEMO", t);
     db.prepare("INSERT INTO payments VALUES (?,?,?,?,?,?,?,?)").run("PAY-SZGS-850901", orderId, "华中商贸采购中心有限公司", "持牌结算机构托管户", 276000, "机构监管结算", "待验收分账", null);
     db.prepare("INSERT INTO invoices VALUES (?,?,?,?,?,?)").run("INV-SZGS-850901", orderId, null, 276000, "待开具", null);
-    db.prepare("INSERT INTO shipments VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").run("SHP-SZGS-850901", orderId, "third-party", "SF202608030001", "顺丰冷运", "鄂A·85013", 4.2, "运输中", t, null, "温控/GPS/签封已绑定", t);
+    db.prepare("INSERT INTO shipments(id,order_id,provider,tracking_no,carrier_name,vehicle_no,temperature,status,departed_at,arrived_at,evidence,updated_at,consignor_address,consignee_address) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run("SHP-SZGS-850901", orderId, "third-party", "SF202608030001", "顺丰冷运", "鄂A·85013", 4.2, "运输中", t, null, "温控/GPS/签封已绑定", t, "江西省赣州市寻乌县农产品仓", "湖北省武汉市洪山区团餐配送中心");
     db.prepare("INSERT INTO acceptances VALUES (?,?,?,?,?,?,?,?)").run("ACC-SZGS-850901", orderId, "华中商贸采购中心有限公司验收岗", "pending", null, "待到货复磅、抽检和签收", null, null);
     db.prepare("INSERT INTO merchant_credit VALUES (?,?,?,?,?,?,?)").run("m-supplier", 4, 86.5, 128, 0.97, 0.012, t);
     db.prepare("INSERT INTO merchant_rewards(merchant_id,type,points,reason,created_at) VALUES (?,?,?,?,?)").run("m-supplier", "reward", 120, "近90日准时履约率达到97%", t);
@@ -402,7 +408,7 @@ if (Number(db.prepare("SELECT COUNT(*) AS n FROM product_media").get().n) === 0)
 db.prepare("DELETE FROM product_media WHERE url LIKE '%example.invalid%'").run();
 if (Number(db.prepare("SELECT COUNT(*) AS n FROM shipments").get().n) === 0) {
   const t = now();
-  db.prepare("INSERT INTO shipments VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").run("SHP-SZGS-850901", "SZGS-2026-850901", "third-party", "SF202608030001", "顺丰冷运", "鄂A·85013", 4.2, "运输中", t, null, "温控/GPS/签封已绑定", t);
+  db.prepare("INSERT INTO shipments(id,order_id,provider,tracking_no,carrier_name,vehicle_no,temperature,status,departed_at,arrived_at,evidence,updated_at,consignor_address,consignee_address) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run("SHP-SZGS-850901", "SZGS-2026-850901", "third-party", "SF202608030001", "顺丰冷运", "鄂A·85013", 4.2, "运输中", t, null, "温控/GPS/签封已绑定", t, "江西省赣州市寻乌县农产品仓", "湖北省武汉市洪山区团餐配送中心");
   db.prepare("INSERT INTO acceptances VALUES (?,?,?,?,?,?,?,?)").run("ACC-SZGS-850901", "SZGS-2026-850901", "华中商贸采购中心有限公司验收岗", "pending", null, "待到货复磅、抽检和签收", null, null);
 }
 if (Number(db.prepare("SELECT COUNT(*) AS n FROM merchant_credit").get().n) === 0) {
@@ -1684,9 +1690,12 @@ const server = createServer(async (req, res) => {
       const consignorCode = String(payload.consignor_credit_code || "").trim();
       const consigneeCode = String(payload.consignee_credit_code || "").trim();
       if (!consignorCode || !consigneeCode || !payload.consignor || !payload.consignee) return error(res, 400, "生产物流指令必须提供收发货主体和统一社会信用代码");
+      const consignorAddress = String(payload.consignor_address || "").trim();
+      const consigneeAddress = String(payload.consignee_address || "").trim();
+      if (!consignorAddress || !consigneeAddress || consignorAddress.length > 300 || consigneeAddress.length > 300) return error(res, 400, "生产物流指令必须提供不超过 300 字的收发货地址快照");
       db.exec("BEGIN");
       try {
-        db.prepare("INSERT INTO shipments VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").run(shipmentId, id, String(payload.provider).trim().slice(0, 80), trackingNo.slice(0, 80), String(payload.carrier_name || "").slice(0, 120), String(payload.vehicle_no || "").slice(0, 40), shipmentTemperature, "待机构受理", null, null, String(payload.evidence || "待第三方物流受理").slice(0, 500), t);
+        db.prepare("INSERT INTO shipments(id,order_id,provider,tracking_no,carrier_name,vehicle_no,temperature,status,departed_at,arrived_at,evidence,updated_at,consignor_address,consignee_address) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(shipmentId, id, String(payload.provider).trim().slice(0, 80), trackingNo.slice(0, 80), String(payload.carrier_name || "").slice(0, 120), String(payload.vehicle_no || "").slice(0, 40), shipmentTemperature, "待机构受理", null, null, String(payload.evidence || "待第三方物流受理").slice(0, 500), t, consignorAddress, consigneeAddress);
         const queued = enqueueProductionInstitutionCommand({
           provider: "logistics",
           aggregateType: "shipment",
@@ -1701,6 +1710,8 @@ const server = createServer(async (req, res) => {
             goods: payload.goods,
             consignor: merchantParty(order.supplier_id, consignorCode),
             consignee: merchantParty(order.buyer_id, consigneeCode),
+            consignor_address: consignorAddress,
+            consignee_address: consigneeAddress,
             service_level: String(payload.service_level || "standard").slice(0, 40),
           },
           now: t,
@@ -1715,7 +1726,7 @@ const server = createServer(async (req, res) => {
         throw cause;
       }
     }
-    db.prepare("INSERT INTO shipments VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").run(shipmentId, id, String(payload.provider).trim().slice(0, 80), trackingNo.slice(0, 80), String(payload.carrier_name || "").slice(0, 120), String(payload.vehicle_no || "").slice(0, 40), shipmentTemperature, "运输中", t, null, String(payload.evidence || "第三方物流回传").slice(0, 500), t);
+    db.prepare("INSERT INTO shipments(id,order_id,provider,tracking_no,carrier_name,vehicle_no,temperature,status,departed_at,arrived_at,evidence,updated_at,consignor_address,consignee_address) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(shipmentId, id, String(payload.provider).trim().slice(0, 80), trackingNo.slice(0, 80), String(payload.carrier_name || "").slice(0, 120), String(payload.vehicle_no || "").slice(0, 40), shipmentTemperature, "运输中", t, null, String(payload.evidence || "第三方物流回传").slice(0, 500), t, "本地演示发货地址", "本地演示收货地址");
     log(shipmentActor, "CREATE_SHIPMENT", id, `${payload.provider}/${payload.tracking_no}`);
     const data = db.prepare("SELECT * FROM shipments WHERE id=?").get(shipmentId);
     saveIdempotent(req, idemKey, 201, data, payload);
