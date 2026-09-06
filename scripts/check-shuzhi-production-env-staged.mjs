@@ -51,7 +51,9 @@ try {
   run("微信 ready 但缺少主体映射", "SHUZHI_WECHAT_AUTH_READY=true\nWECHAT_APP_ID=wx-test\nWECHAT_APP_SECRET=wechat-secret", 1);
   run("微信 ready 且主体映射完整", 'SHUZHI_WECHAT_AUTH_READY=true\nWECHAT_APP_ID=wx-test\nWECHAT_APP_SECRET=wechat-secret\nSHUZHI_WECHAT_OPENID_PRINCIPALS={"openid-test":{"id":"buyer","role":"buyer","merchant_id":"m-buyer"}}\nSHUZHI_WECHAT_ACCEPTANCE_REF=wechat-evidence-001', 0);
   const linkedDb = join(tempRoot, "linked-db");
-  symlinkSync(join(root, "local-backend", "data"), linkedDb, "dir");
+  // Point at a tracked repository file so the fixture is valid on a clean CI
+  // checkout (the local SQLite data directory is intentionally ignored).
+  symlinkSync(join(root, "local-backend", "server.mjs"), linkedDb, "file");
   run("符号链接指向仓库演示目录", `SHUZHI_DB=${linkedDb}`, 1);
 } finally {
   rmSync(tempRoot, { recursive: true, force: true });
