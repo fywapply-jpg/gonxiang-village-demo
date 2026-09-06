@@ -6,6 +6,7 @@ on:
     paths:
       - "local-backend/**"
       - "cloud-server/README.md"
+      - "deploy/shuzhi-v8530.service"
       - "admin/App2.tsx"
       - "scripts/check-shuzhi-*.mjs"
       - "scripts/run-shuzhi-local-smoke.mjs"
@@ -21,6 +22,7 @@ on:
     paths:
       - "local-backend/**"
       - "cloud-server/README.md"
+      - "deploy/shuzhi-v8530.service"
       - "admin/App2.tsx"
       - "scripts/check-shuzhi-*.mjs"
       - "scripts/run-shuzhi-local-smoke.mjs"
