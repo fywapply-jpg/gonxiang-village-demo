@@ -1090,13 +1090,22 @@ const server = createServer(async (req, res) => {
     if (!["merchant", "product", "batch", "shipment", "inspection", "quarantine"].includes(subjectType)) return error(res, 400, "监管提交 subject_type 不在允许范围");
     if (!subjectId || subjectId.length > 160 || !authorityCode || authorityCode.length > 80 || !minimizationVersion || minimizationVersion.length > 80) return error(res, 400, "监管提交主体、机构编码和最小化版本不能为空且长度不合法");
     if (!evidenceRefs.length || evidenceRefs.length > 20 || evidenceRefs.some((item) => item.length > 240)) return error(res, 400, "监管提交必须提供 1—20 条证据引用");
+    if (productionMode && ["batch", "inspection", "quarantine"].includes(subjectType)) return error(res, 409, `生产监管提交暂不支持未建模的 ${subjectType} 主体，必须先完成真实业务对象建模`);
     if (subjectType === "merchant") {
       const merchant = db.prepare("SELECT id FROM merchants WHERE id=?").get(subjectId);
       if (!merchant) return error(res, 404, "监管提交关联的商户不存在");
       if (productionMode && !merchantVerificationReady(subjectId)) return error(res, 409, "商户主体尚未完成资质与对公账户核验，禁止提交监管数据");
     }
-    if (subjectType === "product" && !db.prepare("SELECT id FROM products WHERE id=?").get(subjectId)) return error(res, 404, "监管提交关联的商品不存在");
-    if (subjectType === "shipment" && !db.prepare("SELECT id FROM shipments WHERE id=?").get(subjectId)) return error(res, 404, "监管提交关联的运单不存在");
+    if (subjectType === "product") {
+      const product = db.prepare("SELECT id,merchant_id FROM products WHERE id=?").get(subjectId);
+      if (!product) return error(res, 404, "监管提交关联的商品不存在");
+      if (productionMode && !merchantVerificationReady(product.merchant_id)) return error(res, 409, "商品所属供货主体尚未完成资质与对公账户核验，禁止提交监管数据");
+    }
+    if (subjectType === "shipment") {
+      const shipment = db.prepare("SELECT s.id,o.buyer_id,o.supplier_id FROM shipments s JOIN orders o ON o.id=s.order_id WHERE s.id=?").get(subjectId);
+      if (!shipment) return error(res, 404, "监管提交关联的运单不存在");
+      if (productionMode && (!merchantVerificationReady(shipment.buyer_id) || !merchantVerificationReady(shipment.supplier_id))) return error(res, 409, "运单关联交易主体尚未完成资质与对公账户核验，禁止提交监管数据");
+    }
     const prior = db.prepare("SELECT * FROM regulatory_submissions WHERE subject_type=? AND subject_id=? AND authority_code=? AND status NOT IN ('失败','已撤回') ORDER BY created_at DESC LIMIT 1").get(subjectType, subjectId, authorityCode);
     if (action !== "submit" && !prior) return error(res, 409, `监管 ${action} 必须关联一条未完成的提交记录`);
     const submissionId = `REG-${randomUUID().replaceAll("-", "").slice(0, 24).toUpperCase()}`;
