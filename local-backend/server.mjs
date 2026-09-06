@@ -2470,7 +2470,7 @@ const server = createServer(async (req, res) => {
       const itemRows = db.prepare("SELECT name,qty,unit_price FROM order_items WHERE order_id=? ORDER BY id").all(id);
       if (!itemRows.length) return error(res, 409, "生产开票缺少商品明细");
       const goodsNet = Math.round(itemRows.reduce((sum, item) => sum + Number(item.qty) * Number(item.unit_price), 0) * 100) / 100;
-      if (!Number.isFinite(goodsNet) || goodsNet <= 0 || goodsNet > Number(invoice.amount) + 0.01) return error(res, 409, "生产开票商品明细金额超过应开金额，禁止开票");
+      if (!Number.isFinite(goodsNet) || goodsNet <= 0 || goodsNet > Number(invoice.amount)) return error(res, 409, "生产开票商品明细金额超过应开金额，禁止开票");
       const serviceFee = Math.round((Number(invoice.amount) - goodsNet) * 100) / 100;
       db.exec("BEGIN");
       try {

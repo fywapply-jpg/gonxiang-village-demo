@@ -232,6 +232,16 @@ try {
   const dbInvoiceRestore = new DatabaseSync(dbPath);
   dbInvoiceRestore.prepare("UPDATE invoices SET amount=276000 WHERE order_id=?").run(orderId);
   dbInvoiceRestore.close();
+  const dbGoodsNetOver = new DatabaseSync(dbPath);
+  const feedItem = dbGoodsNetOver.prepare("SELECT id,qty,unit_price FROM order_items WHERE order_id=? ORDER BY id DESC LIMIT 1").get(orderId);
+  const originalFeedUnitPrice = Number(feedItem.unit_price);
+  dbGoodsNetOver.prepare("UPDATE order_items SET unit_price=? WHERE id=?").run(originalFeedUnitPrice + (356.01 / Number(feedItem.qty)), feedItem.id);
+  dbGoodsNetOver.close();
+  const goodsNetOverInvoice = await request(prodPort, `/api/v1/trades/${orderId}/invoice`, supplierToken, { amount: 276000, seller_credit_code: "91360722MA8V85013X", buyer_credit_code: "91420100MA8V85013Y", tax_rate: 0.09, invoice_type: "增值税电子普通发票", tax_category_code: "农业产品" }, "outbox-invoice-goods-net-over");
+  add(goodsNetOverInvoice.status === 409, "商品明细金额超过发票金额禁止开票", `HTTP ${goodsNetOverInvoice.status}`);
+  const dbGoodsNetRestore = new DatabaseSync(dbPath);
+  dbGoodsNetRestore.prepare("UPDATE order_items SET unit_price=? WHERE id=?").run(originalFeedUnitPrice, feedItem.id);
+  dbGoodsNetRestore.close();
   const dbInvoiceMissingIssuedAt = new DatabaseSync(dbPath);
   dbInvoiceMissingIssuedAt.prepare("UPDATE invoices SET status='已开具',invoice_no='PROD-INVOICE-NO-ISSUED-AT',issued_at=NULL,amount=276000 WHERE order_id=?").run(orderId);
   dbInvoiceMissingIssuedAt.close();
