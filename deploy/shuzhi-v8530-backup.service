@@ -1,6 +1,7 @@
 [Unit]
 Description=数智供社 v8530 SQLite backup
-After=local-fs.target
+After=local-fs.target shuzhi-v8530.service
+Requires=shuzhi-v8530.service
 Before=shutdown.target
 
 [Service]
