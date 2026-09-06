@@ -13,6 +13,9 @@ const remoteProduct = ref<LocalProduct | null>(null);
 const ready = ref(!productionBuild);
 const loading = ref(false);
 const loadError = ref("");
+const deliveryAddress = ref("");
+const deliveryLat = ref<number | null>(null);
+const deliveryLng = ref<number | null>(null);
 function mapProduct(product: LocalProduct): VillageProduct {
   const price = Number(product.price) || 0;
   return { id: product.id, merchant_id: product.merchant_id, name: product.name, cat: product.category, origin: product.origin || "产地待确认", spec: product.spec || "标准规格", price, priceText: `¥${price.toFixed(2)}`, unit: product.unit || "件", supplier: product.merchant_name || "已核验供货商", pic: product.media?.find((item) => item.media_type === "image")?.url || "/static/products/p12.jpg", tags: ["后台已审核"], sold: 0, stock: `库存 ${Number(product.stock) || 0}`, rating: 4.8 };
@@ -61,8 +64,19 @@ const traceId = () => "TJ2026" + s.value.id;
 function trace() { uni.navigateTo({ url: `/pages/trace/detail?id=${traceId()}` }); }
 function chat() { uni.navigateTo({ url: `/pages/trade/chat?to=${encodeURIComponent(s.value.supplier)}` }); }
 function control() { uni.navigateTo({ url: "/pages/trade/control" }); }
+function chooseDeliveryLocation() {
+  uni.chooseLocation({
+    success: (location: any) => {
+      deliveryAddress.value = String(location.name || location.address || "").trim();
+      deliveryLat.value = Number(location.latitude);
+      deliveryLng.value = Number(location.longitude);
+    },
+    fail: () => uni.showToast({ title: "地图选点不可用，请重试", icon: "none" }),
+  });
+}
 function order() {
   if (!user.ensureTradeRole("批量采购下单", "purchase")) return;
+  if (productionBuild && (!deliveryAddress.value || deliveryLat.value === null || deliveryLng.value === null)) return uni.showToast({ title: "正式订单请先选择收货地址", icon: "none" });
   const qty = 1000; // 默认批量：1000 单位
   const amount = Math.round((s.value.price || 0) * qty);
   uni.showModal({
@@ -73,7 +87,7 @@ function order() {
       if (!r.confirm) return;
       if (productionBuild) {
         try {
-          const created = await createTradeOrder({ scene: "buyerSupply", supplier_id: s.value.merchant_id, items: [{ product_id: s.value.id, qty }], settlement_model: "持牌机构条件结算（验收后分账）", invoice_type: "增值税专用发票" });
+          const created = await createTradeOrder({ scene: "buyerSupply", supplier_id: s.value.merchant_id, items: [{ product_id: s.value.id, qty }], delivery_address: deliveryAddress.value, delivery_lat: deliveryLat.value ?? undefined, delivery_lng: deliveryLng.value ?? undefined, settlement_model: "持牌机构条件结算（验收后分账）", invoice_type: "增值税专用发票" });
           uni.navigateTo({ url: `/pages/pay/index?scene=b2b&title=${encodeURIComponent(s.value.name + ' 批量采购')}&amount=${created.amount || amount}&no=${encodeURIComponent(created.id)}&term=custody` });
         } catch (error: any) {
           uni.showModal({ title: "后台未放行", showCancel: false, content: error?.message || "订单创建失败，请检查主体授权、库存和结算条件" });
@@ -118,6 +132,12 @@ function order() {
         <text>✓ 经营许可有效</text>
       </view>
       <text class="identity-note">下单时固化主体、经办人权限、收款账户、许可范围和信用等级；后续不得替换收款主体。</text>
+    </view>
+
+    <view v-if="productionBuild" class="sg-card delivery-card" @tap="chooseDeliveryLocation">
+      <view class="sg-between"><text class="delivery-title">收货地址与服务半径</text><text class="delivery-action">{{ deliveryAddress ? '重新选点' : '地图选点' }} ›</text></view>
+      <text class="delivery-value">{{ deliveryAddress || '正式下单前必须选择收货地址' }}</text>
+      <text class="delivery-note">后台会按供应商已审核服务区域、距离和日单量再次校验，超范围不会直接下单。</text>
     </view>
 
     <!-- 缩略图 + 视频 -->
@@ -236,6 +256,11 @@ function order() {
 .identity-checks { display: flex; flex-wrap: wrap; gap: 9rpx; margin-top: 15rpx; }
 .identity-checks text { font-size: 19rpx; color: $sg-primary-deep; background: $sg-primary-light; padding: 6rpx 11rpx; border-radius: 6rpx; }
 .identity-note { display: block; margin-top: 13rpx; font-size: 20rpx; color: $sg-text-2; line-height: 1.55; }
+.delivery-card { background: #fffaf0; border: 2rpx solid #f1dfb4; }
+.delivery-title { font-size: 27rpx; font-weight: 800; color: #7c5517; }
+.delivery-action { font-size: 23rpx; color: $sg-primary; }
+.delivery-value { display: block; margin-top: 12rpx; font-size: 25rpx; color: $sg-text; }
+.delivery-note { display: block; margin-top: 8rpx; font-size: 20rpx; line-height: 1.5; color: $sg-text-2; }
 .link { background: linear-gradient(135deg, #eef6ff, #fff); border: 2rpx solid #d6e8fb; }
 .lk-ic { margin-right: 10rpx; }
 .lk-t { font-size: 28rpx; font-weight: 700; color: $sg-blue; }

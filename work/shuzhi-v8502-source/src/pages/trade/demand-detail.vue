@@ -39,7 +39,7 @@ onLoad(async (q) => {
       if (!found) throw new Error("该采购需求不存在、已关闭或当前主体无权查看");
       d.value = mapRemoteDemand(found);
       remoteDemand.value = true;
-      isMine.value = user.roleKey === "buyer";
+      isMine.value = ["buyer", "agri"].includes(user.roleKey);
       ready.value = true;
     } catch (error: any) { loadError.value = error?.message || "后台采购需求暂不可读，请先登录授权"; }
     finally { loading.value = false; }
@@ -55,7 +55,7 @@ onLoad(async (q) => {
       d.value = mapRemoteDemand(found);
       remoteDemand.value = true;
       // 后台已按主体过滤需求；采购角色看到的即为可操作采购需求。
-      isMine.value = user.roleKey === "buyer";
+      isMine.value = ["buyer", "agri"].includes(user.roleKey);
     }
   } catch {
     // 离线演示保留内置需求；正式环境不伪造后台报价。
@@ -94,7 +94,7 @@ async function order(qt: any) {
       if (remoteDemand.value && qt.id) {
         try {
           if (qt.status === "submitted") await acceptDemandQuote(String(qt.id));
-          const created = await createTradeOrder({ quote_id: String(qt.id), scene: "supplierDemand", items: [], delivery_window: d.value.deadline, settlement_model: "持牌机构条件结算（验收后分账）", invoice_type: "增值税专用发票" });
+          const created = await createTradeOrder({ quote_id: String(qt.id), scene: "supplierDemand", items: [], delivery_address: d.value.destination || d.value.addr, delivery_lat: Number.isFinite(Number(d.value.destination_lat)) ? Number(d.value.destination_lat) : undefined, delivery_lng: Number.isFinite(Number(d.value.destination_lng)) ? Number(d.value.destination_lng) : undefined, delivery_window: d.value.deadline, settlement_model: "持牌机构条件结算（验收后分账）", invoice_type: "增值税专用发票" });
           d.value.ordered = true;
           d.value.status = "closed";
           uni.showModal({ title: "正式订单已生成", showCancel: false, confirmText: "查看订单", content: `订单 ${created.id} 已由后台生成，合同、支付、物流、验收、发票和结算将按状态闸门继续。`, success: () => uni.navigateTo({ url: `/pages/trade/order-detail?id=${encodeURIComponent(created.id)}` }) });

@@ -254,7 +254,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS merchant_verifications (id TEXT PRIMARY KEY, merchant_id TEXT NOT NULL, verification_type TEXT NOT NULL, status TEXT NOT NULL, provider TEXT NOT NULL, evidence_ref TEXT NOT NULL, verified_by TEXT NOT NULL, verified_at TEXT, expires_at TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE(merchant_id,verification_type), FOREIGN KEY (merchant_id) REFERENCES merchants(id));
   CREATE TABLE IF NOT EXISTS products (id TEXT PRIMARY KEY, merchant_id TEXT NOT NULL, name TEXT NOT NULL, category TEXT NOT NULL, spec TEXT, unit TEXT, price REAL NOT NULL, stock REAL NOT NULL, origin TEXT, quality_status TEXT NOT NULL, FOREIGN KEY (merchant_id) REFERENCES merchants(id));
   CREATE TABLE IF NOT EXISTS product_media (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id TEXT NOT NULL, media_type TEXT NOT NULL, url TEXT NOT NULL, sort_no INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'pending', FOREIGN KEY (product_id) REFERENCES products(id));
-  CREATE TABLE IF NOT EXISTS purchase_demands (id TEXT PRIMARY KEY, buyer_id TEXT NOT NULL, title TEXT NOT NULL, category TEXT NOT NULL, qty REAL NOT NULL, unit TEXT NOT NULL, budget_max REAL, destination TEXT NOT NULL, delivery_window TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY (buyer_id) REFERENCES merchants(id));
+  CREATE TABLE IF NOT EXISTS purchase_demands (id TEXT PRIMARY KEY, buyer_id TEXT NOT NULL, title TEXT NOT NULL, category TEXT NOT NULL, qty REAL NOT NULL, unit TEXT NOT NULL, budget_max REAL, destination TEXT NOT NULL, destination_lat REAL, destination_lng REAL, delivery_window TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY (buyer_id) REFERENCES merchants(id));
   CREATE TABLE IF NOT EXISTS demand_quotes (id TEXT PRIMARY KEY, demand_id TEXT NOT NULL, supplier_id TEXT NOT NULL, product_id TEXT NOT NULL, qty REAL NOT NULL, unit_price REAL NOT NULL, amount REAL NOT NULL, status TEXT NOT NULL DEFAULT 'submitted', note TEXT, order_id TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE(demand_id,supplier_id,product_id), FOREIGN KEY (demand_id) REFERENCES purchase_demands(id), FOREIGN KEY (supplier_id) REFERENCES merchants(id), FOREIGN KEY (product_id) REFERENCES products(id), FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS orders (id TEXT PRIMARY KEY, scene TEXT NOT NULL, buyer_id TEXT NOT NULL, supplier_id TEXT NOT NULL, status TEXT NOT NULL, amount REAL NOT NULL, currency TEXT NOT NULL DEFAULT 'CNY', settlement_model TEXT NOT NULL, payment_status TEXT NOT NULL, fulfillment_step INTEGER NOT NULL DEFAULT 0, delivery_window TEXT, invoice_status TEXT NOT NULL, contract_status TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY (buyer_id) REFERENCES merchants(id), FOREIGN KEY (supplier_id) REFERENCES merchants(id));
   CREATE TABLE IF NOT EXISTS order_items (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id TEXT NOT NULL, product_id TEXT NOT NULL, name TEXT NOT NULL, qty REAL NOT NULL, unit_price REAL NOT NULL, subtotal REAL NOT NULL, FOREIGN KEY (order_id) REFERENCES orders(id), FOREIGN KEY (product_id) REFERENCES products(id));
@@ -271,6 +271,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS merchant_credit (merchant_id TEXT PRIMARY KEY, star_level INTEGER NOT NULL DEFAULT 1, score REAL NOT NULL DEFAULT 60, completed_orders INTEGER NOT NULL DEFAULT 0, on_time_rate REAL NOT NULL DEFAULT 0, dispute_rate REAL NOT NULL DEFAULT 0, last_review_at TEXT, FOREIGN KEY (merchant_id) REFERENCES merchants(id));
   CREATE TABLE IF NOT EXISTS merchant_rewards (id INTEGER PRIMARY KEY AUTOINCREMENT, merchant_id TEXT NOT NULL, type TEXT NOT NULL, points INTEGER NOT NULL, reason TEXT NOT NULL, created_at TEXT NOT NULL, FOREIGN KEY (merchant_id) REFERENCES merchants(id));
   CREATE TABLE IF NOT EXISTS merchant_service_areas (id TEXT PRIMARY KEY, merchant_id TEXT NOT NULL, area_type TEXT NOT NULL DEFAULT 'radius', center_lat REAL NOT NULL, center_lng REAL NOT NULL, radius_km REAL NOT NULL, regions TEXT NOT NULL DEFAULT '[]', delivery_modes TEXT NOT NULL DEFAULT '[]', max_daily_orders INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'active', updated_at TEXT NOT NULL, FOREIGN KEY (merchant_id) REFERENCES merchants(id));
+  CREATE TABLE IF NOT EXISTS order_delivery_constraints (order_id TEXT PRIMARY KEY, supplier_id TEXT NOT NULL, destination TEXT NOT NULL, destination_lat REAL NOT NULL, destination_lng REAL NOT NULL, distance_km REAL NOT NULL, radius_km REAL NOT NULL, max_daily_orders INTEGER NOT NULL DEFAULT 0, daily_order_count INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL, evidence_ref TEXT NOT NULL, created_at TEXT NOT NULL, FOREIGN KEY (order_id) REFERENCES orders(id), FOREIGN KEY (supplier_id) REFERENCES merchants(id));
   CREATE TABLE IF NOT EXISTS merchant_applications (id TEXT PRIMARY KEY, entity_type TEXT NOT NULL, name TEXT NOT NULL, credit_code TEXT NOT NULL, legal_name TEXT NOT NULL, legal_id_masked TEXT, address TEXT, scope TEXT, capital TEXT, documents TEXT NOT NULL DEFAULT '[]', status TEXT NOT NULL DEFAULT 'pending', review_note TEXT, reviewer TEXT, submitted_at TEXT NOT NULL, reviewed_at TEXT, activated_at TEXT, updated_at TEXT NOT NULL, business_role TEXT NOT NULL DEFAULT 'supplier');
   CREATE TABLE IF NOT EXISTS audit_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, actor TEXT NOT NULL, action TEXT NOT NULL, resource TEXT NOT NULL, detail TEXT, created_at TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS operation_progress (module_key TEXT PRIMARY KEY, domain TEXT NOT NULL, step INTEGER NOT NULL DEFAULT -1, status TEXT NOT NULL DEFAULT 'ready', updated_at TEXT NOT NULL);
@@ -292,6 +293,9 @@ if (!db.prepare("PRAGMA table_info(settlement_records)").all().some((column) => 
 // supplier; new applications explicitly record the selected business role.
 if (!db.prepare("PRAGMA table_info(merchant_applications)").all().some((column) => column.name === "business_role")) {
   db.exec("ALTER TABLE merchant_applications ADD COLUMN business_role TEXT NOT NULL DEFAULT 'supplier'");
+}
+for (const [name, definition] of [["destination_lat", "REAL"], ["destination_lng", "REAL"]]) {
+  if (!db.prepare("PRAGMA table_info(purchase_demands)").all().some((column) => column.name === name)) db.exec(`ALTER TABLE purchase_demands ADD COLUMN ${name} ${definition}`);
 }
 // 幂等键必须同时绑定请求体；否则同一主体在同一路径误用旧键并更换金额、数量或决定时，
 // 服务端会返回旧响应，掩盖真实冲突。旧记录保留 NULL 以兼容升级，新请求全部写入 SHA-256。
@@ -597,7 +601,7 @@ const saveIdempotent = (req, key, status, data, payload) => {
 const orderView = (id) => {
   const order = db.prepare(`SELECT o.*, b.name buyer_name, s.name supplier_name FROM orders o JOIN merchants b ON b.id=o.buyer_id JOIN merchants s ON s.id=o.supplier_id WHERE o.id=?`).get(id);
   if (!order) return null;
-  return { ...order, items: db.prepare("SELECT * FROM order_items WHERE order_id=?").all(id), inventory_reservations: db.prepare("SELECT id,product_id,qty,status,reserved_at,released_at,release_reason FROM inventory_reservations WHERE order_id=? ORDER BY id").all(id), events: db.prepare("SELECT * FROM fulfillment_events WHERE order_id=? ORDER BY step").all(id), contracts: db.prepare("SELECT * FROM contracts WHERE order_id=?").all(id).map((contract) => ({ ...contract, signatures: db.prepare("SELECT party,signer_id,signer_name,certificate_ref,signed_at FROM contract_signatures WHERE contract_id=? ORDER BY party").all(contract.id) })), payments: db.prepare("SELECT * FROM payments WHERE order_id=? ORDER BY rowid").all(id), refunds: db.prepare("SELECT * FROM payment_refunds WHERE order_id=? ORDER BY created_at").all(id), invoices: db.prepare("SELECT * FROM invoices WHERE order_id=?").all(id), shipments: db.prepare("SELECT * FROM shipments WHERE order_id=? ORDER BY updated_at DESC").all(id), acceptances: db.prepare("SELECT * FROM acceptances WHERE order_id=? ORDER BY accepted_at DESC").all(id), settlement: db.prepare("SELECT * FROM settlement_records WHERE order_id=?").get(id) || null };
+  return { ...order, items: db.prepare("SELECT * FROM order_items WHERE order_id=?").all(id), inventory_reservations: db.prepare("SELECT id,product_id,qty,status,reserved_at,released_at,release_reason FROM inventory_reservations WHERE order_id=? ORDER BY id").all(id), events: db.prepare("SELECT * FROM fulfillment_events WHERE order_id=? ORDER BY step").all(id), contracts: db.prepare("SELECT * FROM contracts WHERE order_id=?").all(id).map((contract) => ({ ...contract, signatures: db.prepare("SELECT party,signer_id,signer_name,certificate_ref,signed_at FROM contract_signatures WHERE contract_id=? ORDER BY party").all(contract.id) })), payments: db.prepare("SELECT * FROM payments WHERE order_id=? ORDER BY rowid").all(id), refunds: db.prepare("SELECT * FROM payment_refunds WHERE order_id=? ORDER BY created_at").all(id), invoices: db.prepare("SELECT * FROM invoices WHERE order_id=?").all(id), shipments: db.prepare("SELECT * FROM shipments WHERE order_id=? ORDER BY updated_at DESC").all(id), acceptances: db.prepare("SELECT * FROM acceptances WHERE order_id=? ORDER BY accepted_at DESC").all(id), delivery_constraint: db.prepare("SELECT * FROM order_delivery_constraints WHERE order_id=?").get(id) || null, settlement: db.prepare("SELECT * FROM settlement_records WHERE order_id=?").get(id) || null };
 };
 const releaseOrderInventory = (orderId, reason) => {
   const reservations = db.prepare("SELECT id,product_id,qty FROM inventory_reservations WHERE order_id=? AND status='reserved'").all(orderId);
@@ -658,12 +662,24 @@ const demandView = (id) => {
     quotes: db.prepare("SELECT q.id,q.supplier_id,s.name supplier_name,q.product_id,p.name product_name,q.qty,q.unit_price,q.amount,q.status,q.note,q.order_id,q.created_at,q.updated_at FROM demand_quotes q JOIN merchants s ON s.id=q.supplier_id JOIN products p ON p.id=q.product_id WHERE q.demand_id=? ORDER BY q.created_at DESC").all(id),
   };
 };
-const quoteView = (id) => db.prepare("SELECT q.*,d.buyer_id,d.status demand_status,d.title demand_title,d.category,d.destination,d.delivery_window,b.name buyer_name,s.name supplier_name,p.name product_name,p.unit product_unit FROM demand_quotes q JOIN purchase_demands d ON d.id=q.demand_id JOIN merchants b ON b.id=d.buyer_id JOIN merchants s ON s.id=q.supplier_id JOIN products p ON p.id=q.product_id WHERE q.id=?").get(id) || null;
+const quoteView = (id) => db.prepare("SELECT q.*,d.buyer_id,d.status demand_status,d.title demand_title,d.category,d.destination,d.destination_lat,d.destination_lng,d.delivery_window,b.name buyer_name,s.name supplier_name,p.name product_name,p.unit product_unit FROM demand_quotes q JOIN purchase_demands d ON d.id=q.demand_id JOIN merchants b ON b.id=d.buyer_id JOIN merchants s ON s.id=q.supplier_id JOIN products p ON p.id=q.product_id WHERE q.id=?").get(id) || null;
 const distanceKm = (lat1, lng1, lat2, lng2) => {
   const rad = (value) => value * Math.PI / 180;
   const dLat = rad(lat2 - lat1), dLng = rad(lng2 - lng1);
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLng / 2) ** 2;
   return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+const productionDeliveryConstraint = ({ supplierId, destination, lat, lng, orderId }) => {
+  if (!productionMode) return null;
+  if (![lat, lng].every(Number.isFinite) || lat < -90 || lat > 90 || lng < -180 || lng > 180) throw new HttpError(400, "生产订单必须提供有效的收货地经纬度");
+  const area = serviceAreaView(supplierId);
+  if (!area) throw new HttpError(409, "供货商未配置已审核的服务半径，不能创建生产订单");
+  const distance = distanceKm(area.center_lat, area.center_lng, lat, lng);
+  if (distance > area.radius_km) throw new HttpError(409, `收货地超出供货商服务半径（${distance.toFixed(2)}km > ${area.radius_km}km），需先完成后台人工扩围审批`);
+  const dayStart = `${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`;
+  const dailyCount = Number(db.prepare("SELECT COUNT(*) AS n FROM order_delivery_constraints WHERE supplier_id=? AND created_at>=? AND status='within_radius'").get(supplierId, dayStart)?.n || 0);
+  if (area.max_daily_orders > 0 && dailyCount >= area.max_daily_orders) throw new HttpError(409, `供货商已达到当日服务上限（${area.max_daily_orders}单），不能继续创建订单`);
+  return { supplier_id: supplierId, destination: String(destination || "待补充").trim().slice(0, 240), destination_lat: lat, destination_lng: lng, distance_km: Number(distance.toFixed(2)), radius_km: area.radius_km, max_daily_orders: area.max_daily_orders, daily_order_count: dailyCount + 1, status: "within_radius", evidence_ref: `AREA-CHECK-${orderId}` };
 };
 const finitePositive = (value, max = Number.MAX_SAFE_INTEGER) => Number.isFinite(Number(value)) && Number(value) > 0 && Number(value) <= max;
 const finiteNonNegative = (value, max = Number.MAX_SAFE_INTEGER) => Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= max;
@@ -974,7 +990,7 @@ const server = createServer(async (req, res) => {
   const path = url.pathname;
   if (path === "/health" || path === "/health/live") return json(res, 200, { status: "ok", database: "sqlite", dbPath: productionMode ? undefined : dbPath, version: healthVersion, platform_version: platformVersion, api_version: apiReleaseVersion, runtime_mode: runtimeMode, reserved_ports: integrationPorts });
   if (path === "/health/ready") {
-    const requiredTables = ["organizations", "merchants", "merchant_identity", "products", "orders", "order_items", "inventory_reservations", "contracts", "payments", "payment_refunds", "invoices", "shipments", "acceptances", "regulatory_submissions", "audit_logs", "operation_progress", "request_idempotency", "integration_callbacks", "institution_outbox", "user_sessions"];
+    const requiredTables = ["organizations", "merchants", "merchant_identity", "products", "orders", "order_items", "inventory_reservations", "contracts", "payments", "payment_refunds", "invoices", "shipments", "acceptances", "merchant_service_areas", "order_delivery_constraints", "regulatory_submissions", "audit_logs", "operation_progress", "request_idempotency", "integration_callbacks", "institution_outbox", "user_sessions"];
     const placeholders = requiredTables.map(() => "?").join(",");
     const rows = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name IN (${placeholders})`).all(...requiredTables);
     const present = new Set(rows.map((row) => row.name));
@@ -1235,6 +1251,7 @@ const server = createServer(async (req, res) => {
   }
   if (areaMatch && req.method === "POST") {
     if (!authorized(req)) return error(res, 401, "需要商户管理授权");
+    if (productionMode && !hasAdminPermission(req, "merchant", true)) return error(res, 403, "生产服务区域只能由后台商户管理岗位维护");
     if (!canAccessMerchant(req, areaMatch[1])) return error(res, 403, "无权维护该商户服务区域");
     const payload = await body(req), idemKey = requestKey(req, payload);
     if (productionMode && !idemKey) return error(res, 400, "生产服务区域维护必须提供 Idempotency-Key");
@@ -1400,13 +1417,18 @@ const server = createServer(async (req, res) => {
     const unit = String(payload.unit || "").trim().slice(0, 20);
     const destination = String(payload.destination || "").trim().slice(0, 120);
     const deliveryWindow = String(payload.delivery_window || "").trim().slice(0, 120);
+    const hasDestinationLat = payload.destination_lat !== undefined && payload.destination_lat !== null && payload.destination_lat !== "";
+    const hasDestinationLng = payload.destination_lng !== undefined && payload.destination_lng !== null && payload.destination_lng !== "";
+    const destinationLat = hasDestinationLat ? Number(payload.destination_lat) : null;
+    const destinationLng = hasDestinationLng ? Number(payload.destination_lng) : null;
     const qty = Number(payload.qty);
     const budgetMax = payload.budget_max === undefined || payload.budget_max === null || payload.budget_max === "" ? null : Number(payload.budget_max);
     if (!title || !category || !unit || !destination || !deliveryWindow || !finitePositive(qty, 1e9)) return error(res, 400, "采购需求名称、品类、数量、单位、交付地和交付时间均不能为空");
+    if (hasDestinationLat !== hasDestinationLng || (productionMode && !hasDestinationLat) || (hasDestinationLat && (![destinationLat, destinationLng].every(Number.isFinite) || destinationLat < -90 || destinationLat > 90 || destinationLng < -180 || destinationLng > 180))) return error(res, 400, "生产采购需求必须提供有效且成对的收货地经纬度");
     if (budgetMax !== null && !finitePositive(budgetMax, 1e12)) return error(res, 400, "采购预算必须为合法正数");
     const demandId = `DEM-SZGS-${new Date().getFullYear()}-${randomUUID().slice(0, 12).toUpperCase()}`;
     const t = now();
-    db.prepare("INSERT INTO purchase_demands(id,buyer_id,title,category,qty,unit,budget_max,destination,delivery_window,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").run(demandId, buyerId, title, category, qty, unit, budgetMax, destination, deliveryWindow, "open", t, t);
+    db.prepare("INSERT INTO purchase_demands(id,buyer_id,title,category,qty,unit,budget_max,destination,destination_lat,destination_lng,delivery_window,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(demandId, buyerId, title, category, qty, unit, budgetMax, destination, destinationLat, destinationLng, deliveryWindow, "open", t, t);
     log(actorFor(req, "采购需求岗"), "CREATE_PURCHASE_DEMAND", demandId, `${buyer.name} · ${title} · ${qty}${unit}`);
     const data = demandView(demandId);
     saveIdempotent(req, idemKey, 201, data, payload);
@@ -1574,6 +1596,12 @@ const server = createServer(async (req, res) => {
     if (!allowedSettlementModels.has(settlementModel)) return error(res, 400, "结算模型必须选择平台已配置的标准模型");
     if (productionMode && (settlementModel === "credit" || /授信/.test(settlementModel)) && !String(payload.credit_approval_ref || "").trim()) return error(res, 400, "生产授信账期必须提供机构审批引用");
     const deliveryWindow = String(payload.delivery_window || "待双方确认").trim().slice(0, 120);
+    const deliveryAddress = String(payload.delivery_address || acceptedQuote?.destination || "").trim().slice(0, 240);
+    const rawDeliveryLat = payload.delivery_lat ?? acceptedQuote?.destination_lat;
+    const rawDeliveryLng = payload.delivery_lng ?? acceptedQuote?.destination_lng;
+    const deliveryLat = rawDeliveryLat === undefined || rawDeliveryLat === null || rawDeliveryLat === "" ? NaN : Number(rawDeliveryLat);
+    const deliveryLng = rawDeliveryLng === undefined || rawDeliveryLng === null || rawDeliveryLng === "" ? NaN : Number(rawDeliveryLng);
+    if (productionMode && !deliveryAddress) return error(res, 400, "生产订单必须提供收货地址");
     const invoiceType = String(payload.invoice_type || "增值税专用发票").trim().slice(0, 40);
     const orderId = `SZGS-${new Date().getFullYear()}-${randomUUID().slice(0, 12).toUpperCase()}`;
     const contractId = `CA-${orderId}`;
@@ -1583,7 +1611,9 @@ const server = createServer(async (req, res) => {
     const t = now();
     db.exec("BEGIN");
     try {
+      const deliveryConstraint = productionDeliveryConstraint({ supplierId, destination: deliveryAddress, lat: deliveryLat, lng: deliveryLng, orderId });
       db.prepare("INSERT INTO orders VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(orderId, scene, buyerId, supplierId, "待复核", amount, "CNY", settlementModel, "待机构确认", -1, deliveryWindow, "待开票", "待双方签署", t, t);
+      if (deliveryConstraint) db.prepare("INSERT INTO order_delivery_constraints(order_id,supplier_id,destination,destination_lat,destination_lng,distance_km,radius_km,max_daily_orders,daily_order_count,status,evidence_ref,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").run(orderId, deliveryConstraint.supplier_id, deliveryConstraint.destination, deliveryConstraint.destination_lat, deliveryConstraint.destination_lng, deliveryConstraint.distance_km, deliveryConstraint.radius_km, deliveryConstraint.max_daily_orders, deliveryConstraint.daily_order_count, deliveryConstraint.status, deliveryConstraint.evidence_ref, t);
       const itemStmt = db.prepare("INSERT INTO order_items(order_id,product_id,name,qty,unit_price,subtotal) VALUES (?,?,?,?,?,?)");
       for (const item of normalized) {
         itemStmt.run(orderId, item.product.id, item.product.name, item.qty, item.unitPrice, item.subtotal);

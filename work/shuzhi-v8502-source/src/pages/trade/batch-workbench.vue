@@ -17,6 +17,18 @@ const backendPlatformFee = ref<number | null>(null);
 const advancing = ref(false);
 let timer: ReturnType<typeof setInterval> | null = null;
 const demoBackendOrderId = "SZGS-2026-850901";
+function chooseDeliveryLocation() {
+  uni.chooseLocation({
+    success: (location: any) => {
+      if (!tx.value) return;
+      tx.value.deliveryAddress = String(location.name || location.address || "").trim();
+      tx.value.deliveryLat = Number(location.latitude);
+      tx.value.deliveryLng = Number(location.longitude);
+      trade.saveBatchCase();
+    },
+    fail: () => uni.showToast({ title: "地图选点不可用，请重试", icon: "none" }),
+  });
+}
 
 async function submitSupplierQuotes() {
   const currentTx = tx.value;
@@ -163,10 +175,14 @@ async function syncBackendTrade() {
       } else {
         const supplierIds = [...new Set(currentTx.items.map((item) => item.supplierId).filter(Boolean))];
         if (supplierIds.length !== 1) throw new Error("生产批量建单必须来自同一已核验供货主体");
+        if (!currentTx.deliveryAddress || !Number.isFinite(Number(currentTx.deliveryLat)) || !Number.isFinite(Number(currentTx.deliveryLng))) throw new Error("生产批量建单必须先选择收货地址和坐标");
         const created = await createTradeOrder({
           scene: currentTx.scene,
           supplier_id: supplierIds[0] as string,
           items: currentTx.items.map((item) => ({ product_id: item.id, qty: item.qty })),
+          delivery_address: currentTx.deliveryAddress,
+          delivery_lat: currentTx.deliveryLat,
+          delivery_lng: currentTx.deliveryLng,
           delivery_window: currentTx.deliveryWindow,
           settlement_model: currentTx.settlementModel,
           invoice_type: currentTx.invoiceType,
@@ -344,6 +360,7 @@ onUnload(() => { if (timer) clearInterval(timer); });
       <view><text>交易条件</text></view>
     </view>
     <view class="options">
+      <view v-if="productionBuild" @tap="chooseDeliveryLocation"><text>收货地址</text><text>{{ tx.deliveryAddress || "正式建单前必须地图选点" }} ›</text></view>
       <view @tap="choose('deliveryWindow', ['2026-08-03 08:00—12:00', '2026-08-04 13:00—17:00', '按子订单分批到货'])"><text>交付窗口</text><text>{{ tx.deliveryWindow }} ›</text></view>
       <view @tap="choose('settlementModel', ['持牌机构条件结算（验收后分账）', '银行对公直付（验收即付）', '机构授信账期（30日）'])"><text>结算模型</text><text>{{ tx.settlementModel }} ›</text></view>
       <view @tap="choose('invoiceType', ['增值税专用发票', '增值税普通发票', '农产品销售发票'])"><text>发票类型</text><text>{{ tx.invoiceType }} ›</text></view>

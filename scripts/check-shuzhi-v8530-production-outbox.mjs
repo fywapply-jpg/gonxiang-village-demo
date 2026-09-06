@@ -115,6 +115,14 @@ try {
   const orderId = "SZGS-2026-850901";
   const readOnlyWorkflow = await request(prodPort, "/api/v1/operations/alliance/advance", financeToken, { evidence: "只读财务岗位不应推进业务流程" }, "outbox-readonly-workflow");
   add(readOnlyWorkflow.status === 403, "生产只读岗位禁止推进业务工作流", `HTTP ${readOnlyWorkflow.status}`);
+  const readOnlyArea = await request(prodPort, "/api/v1/merchants/m-supplier/service-area", financeToken, { center_lat: 24.91, center_lng: 115.65, radius_km: 120, max_daily_orders: 80 }, "outbox-readonly-service-area");
+  add(readOnlyArea.status === 403, "生产只读岗位禁止维护服务区域", `HTTP ${readOnlyArea.status}`);
+  const missingDeliveryLocation = await request(prodPort, "/api/v1/trades", buyerToken, { scene: "buyerSupply", supplier_id: "m-supplier", items: [{ product_id: "p-orange", qty: 1 }], delivery_address: "湖北省武汉市洪山区团餐配送中心", settlement_model: "持牌机构条件结算（验收后分账）" }, "outbox-delivery-location-missing");
+  add(missingDeliveryLocation.status === 400, "生产订单缺收货坐标阻断", `HTTP ${missingDeliveryLocation.status}`);
+  const outsideArea = await request(prodPort, "/api/v1/trades", buyerToken, { scene: "buyerSupply", supplier_id: "m-supplier", items: [{ product_id: "p-orange", qty: 1 }], delivery_address: "北京市朝阳区测试仓", delivery_lat: 39.9042, delivery_lng: 116.4074, settlement_model: "持牌机构条件结算（验收后分账）" }, "outbox-delivery-outside-area");
+  add(outsideArea.status === 409, "生产订单超服务半径阻断", `HTTP ${outsideArea.status}`);
+  const withinArea = await request(prodPort, "/api/v1/trades", buyerToken, { scene: "buyerSupply", supplier_id: "m-supplier", items: [{ product_id: "p-orange", qty: 1 }], delivery_address: "江西省赣州市寻乌县测试仓", delivery_lat: 24.91, delivery_lng: 115.65, settlement_model: "持牌机构条件结算（验收后分账）" }, "outbox-delivery-within-area");
+  add(withinArea.status === 201 && withinArea.payload?.delivery_constraint?.status === "within_radius", "生产订单落库服务半径证据", `HTTP ${withinArea.status}`);
   const fractionalMoney = await request(prodPort, "/api/v1/trades", buyerToken, { scene: "buyerSupply", supplier_id: "m-supplier", items: [{ product_id: "p-orange", qty: 1 }], service_amount: 0.001 }, "outbox-money-fraction-000001");
   add(fractionalMoney.status === 400, "生产金额拒绝半分值", `HTTP ${fractionalMoney.status}`);
   const caBuyer = await request(prodPort, `/api/v1/trades/${orderId}/contract/sign`, buyerToken, { party: "buyer", certificate_ref: "CA-BUYER-PROD", signer_authorization_ref: "AUTH-BUYER-PROD" }, "outbox-ca-buyer-000001");

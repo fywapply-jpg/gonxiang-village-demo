@@ -117,7 +117,7 @@ try {
   expect(closedAccept.status === 409, "需求关闭后禁止确认第二报价", `HTTP ${closedAccept.status}`);
   // 新建一条开放需求放入两家报价，验证同一需求只能授标一次。
   testDb.exec("BEGIN");
-  testDb.prepare("INSERT INTO purchase_demands VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").run("DEM-FLOW-UNIQUE", "m-buyer", "唯一授标回归需求", "水果", 1, "箱", 100, "湖北·武汉", "测试窗口", "quoting", t, t);
+  testDb.prepare("INSERT INTO purchase_demands(id,buyer_id,title,category,qty,unit,budget_max,destination,destination_lat,destination_lng,delivery_window,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run("DEM-FLOW-UNIQUE", "m-buyer", "唯一授标回归需求", "水果", 1, "箱", 100, "湖北·武汉", null, null, "测试窗口", "quoting", t, t);
   testDb.prepare("INSERT INTO demand_quotes VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").run("QUOTE-UNIQUE-A", "DEM-FLOW-UNIQUE", "m-supplier", "p-orange", 1, 68, 68, "submitted", "", null, t, t);
   testDb.prepare("INSERT INTO demand_quotes VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").run("QUOTE-UNIQUE-B", "DEM-FLOW-UNIQUE", "m-supplier-2", "p-orange-2", 1, 67, 67, "submitted", "", null, t, t);
   testDb.exec("COMMIT");

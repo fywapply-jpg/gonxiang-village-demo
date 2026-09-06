@@ -10,7 +10,7 @@ const type = ref<"supply" | "demand">("supply");
 onLoad((q) => { if (q?.type === "demand") type.value = "demand"; });
 
 const form = ref({ name: "", cat: "水果", qty: "", price: "", spec: "", note: "",
-  grade: "", moq: "", capacity: "", account: "机构监管结算", settle: "企业网银对公转账", delivery: "", destination: "", deliveryWindow: "", qualReq: "",
+  grade: "", moq: "", capacity: "", account: "机构监管结算", settle: "企业网银对公转账", delivery: "", destination: "", destinationLat: "", destinationLng: "", deliveryWindow: "", qualReq: "",
   acceptance: "到货24小时内验收", termDays: "30天", termStart: "验收合格次日", creditSupport: "买方授信额度", invoice: "验收后按合同开票" });
 const cats = ["水果", "蔬菜", "粮油", "畜禽"];
 const accounts = ["预付款30%+验收尾款", "机构监管结算", "货到/验收即付", "授信账期"];
@@ -49,6 +49,16 @@ function addVideo() {
   });
 }
 function delVideo() { video.value = ""; }
+function chooseDestination() {
+  uni.chooseLocation({
+    success: (location: any) => {
+      form.value.destination = String(location.name || location.address || "").trim();
+      form.value.destinationLat = String(location.latitude ?? "");
+      form.value.destinationLng = String(location.longitude ?? "");
+    },
+    fail: () => uni.showToast({ title: "地图选点不可用，请手工填写经纬度", icon: "none" }),
+  });
+}
 
 async function submit() {
   const capability = type.value === "supply" ? "supply" : "purchase";
@@ -56,6 +66,7 @@ async function submit() {
   if (!user.ensureTradeRole(action, capability)) return;
   if (!form.value.name) return uni.showToast({ title: "请填写名称", icon: "none" });
   if (type.value === "demand" && (!form.value.destination || !form.value.deliveryWindow)) return uni.showToast({ title: "请填写收货地和交付时间", icon: "none" });
+  if (type.value === "demand" && productionBuild && (!Number.isFinite(Number(form.value.destinationLat)) || !Number.isFinite(Number(form.value.destinationLng)))) return uni.showToast({ title: "正式采购需求必须选择收货地坐标", icon: "none" });
   if (type.value === "supply" && images.value.length < 3)
     return uni.showToast({ title: "供货至少上传 3 张图片", icon: "none" });
   if (form.value.account === "授信账期" && (!form.value.termDays || !form.value.termStart))
@@ -78,6 +89,8 @@ async function submit() {
         unit: "吨",
         budget_max: Number.parseFloat(form.value.price) || null,
         destination: form.value.destination,
+        destination_lat: form.value.destinationLat ? Number(form.value.destinationLat) : null,
+        destination_lng: form.value.destinationLng ? Number(form.value.destinationLng) : null,
         delivery_window: form.value.deliveryWindow,
       });
       uni.hideLoading();
@@ -118,7 +131,9 @@ async function submit() {
       <view v-if="type === 'supply'" class="fi"><text class="lb">供货产能</text>
         <input class="ip" v-model="form.capacity" placeholder="如：日供 20 吨 / 年产 5000 吨" /></view>
       <view v-if="type !== 'supply'" class="fi"><text class="lb">收货地点</text>
-        <input class="ip" v-model="form.destination" placeholder="如：武汉市洪山区中央厨房" /></view>
+        <input class="ip" v-model="form.destination" placeholder="如：武汉市洪山区中央厨房" /><text class="pick" @tap="chooseDestination">地图选点</text></view>
+      <view v-if="type !== 'supply'" class="fi"><text class="lb">收货坐标</text>
+        <input class="ip coord" v-model="form.destinationLat" type="digit" placeholder="纬度" /><input class="ip coord" v-model="form.destinationLng" type="digit" placeholder="经度" /></view>
       <view v-if="type !== 'supply'" class="fi"><text class="lb">交付时间</text>
         <input class="ip" v-model="form.deliveryWindow" placeholder="如：2026-09-08 08:00—12:00" /></view>
       <view class="fi"><text class="lb">结算模型</text>
@@ -202,6 +217,8 @@ async function submit() {
 .fi.col { flex-direction: column; align-items: stretch; }
 .lb { width: 150rpx; font-size: 27rpx; color: $sg-text-2; }
 .ip { flex: 1; font-size: 27rpx; }
+.pick { flex-shrink: 0; margin-left: 12rpx; color: $sg-primary; font-size: 23rpx; }
+.coord { min-width: 0; margin-left: 12rpx; }
 .chips { flex: 1; display: flex; flex-wrap: wrap; gap: 10rpx; }
 .chip { font-size: 22rpx; padding: 8rpx 18rpx; background: $sg-bg; border-radius: 999rpx; }
 .chip.on { background: $sg-primary; color: #fff; }

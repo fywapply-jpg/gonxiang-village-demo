@@ -67,6 +67,9 @@ export interface BatchTradeCase {
   currentStep: number;
   completed: boolean;
   deliveryWindow: string;
+  deliveryAddress?: string;
+  deliveryLat?: number;
+  deliveryLng?: number;
   settlementModel: string;
   invoiceType: string;
   backendOrderId?: string;
@@ -137,6 +140,9 @@ export const useTradeStore = defineStore("trade", {
         currentStep: -1,
         completed: false,
         deliveryWindow: "2026-08-03 08:00—12:00",
+        deliveryAddress: "",
+        deliveryLat: undefined,
+        deliveryLng: undefined,
         settlementModel: "持牌机构条件结算（验收后分账）",
         invoiceType: "增值税专用发票",
         logs: [],

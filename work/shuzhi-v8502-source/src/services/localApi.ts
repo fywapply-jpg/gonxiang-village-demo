@@ -98,6 +98,8 @@ export type LocalPurchaseDemand = {
   unit: string;
   budget_max?: number | null;
   destination: string;
+  destination_lat?: number | null;
+  destination_lng?: number | null;
   delivery_window: string;
   status: string;
   quote_count: number;
@@ -118,6 +120,8 @@ export type CreatePurchaseDemandPayload = {
   unit: string;
   budget_max?: number | null;
   destination: string;
+  destination_lat?: number | null;
+  destination_lng?: number | null;
   delivery_window: string;
 };
 
@@ -193,6 +197,9 @@ export type CreateTradeOrderPayload = {
   quote_id?: string;
   items: Array<{ product_id: string; qty: number }>;
   service_amount?: number;
+  delivery_address?: string;
+  delivery_lat?: number;
+  delivery_lng?: number;
   delivery_window?: string;
   settlement_model?: string;
   invoice_type?: string;
