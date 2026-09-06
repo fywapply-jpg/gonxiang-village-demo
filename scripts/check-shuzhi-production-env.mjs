@@ -50,6 +50,8 @@ if (!existsSync(file)) {
     ["SHUZHI_PLATFORM_VERSION", "v8533"],
     ["SHUZHI_RELEASE_VERSION", "v8530"],
     ["SHUZHI_DB"],
+    ["SHUZHI_BACKUP_DIR"],
+    ["SHUZHI_BACKUP_RETENTION_DAYS"],
     ["SHUZHI_API_TOKEN"],
     ["SHUZHI_ADMIN_TOKEN_ROLES"],
     ["SHUZHI_ALLOWED_ORIGIN"],
@@ -133,6 +135,10 @@ if (!existsSync(file)) {
   const dbPath = String(values.SHUZHI_DB || "");
   const projectRoot = resolve(new URL("..", import.meta.url).pathname);
   add(isAbsolute(dbPath) && dbPath !== ":memory:" && !dbPath.includes(`${projectRoot}/local-backend/`), "生产数据库路径", "必须是绝对路径，且不得指向仓库内演示数据库");
+  const backupPath = String(values.SHUZHI_BACKUP_DIR || "");
+  add(isAbsolute(backupPath) && backupPath !== ":memory:" && !backupPath.includes(`${projectRoot}/local-backend/`), "生产备份目录", "必须是仓库外的绝对路径");
+  const retentionDays = Number(values.SHUZHI_BACKUP_RETENTION_DAYS);
+  add(Number.isInteger(retentionDays) && retentionDays >= 7 && retentionDays <= 3650, "备份保留周期", "必须是 7—3650 天的整数");
 
   for (const key of ["SHUZHI_HTTPS_ACCEPTANCE_REF", "SHUZHI_DATABASE_ACCEPTANCE_REF", ...(wechatReady ? ["SHUZHI_WECHAT_ACCEPTANCE_REF"] : []), ...enabledProviders.map(([, , , , evidenceKey]) => evidenceKey)]) {
     const value = String(values[key] || "");

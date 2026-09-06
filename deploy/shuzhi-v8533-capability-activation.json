@@ -17,7 +17,7 @@
       "key": "DATABASE",
       "name": "生产数据库",
       "codeReadiness": "trial",
-      "requiredConfig": ["SHUZHI_DB", "SHUZHI_BACKUP_DIR"],
+      "requiredConfig": ["SHUZHI_DB", "SHUZHI_BACKUP_DIR", "SHUZHI_BACKUP_RETENTION_DAYS"],
       "readyEnv": null,
       "acceptanceRefEnv": "SHUZHI_DATABASE_ACCEPTANCE_REF",
       "onlineEvidence": ["/health/ready", "备份 SHA-256", "隔离恢复演练报告"],
