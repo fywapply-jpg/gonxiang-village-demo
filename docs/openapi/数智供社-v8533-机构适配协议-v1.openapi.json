@@ -1,0 +1,146 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "数智供社 v8533 机构适配协议",
+    "version": "1.0.0",
+    "description": "平台 BFF 与外部 CA、持牌支付、物流、电子发票、监管/检测适配器之间的统一协议。此契约不代表任何具体机构已开通。"
+  },
+  "tags": [
+    { "name": "OutboundCommands", "description": "平台发给独立机构适配器的命令" },
+    { "name": "ProviderCallbacks", "description": "机构适配器验签后回传平台的结果事件" }
+  ],
+  "paths": {
+    "/adapter/v1/ca/signature-requests": {
+      "post": {
+        "tags": ["OutboundCommands"],
+        "operationId": "requestCaSignature",
+        "summary": "提交企业 CA 签署请求",
+        "x-shuzhi-direction": "platform-to-adapter",
+        "security": [{ "AdapterTimestamp": [], "AdapterSignature": [], "AdapterCommandId": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CaSignatureCommand" } } } },
+        "responses": { "202": { "$ref": "#/components/responses/CommandAccepted" }, "400": { "$ref": "#/components/responses/CommandRejected" }, "401": { "$ref": "#/components/responses/Unauthenticated" }, "409": { "$ref": "#/components/responses/Conflict" } }
+      }
+    },
+    "/adapter/v1/payments/escrow-orders": {
+      "post": {
+        "tags": ["OutboundCommands"],
+        "operationId": "createEscrowPayment",
+        "summary": "创建托管入金或分账指令",
+        "x-shuzhi-direction": "platform-to-adapter",
+        "security": [{ "AdapterTimestamp": [], "AdapterSignature": [], "AdapterCommandId": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EscrowPaymentCommand" } } } },
+        "responses": { "202": { "$ref": "#/components/responses/CommandAccepted" }, "400": { "$ref": "#/components/responses/CommandRejected" }, "401": { "$ref": "#/components/responses/Unauthenticated" }, "409": { "$ref": "#/components/responses/Conflict" } }
+      }
+    },
+    "/adapter/v1/logistics/shipments": {
+      "post": {
+        "tags": ["OutboundCommands"],
+        "operationId": "createLogisticsShipment",
+        "summary": "创建或取消承运任务",
+        "x-shuzhi-direction": "platform-to-adapter",
+        "security": [{ "AdapterTimestamp": [], "AdapterSignature": [], "AdapterCommandId": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LogisticsCommand" } } } },
+        "responses": { "202": { "$ref": "#/components/responses/CommandAccepted" }, "400": { "$ref": "#/components/responses/CommandRejected" }, "401": { "$ref": "#/components/responses/Unauthenticated" }, "409": { "$ref": "#/components/responses/Conflict" } }
+      }
+    },
+    "/adapter/v1/invoices/issuance-requests": {
+      "post": {
+        "tags": ["OutboundCommands"],
+        "operationId": "requestInvoiceIssuance",
+        "summary": "申请开具、验真、红冲或作废发票",
+        "x-shuzhi-direction": "platform-to-adapter",
+        "security": [{ "AdapterTimestamp": [], "AdapterSignature": [], "AdapterCommandId": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/InvoiceCommand" } } } },
+        "responses": { "202": { "$ref": "#/components/responses/CommandAccepted" }, "400": { "$ref": "#/components/responses/CommandRejected" }, "401": { "$ref": "#/components/responses/Unauthenticated" }, "409": { "$ref": "#/components/responses/Conflict" } }
+      }
+    },
+    "/adapter/v1/regulatory/submissions": {
+      "post": {
+        "tags": ["OutboundCommands"],
+        "operationId": "submitRegulatoryRecord",
+        "summary": "提交监管或检测数据",
+        "x-shuzhi-direction": "platform-to-adapter",
+        "security": [{ "AdapterTimestamp": [], "AdapterSignature": [], "AdapterCommandId": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RegulatoryCommand" } } } },
+        "responses": { "202": { "$ref": "#/components/responses/CommandAccepted" }, "400": { "$ref": "#/components/responses/CommandRejected" }, "401": { "$ref": "#/components/responses/Unauthenticated" }, "409": { "$ref": "#/components/responses/Conflict" } }
+      }
+    },
+    "/api/v1/integrations/{provider}/webhook": {
+      "post": {
+        "tags": ["ProviderCallbacks"],
+        "operationId": "receiveProviderCallback",
+        "summary": "接收机构结果回调",
+        "description": "签名原文为 timestamp + '.' + 原始 JSON 请求体。事件号与幂等键在机构域内唯一；重复成功事件只返回原结果，不重复落账。当前 v8530 已实现 logistics、payment、invoice、regulator；CA 回调须在具体服务商接入时补齐。",
+        "x-shuzhi-direction": "adapter-to-platform",
+        "x-shuzhi-current-implementation": ["logistics", "payment", "invoice", "regulator"],
+        "security": [{ "WebhookTimestamp": [], "WebhookSignature": [], "WebhookEventId": [] }],
+        "parameters": [
+          { "name": "provider", "in": "path", "required": true, "schema": { "type": "string", "enum": ["ca", "payment", "logistics", "invoice", "regulator"] } },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  { "$ref": "#/components/schemas/CaCallback" },
+                  { "$ref": "#/components/schemas/PaymentCallback" },
+                  { "$ref": "#/components/schemas/LogisticsCallback" },
+                  { "$ref": "#/components/schemas/InvoiceCallback" },
+                  { "$ref": "#/components/schemas/RegulatoryCallback" }
+                ],
+                "discriminator": { "propertyName": "provider" }
+              }
+            }
+          }
+        },
+        "responses": { "202": { "$ref": "#/components/responses/CallbackAccepted" }, "400": { "$ref": "#/components/responses/CommandRejected" }, "401": { "$ref": "#/components/responses/Unauthenticated" }, "404": { "$ref": "#/components/responses/NotFound" }, "409": { "$ref": "#/components/responses/Conflict" } }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "AdapterTimestamp": { "type": "apiKey", "in": "header", "name": "X-Platform-Timestamp", "description": "Unix 秒，允许窗口由双方约定，默认 300 秒" },
+      "AdapterSignature": { "type": "apiKey", "in": "header", "name": "X-Platform-Signature", "description": "独立机构密钥计算的 HMAC-SHA256 十六进制小写签名" },
+      "AdapterCommandId": { "type": "apiKey", "in": "header", "name": "X-Platform-Command-Id" },
+      "WebhookTimestamp": { "type": "apiKey", "in": "header", "name": "X-Webhook-Timestamp" },
+      "WebhookSignature": { "type": "apiKey", "in": "header", "name": "X-Webhook-Signature" },
+      "WebhookEventId": { "type": "apiKey", "in": "header", "name": "X-Webhook-Id" }
+    },
+    "parameters": {
+      "IdempotencyKey": { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string", "minLength": 16, "maxLength": 128 }, "description": "同一业务命令重试必须保持不变" }
+    },
+    "responses": {
+      "CommandAccepted": { "description": "机构已受理，不等于业务完成", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AcceptedResult" } } } },
+      "CallbackAccepted": { "description": "平台已验签并受理事件", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AcceptedResult" } } } },
+      "CommandRejected": { "description": "字段或业务前置条件不满足", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResult" } } } },
+      "Unauthenticated": { "description": "时间窗、来源或签名校验失败", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResult" } } } },
+      "NotFound": { "description": "关联交易或机构指令不存在", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResult" } } } },
+      "Conflict": { "description": "状态冲突、金额冲突或幂等键被其他请求占用", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResult" } } } }
+    },
+    "schemas": {
+      "AcceptedResult": { "type": "object", "required": ["code", "message", "data", "request_id"], "properties": { "code": { "const": 0 }, "message": { "type": "string" }, "request_id": { "type": "string" }, "data": { "type": "object", "required": ["instruction_id", "status"], "properties": { "instruction_id": { "type": "string" }, "provider_reference": { "type": ["string", "null"] }, "status": { "type": "string", "enum": ["accepted", "processing", "completed", "failed"] } } } } },
+      "ErrorResult": { "type": "object", "required": ["code", "message", "request_id"], "properties": { "code": { "type": "integer", "minimum": 40000, "maximum": 59999 }, "message": { "type": "string" }, "request_id": { "type": "string" }, "detail": { "type": "string" } } },
+      "Money": { "type": "object", "required": ["amount", "currency"], "properties": { "amount": { "type": "number", "exclusiveMinimum": 0, "multipleOf": 0.01 }, "currency": { "type": "string", "const": "CNY" } } },
+      "Party": { "type": "object", "required": ["merchant_id", "legal_name", "credit_code"], "properties": { "merchant_id": { "type": "string" }, "legal_name": { "type": "string" }, "credit_code": { "type": "string", "minLength": 15, "maxLength": 18 }, "account_reference": { "type": ["string", "null"], "description": "机构令牌或脱敏引用，不得传完整银行卡号" } } },
+      "CommandBase": { "type": "object", "required": ["command_id", "occurred_at", "callback_url"], "properties": { "command_id": { "type": "string" }, "occurred_at": { "type": "string", "format": "date-time" }, "callback_url": { "type": "string", "format": "uri", "pattern": "^https://" } } },
+      "CaSignatureCommand": { "allOf": [{ "$ref": "#/components/schemas/CommandBase" }, { "type": "object", "required": ["order_id", "contract_id", "contract_digest", "party", "signer_id"], "properties": { "order_id": { "type": "string" }, "contract_id": { "type": "string" }, "contract_digest": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" }, "party": { "type": "string", "enum": ["buyer", "supplier"] }, "signer_id": { "type": "string" }, "signer_authorization_ref": { "type": "string" } } }] },
+      "EscrowPaymentCommand": { "allOf": [{ "$ref": "#/components/schemas/CommandBase" }, { "type": "object", "required": ["action", "order_id", "payment_id", "payer", "payee", "money"], "properties": { "action": { "type": "string", "enum": ["create_escrow", "release", "refund", "query"] }, "order_id": { "type": "string" }, "payment_id": { "type": "string" }, "payer": { "$ref": "#/components/schemas/Party" }, "payee": { "$ref": "#/components/schemas/Party" }, "money": { "$ref": "#/components/schemas/Money" }, "condition_refs": { "type": "array", "items": { "type": "string" }, "description": "合同、验收、发票等放款条件的证据引用" } } }] },
+      "LogisticsCommand": { "allOf": [{ "$ref": "#/components/schemas/CommandBase" }, { "type": "object", "required": ["action", "order_id", "shipment_id", "goods", "consignor", "consignee"], "properties": { "action": { "type": "string", "enum": ["create", "cancel", "query"] }, "order_id": { "type": "string" }, "shipment_id": { "type": "string" }, "goods": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["product_id", "name", "quantity", "unit"], "properties": { "product_id": { "type": "string" }, "name": { "type": "string" }, "quantity": { "type": "number", "exclusiveMinimum": 0 }, "unit": { "type": "string" }, "temperature_requirement": { "type": ["string", "null"] } } } }, "consignor": { "$ref": "#/components/schemas/Party" }, "consignee": { "$ref": "#/components/schemas/Party" }, "service_level": { "type": "string" } } }] },
+      "InvoiceCommand": { "allOf": [{ "$ref": "#/components/schemas/CommandBase" }, { "type": "object", "required": ["action", "order_id", "invoice_id", "seller", "buyer", "money", "items"], "properties": { "action": { "type": "string", "enum": ["issue", "verify", "red_letter", "void"] }, "order_id": { "type": "string" }, "invoice_id": { "type": "string" }, "seller": { "$ref": "#/components/schemas/Party" }, "buyer": { "$ref": "#/components/schemas/Party" }, "money": { "$ref": "#/components/schemas/Money" }, "items": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["name", "quantity", "unit_price", "tax_rate"], "properties": { "name": { "type": "string" }, "quantity": { "type": "number", "exclusiveMinimum": 0 }, "unit_price": { "type": "number", "minimum": 0 }, "tax_rate": { "type": "number", "minimum": 0, "maximum": 1 } } } }, "original_invoice_no": { "type": ["string", "null"] } } }] },
+      "RegulatoryCommand": { "allOf": [{ "$ref": "#/components/schemas/CommandBase" }, { "type": "object", "required": ["action", "subject_type", "subject_id", "authority_code", "data_minimization_version", "evidence_refs"], "properties": { "action": { "type": "string", "enum": ["submit", "query", "withdraw"] }, "subject_type": { "type": "string", "enum": ["merchant", "product", "batch", "shipment", "inspection", "quarantine"] }, "subject_id": { "type": "string" }, "authority_code": { "type": "string" }, "data_minimization_version": { "type": "string" }, "evidence_refs": { "type": "array", "minItems": 1, "items": { "type": "string" } } } }] },
+      "CallbackBase": { "type": "object", "required": ["provider", "event_id", "status", "occurred_at"], "properties": { "provider": { "type": "string" }, "event_id": { "type": "string" }, "status": { "type": "string" }, "occurred_at": { "type": "string", "format": "date-time" }, "evidence_ref": { "type": ["string", "null"] }, "failure_code": { "type": ["string", "null"] }, "failure_message": { "type": ["string", "null"] } } },
+      "CaCallback": { "allOf": [{ "$ref": "#/components/schemas/CallbackBase" }, { "type": "object", "required": ["order_id", "contract_id", "party", "certificate_ref", "contract_digest"], "properties": { "provider": { "const": "ca" }, "order_id": { "type": "string" }, "contract_id": { "type": "string" }, "party": { "type": "string", "enum": ["buyer", "supplier"] }, "certificate_ref": { "type": "string" }, "contract_digest": { "type": "string" } } }] },
+      "PaymentCallback": { "allOf": [{ "$ref": "#/components/schemas/CallbackBase" }, { "type": "object", "required": ["order_id", "payment_id", "amount", "currency", "provider_transaction_id"], "properties": { "provider": { "const": "payment" }, "order_id": { "type": "string" }, "payment_id": { "type": "string" }, "amount": { "type": "number", "exclusiveMinimum": 0 }, "currency": { "const": "CNY" }, "provider_transaction_id": { "type": "string" } } }] },
+      "LogisticsCallback": { "allOf": [{ "$ref": "#/components/schemas/CallbackBase" }, { "type": "object", "required": ["order_id", "tracking_no"], "properties": { "provider": { "const": "logistics" }, "order_id": { "type": "string" }, "tracking_no": { "type": "string" }, "temperature": { "type": ["number", "null"], "minimum": -80, "maximum": 80 }, "proof_of_delivery_ref": { "type": ["string", "null"] } } }] },
+      "InvoiceCallback": { "allOf": [{ "$ref": "#/components/schemas/CallbackBase" }, { "type": "object", "required": ["order_id", "invoice_no", "amount", "currency"], "properties": { "provider": { "const": "invoice" }, "order_id": { "type": "string" }, "invoice_no": { "type": "string" }, "amount": { "type": "number", "exclusiveMinimum": 0 }, "currency": { "const": "CNY" }, "verification_ref": { "type": ["string", "null"] } } }] },
+      "RegulatoryCallback": { "allOf": [{ "$ref": "#/components/schemas/CallbackBase" }, { "type": "object", "required": ["subject_type", "subject_id", "authority_code", "receipt_ref"], "properties": { "provider": { "const": "regulator" }, "subject_type": { "type": "string" }, "subject_id": { "type": "string" }, "authority_code": { "type": "string" }, "receipt_ref": { "type": "string" } } }] }
+    }
+  }
+}

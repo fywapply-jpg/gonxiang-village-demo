@@ -1,6 +1,7 @@
 {
   "platformVersion": "v8533",
   "apiVersion": "v8530",
+  "institutionContract": "docs/openapi/数智供社-v8533-机构适配协议-v1.openapi.json",
   "capabilities": [
     {
       "key": "HTTPS_API",
