@@ -121,6 +121,9 @@ const productionActionSources = [
   text("work/shuzhi-v8502-source/src/pages/finance/loanlife.vue"),
   text("work/shuzhi-v8502-source/src/pages/trade/canteen-bid.vue"),
   text("work/shuzhi-v8502-source/src/pages/village/groupbuy.vue"),
+  text("work/shuzhi-v8502-source/src/pages/arch/flow.vue"),
+  text("work/shuzhi-v8502-source/src/pages/trade/tender.vue"),
+  text("work/shuzhi-v8502-source/src/pages/agri/credit.vue"),
   text("work/shuzhi-v8502-source/src/pages/admin/index.vue"),
 ];
 const collectVueFiles = (directory) => readdirSync(resolve(root, directory), { withFileTypes: true }).flatMap((entry) => {

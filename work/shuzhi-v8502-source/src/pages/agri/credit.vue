@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 
+const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBlocked = () => uni.showModal({
+  title: "需后台信用服务",
+  content: "正式环境的信用扣分、背书资格和白名单变化必须由后台基于真实履约证据、授权岗位和审计记录计算；当前页面不会修改本地信用结果。",
+  showCancel: false,
+});
+
 // 白名单准入流程
 const flow = [
   { t: "农户建档", d: "农户提交身份、地块、种植品类" },
@@ -42,6 +49,7 @@ const deviation = computed(() => endorser.value.endorsed - endorser.value.consis
 const devCase = { farmer: "王二发", endorsed: "B（可信）", actual: "C · 品控不合格 + 违约 2 次", deduct: 9 };
 // 风险核验：所背书对象再次违约 → 背书人连带扣分、可能失格
 function simDeviation() {
+  if (productionBuild) return productionBlocked();
   uni.showModal({
     title: "背书对象违约 · 连带问责", confirmText: "确认扣分",
     content: `你背书的农户再次出现违约/品控不合格。\n按连带问责规则，背书人「${endorser.value.name}」信用扣 12 分。\n若信用跌破 60 分，将暂停背书资格、取消背书人地位。`,

@@ -29,6 +29,12 @@ const bids = ref<Bid[]>([
 ]);
 
 const opened = ref(false);
+const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBlocked = () => uni.showModal({
+  title: "需后台招采服务",
+  content: "正式环境的开标、评标和中标结果必须来自后台招采单、授权采购岗位和可审计评标记录；当前页面不会生成本地中标结果。",
+  showCancel: false,
+});
 const minPrice = computed(() => Math.min(...bids.value.map((b) => b.price)));
 // 综合得分：价格分(最低价满分,线性) + 资质 + 履约，按权重
 function scoreOf(b: Bid) {
@@ -38,8 +44,9 @@ function scoreOf(b: Bid) {
 const ranked = computed(() => [...bids.value].map((b) => ({ ...b, score: scoreOf(b) })).sort((a, b) => b.score - a.score));
 const winner = computed(() => ranked.value[0]);
 
-function openBid() { opened.value = true; }
+function openBid() { if (productionBuild) return productionBlocked(); opened.value = true; }
 function award() {
+  if (productionBuild) return productionBlocked();
   uni.showModal({ title: "中标公示", showCancel: false, confirmText: "知道了",
     content: `中标供应商：${winner.value.supplier}\n综合得分：${winner.value.score}（价${rule.price}+质${rule.qual}+履${rule.perform}）\n中标价：¥${winner.value.price} 万\n\n结果公示、全程留痕；进入 CA 数字证书电子签约（可信时间戳固化、上链存证）与配送履约。` });
 }
