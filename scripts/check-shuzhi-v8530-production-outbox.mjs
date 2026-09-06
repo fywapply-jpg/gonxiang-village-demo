@@ -113,6 +113,8 @@ try {
   productionServer = start(prodPort);
   await ready(productionServer, prodPort);
   const orderId = "SZGS-2026-850901";
+  const readOnlyWorkflow = await request(prodPort, "/api/v1/operations/alliance/advance", financeToken, { evidence: "只读财务岗位不应推进业务流程" }, "outbox-readonly-workflow");
+  add(readOnlyWorkflow.status === 403, "生产只读岗位禁止推进业务工作流", `HTTP ${readOnlyWorkflow.status}`);
   const fractionalMoney = await request(prodPort, "/api/v1/trades", buyerToken, { scene: "buyerSupply", supplier_id: "m-supplier", items: [{ product_id: "p-orange", qty: 1 }], service_amount: 0.001 }, "outbox-money-fraction-000001");
   add(fractionalMoney.status === 400, "生产金额拒绝半分值", `HTTP ${fractionalMoney.status}`);
   const caBuyer = await request(prodPort, `/api/v1/trades/${orderId}/contract/sign`, buyerToken, { party: "buyer", certificate_ref: "CA-BUYER-PROD", signer_authorization_ref: "AUTH-BUYER-PROD" }, "outbox-ca-buyer-000001");

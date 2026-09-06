@@ -12,6 +12,7 @@ const dbDir = mkdtempSync(join(tmpdir(), "szgs-demand-flow-"));
 const dbPath = join(dbDir, "demand-flow.db");
 const principals = JSON.stringify({
   "buyer-flow-token": { id: "buyer-flow-user", name: "采购方回归用户", role: "buyer", merchant_id: "m-buyer" },
+  "agri-flow-token": { id: "agri-flow-user", name: "农资采购方回归用户", role: "agri", merchant_id: "m-agri-flow" },
   "supplier-flow-token": { id: "supplier-flow-user", name: "供货方回归用户", role: "supplier", merchant_id: "m-supplier" },
 });
 const server = spawn(process.execPath, ["local-backend/server.mjs"], {
@@ -47,6 +48,13 @@ try {
   }
   expect(healthy, "需求回归测试服务启动", output.trim().split("\n").at(-1) || "服务未就绪");
 
+  // 补充农资采购方主体，验证 agri 与普通采购商共享采购需求/建单规则。
+  const agriDb = new DatabaseSync(dbPath);
+  const agriTime = new Date().toISOString();
+  agriDb.prepare("INSERT OR IGNORE INTO organizations VALUES (?,?,?,?,?,?)").run("org-flow-agri", "农资采购方回归主体", "农资采购方", "测试区域", "active", agriTime);
+  agriDb.prepare("INSERT OR IGNORE INTO merchants VALUES (?,?,?,?,?,?,?,?)").run("m-agri-flow", "org-flow-agri", "农资采购方回归主体", "agri", "verified", "verified", "低", agriTime);
+  agriDb.close();
+
   const anonymous = await request("/api/v1/purchase-demands");
   expect(anonymous.status === 401, "采购需求匿名访问拦截", `HTTP ${anonymous.status}`);
 
@@ -55,6 +63,13 @@ try {
   expect(createdDemand.status === 201 && createdDemand.data?.data?.buyer_id === "m-buyer" && createdDemand.data?.data?.status === "open", "采购方发布需求写入后台", createdDemand.data?.data?.id || "未返回需求号");
   const createdDemandReplay = await request("/api/v1/purchase-demands", { token: "buyer-flow-token", method: "POST", key: "demand-flow-create-001", body: createDemandPayload });
   expect(createdDemandReplay.status === 201 && createdDemandReplay.data?.data?.id === createdDemand.data?.data?.id, "采购需求发布幂等重放", createdDemand.data?.data?.id || "未返回原需求号");
+
+  const agriDemand = await request("/api/v1/purchase-demands", { token: "agri-flow-token", method: "POST", key: "demand-flow-agri-create-001", body: { title: "农资采购方需求回归", category: "水果", qty: 1, unit: "箱", destination: "湖北·武汉", delivery_window: "2026-09-10" } });
+  expect(agriDemand.status === 201 && agriDemand.data?.data?.buyer_id === "m-agri-flow", "农资采购方发布需求", agriDemand.data?.data?.id || "未返回需求号");
+  const agriDemandList = await request("/api/v1/purchase-demands", { token: "agri-flow-token" });
+  expect(agriDemandList.status === 200 && agriDemandList.data?.data?.some((item) => item.id === agriDemand.data?.data?.id), "农资采购方读取自己的需求", "列表按采购主体隔离");
+  const agriOrder = await request("/api/v1/trades", { token: "agri-flow-token", method: "POST", key: "demand-flow-agri-order-001", body: { supplier_id: "m-supplier", items: [{ product_id: "p-orange", qty: 1 }], service_amount: 0, scene: "buyerSupply", settlement_model: "持牌机构条件结算（验收后分账）" } });
+  expect(agriOrder.status === 201 && agriOrder.data?.data?.buyer_id === "m-agri-flow", "农资采购方生成正式订单", agriOrder.data?.data?.id || "未返回订单号");
 
   const sessionBoundProduct = await request("/api/v1/products", { token: "supplier-flow-token", method: "POST", key: "demand-flow-session-product", body: { name: "会话主体推导商品", category: "水果", price: 68, stock: 20 } });
   expect(sessionBoundProduct.status === 201 && sessionBoundProduct.data?.data?.status === "pending_review", "商品上架从会话主体推导", sessionBoundProduct.data?.data?.id || "未返回商品号");

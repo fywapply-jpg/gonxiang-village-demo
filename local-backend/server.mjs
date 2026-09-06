@@ -1179,7 +1179,7 @@ const server = createServer(async (req, res) => {
   const operationAdvanceMatch = path.match(/^\/api\/v1\/operations\/([^/]+)\/(advance|reset)$/);
   if (operationAdvanceMatch && req.method === "POST") {
     if (!authorized(req)) return error(res, 401, "需要业务操作授权");
-    if (productionMode && !privileged(req)) return error(res, 403, "生产工作流只能由后台授权岗位推进");
+    if (productionMode && !hasAdminPermission(req, "data", true)) return error(res, 403, "生产工作流只能由具备数据管理写权限的后台岗位推进");
     const [, moduleKey, action] = operationAdvanceMatch;
     const payload = await body(req), idemKey = requestKey(req, payload);
     if (productionMode && !idemKey) return error(res, 400, "生产业务工作流必须提供 Idempotency-Key");
@@ -1410,7 +1410,7 @@ const server = createServer(async (req, res) => {
     const ownIds = principal?.merchant_ids || [];
     const rows = privileged(req)
       ? db.prepare("SELECT d.*,b.name buyer_name FROM purchase_demands d JOIN merchants b ON b.id=d.buyer_id ORDER BY d.updated_at DESC").all()
-      : principal?.role === "buyer"
+      : ["buyer", "agri"].includes(principal?.role)
         ? db.prepare("SELECT d.*,b.name buyer_name FROM purchase_demands d JOIN merchants b ON b.id=d.buyer_id WHERE d.buyer_id IN (SELECT value FROM json_each(?)) ORDER BY d.updated_at DESC").all(JSON.stringify(ownIds))
         : principal?.role === "supplier"
           ? db.prepare("SELECT d.*,b.name buyer_name FROM purchase_demands d JOIN merchants b ON b.id=d.buyer_id WHERE d.status IN ('open','quoting') ORDER BY d.updated_at DESC").all()
@@ -1514,13 +1514,13 @@ const server = createServer(async (req, res) => {
     if (quoteId && (!acceptedQuote || acceptedQuote.status !== "accepted" || acceptedQuote.demand_status === "closed")) return error(res, 409, "只有采购方已确认且尚未转订单的报价才能生成正式交易");
     const requestedBuyer = String(payload.buyer_id || "").trim();
     const requestedSupplier = String(payload.supplier_id || "").trim();
-    const buyerId = requestedBuyer || acceptedQuote?.buyer_id || (principal?.role === "buyer" ? principal.merchant_ids?.[0] : "");
+    const buyerId = requestedBuyer || acceptedQuote?.buyer_id || (["buyer", "agri"].includes(principal?.role) ? principal.merchant_ids?.[0] : "");
     const supplierId = requestedSupplier || acceptedQuote?.supplier_id || (principal?.role === "supplier" ? principal.merchant_ids?.[0] : "");
     if (!buyerId || !supplierId || buyerId === supplierId) return error(res, 400, "采购方和供货方主体不能为空且不能相同");
     if (acceptedQuote && (buyerId !== acceptedQuote.buyer_id || supplierId !== acceptedQuote.supplier_id)) return error(res, 409, "正式订单主体必须与已确认报价的买卖双方一致");
     if (acceptedQuote && !privileged(req) && !canAccessMerchant(req, acceptedQuote.buyer_id)) return error(res, 403, "只有确认报价的采购主体可以生成正式订单");
     if (!privileged(req) && !canAccessMerchant(req, principal?.role === "supplier" ? supplierId : buyerId)) return error(res, 403, "无权代表该交易主体创建订单");
-    const buyer = db.prepare("SELECT * FROM merchants WHERE id=? AND role='buyer' AND license_status='verified' AND bank_status='verified'").get(buyerId);
+    const buyer = db.prepare("SELECT * FROM merchants WHERE id=? AND role IN ('buyer','agri') AND license_status='verified' AND bank_status='verified'").get(buyerId);
     const supplier = db.prepare("SELECT * FROM merchants WHERE id=? AND role='supplier' AND license_status='verified' AND bank_status='verified'").get(supplierId);
     if (!buyer || !supplier || !merchantVerificationReady(buyerId) || !merchantVerificationReady(supplierId)) return error(res, 403, "交易双方必须完成经营资质和对公账户核验");
     const items = acceptedQuote
