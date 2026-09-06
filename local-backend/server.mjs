@@ -1697,6 +1697,10 @@ const server = createServer(async (req, res) => {
     const order = db.prepare("SELECT * FROM orders WHERE id=?").get(id);
     if (!order) return error(res, 404, "交易不存在");
     if (!canActForOrder(req, order, "buyer")) return error(res, 403, "只有采购方或授权后台岗位可以发起托管入金");
+    if (productionMode) {
+      const contract = db.prepare("SELECT status FROM contracts WHERE order_id=? ORDER BY id LIMIT 1").get(id);
+      if (!contract || contract.status !== "已签署") return error(res, 409, "合同双方完成CA签署前不得发起托管入金");
+    }
     if (productionMode && process.env.SHUZHI_PAYMENT_READY !== "true") return error(res, 503, "支付机构尚未完成联调，暂不接受生产托管入金");
     let payment = db.prepare("SELECT * FROM payments WHERE order_id=? ORDER BY rowid DESC LIMIT 1").get(id);
     if (!payment) return error(res, 404, "交易托管支付记录不存在");
@@ -2112,6 +2116,10 @@ const server = createServer(async (req, res) => {
     if (!order) return error(res, 404, "交易不存在");
     if (!canActForOrder(req, order, "supplier")) return error(res, 403, "只有供货方或授权后台岗位可以登记发运");
     if (["已取消", "已完成"].includes(order.status) || db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(id)) return error(res, 409, "交易已取消或已关账，禁止新增运单");
+    if (productionMode) {
+      const contract = db.prepare("SELECT status FROM contracts WHERE order_id=? ORDER BY id LIMIT 1").get(id);
+      if (!contract || contract.status !== "已签署") return error(res, 409, "合同双方完成CA签署前不得登记发运");
+    }
     if (productionMode && process.env.SHUZHI_LOGISTICS_READY !== "true") return error(res, 503, "物流机构尚未完成联调，暂不接受生产发运登记");
     if (!payload.provider) return error(res, 400, "物流公司不能为空");
     const shipmentId = String(payload.shipment_id || `SHP-${randomUUID()}`).trim();

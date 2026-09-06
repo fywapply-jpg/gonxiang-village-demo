@@ -145,6 +145,16 @@ try {
   add(caBuyer.status === 202 && caBuyer.payload?.institution_outbox?.status === "pending", "生产 CA 签署先入 Outbox", `HTTP ${caBuyer.status}`);
   const caSupplier = await request(prodPort, `/api/v1/trades/${orderId}/contract/sign`, supplierToken, { party: "supplier", certificate_ref: "CA-SUPPLIER-PROD", signer_authorization_ref: "AUTH-SUPPLIER-PROD" }, "outbox-ca-supplier-000001");
   add(caSupplier.status === 202, "生产 CA 双方指令均异步受理", `HTTP ${caSupplier.status}`);
+  const paymentBeforeCa = await request(prodPort, `/api/v1/trades/${orderId}/pay`, buyerToken, { payer_credit_code: "91420100MA8V85013Y", payee_credit_code: "91360722MA8V85013X" }, "outbox-payment-before-ca");
+  add(paymentBeforeCa.status === 409, "CA 双签完成前禁止托管入金", `HTTP ${paymentBeforeCa.status}`);
+  const dbContract = new DatabaseSync(dbPath);
+  const contractRow = dbContract.prepare("SELECT id,hash FROM contracts WHERE order_id=? LIMIT 1").get(orderId);
+  dbContract.close();
+  const contractDigest = createHash("sha256").update(`${contractRow.id}:${orderId}:${contractRow.hash}`).digest("hex");
+  const caBuyerCallback = await webhook(prodPort, "ca", { event_id: `outbox-ca-buyer-callback-${Date.now()}`, order_id: orderId, contract_id: contractRow.id, party: "buyer", signer_id: "ca-buyer-signer", signer_name: "采购授权签约人", certificate_ref: "CA-BUYER-PROD", contract_digest: contractDigest, status: "signed" }, baseEnv.CA_WEBHOOK_SECRET);
+  add(caBuyerCallback.status === 202, "采购方 CA 签署回执落账", `HTTP ${caBuyerCallback.status}`);
+  const caSupplierCallback = await webhook(prodPort, "ca", { event_id: `outbox-ca-supplier-callback-${Date.now()}`, order_id: orderId, contract_id: contractRow.id, party: "supplier", signer_id: "ca-supplier-signer", signer_name: "供货授权签约人", certificate_ref: "CA-SUPPLIER-PROD", contract_digest: contractDigest, status: "signed" }, baseEnv.CA_WEBHOOK_SECRET);
+  add(caSupplierCallback.status === 202 && caSupplierCallback.payload?.next_action?.includes("支付"), "供货方 CA 签署回执完成双签", `HTTP ${caSupplierCallback.status}`);
   const mismatchedIdentity = await request(prodPort, `/api/v1/trades/${orderId}/shipments`, supplierToken, { provider: "carrier-prod", consignor: "赣南优品", consignee: "华中商贸", consignor_credit_code: "91360722MA8V85013Q", consignee_credit_code: "91420100MA8V85013Y", consignor_address: "江西省赣州市寻乌县农产品仓", consignee_address: "湖北省武汉市洪山区团餐配送中心", goods: [{ product_id: "p-orange", name: "赣南脐橙", quantity: 10, unit: "箱" }] }, "outbox-logistics-mismatched-identity");
   add(mismatchedIdentity.status === 409, "机构指令主体代码错配阻断", `HTTP ${mismatchedIdentity.status}`);
   const shipment = await request(prodPort, `/api/v1/trades/${orderId}/shipments`, supplierToken, { provider: "carrier-prod", consignor: "赣南优品", consignee: "华中商贸", consignor_credit_code: "91360722MA8V85013X", consignee_credit_code: "91420100MA8V85013Y", consignor_address: "江西省赣州市寻乌县农产品仓", consignee_address: "湖北省武汉市洪山区团餐配送中心", goods: [{ product_id: "p-orange", name: "赣南脐橙", quantity: 10, unit: "箱" }] }, "outbox-logistics-000001");
