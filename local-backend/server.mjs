@@ -75,7 +75,14 @@ const integrationSecrets = {
   invoice: process.env.INVOICE_WEBHOOK_SECRET || (productionMode ? "" : "local-demo-invoice-secret"),
   regulator: process.env.REGULATOR_WEBHOOK_SECRET || (productionMode ? "" : "local-demo-regulator-secret"),
 };
-if (productionMode && Object.values(integrationSecrets).some((secret) => String(secret).length < 32)) throw new Error("生产模式必须为 CA、物流、支付、发票和监管回调配置不少于 32 个字符的独立密钥");
+const integrationReadyEnv = {
+  ca: "SHUZHI_CA_READY",
+  logistics: "SHUZHI_LOGISTICS_READY",
+  payment: "SHUZHI_PAYMENT_READY",
+  invoice: "SHUZHI_INVOICE_READY",
+  regulator: "SHUZHI_REGULATOR_READY",
+};
+if (productionMode && Object.entries(integrationSecrets).some(([provider, secret]) => process.env[integrationReadyEnv[provider]] === "true" && String(secret).length < 32)) throw new Error("已 ready 的机构必须配置不少于 32 个字符的独立回调密钥");
 const tradeConfig = {
   settlement_models: [
     { key: "advance", name: "预付款 + 尾款", badge: "适合定制/备产" },

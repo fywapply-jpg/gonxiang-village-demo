@@ -75,10 +75,12 @@ const add = (ok, name, detail) => {
 
 const tempRoot = mkdtempSync(join(tmpdir(), "shuzhi-v8530-startup-"));
 let secure;
+let staged;
 let wechatOnly;
 let weak;
+let securePort;
 try {
-  const securePort = 8899 + Math.floor(Math.random() * 200);
+  securePort = 8899 + Math.floor(Math.random() * 200);
   const secureEnv = makeEnv(securePort, join(tempRoot, "secure.sqlite"));
   secure = startChild(secureEnv);
   try {
@@ -113,7 +115,20 @@ try {
     await stopChild(secure);
   }
 
-  const wechatOnlyPort = securePort + 1;
+  const stagedPort = securePort + 1;
+  const stagedEnv = makeEnv(stagedPort, join(tempRoot, "staged.sqlite"));
+  for (const key of ["CA_WEBHOOK_SECRET", "LOGISTICS_WEBHOOK_SECRET", "PAYMENT_WEBHOOK_SECRET", "INVOICE_WEBHOOK_SECRET", "REGULATOR_WEBHOOK_SECRET"]) delete stagedEnv[key];
+  staged = startChild(stagedEnv);
+  try {
+    const ready = await waitReady(staged, stagedPort);
+    add(true, "未 ready 机构可分阶段启动", `未配置未启用机构回调密钥仍可启动，/health/ready=${ready.status}`);
+  } catch (error) {
+    add(false, "未 ready 机构可分阶段启动", error instanceof Error ? error.message : String(error));
+  } finally {
+    await stopChild(staged);
+  }
+
+  const wechatOnlyPort = stagedPort + 1;
   const wechatOnlyEnv = {
     ...makeEnv(wechatOnlyPort, join(tempRoot, "wechat-only.sqlite")),
     SHUZHI_WECHAT_AUTH_READY: "true",
@@ -144,6 +159,7 @@ try {
   }
 } finally {
   await stopChild(secure);
+  await stopChild(staged);
   await stopChild(wechatOnly);
   await stopChild(weak);
   rmSync(tempRoot, { recursive: true, force: true });
