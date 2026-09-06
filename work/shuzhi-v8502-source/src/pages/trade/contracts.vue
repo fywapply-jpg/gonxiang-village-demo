@@ -217,6 +217,7 @@ const running = ref(false);
 const orderNo = ref("SO-2026-08504");
 const signParty = ref<"buyer" | "supplier">("buyer");
 const backendSync = ref("");
+const backendReady = ref(!productionBuild);
 let timer: ReturnType<typeof setInterval> | null = null;
 
 onLoad((q) => {
@@ -224,10 +225,11 @@ onLoad((q) => {
   if (q?.party === "supplier") signParty.value = "supplier";
   if (orderNo.value.startsWith("SZGS-")) {
     getTrade(orderNo.value).then((trade) => {
+      backendReady.value = true;
       const signatures = trade?.contracts?.[0]?.signatures || [];
       if (signatures.length >= 2) signedCount.value = templates.length;
       backendSync.value = `后台状态：${signatures.length}/2 个主体已签署`;
-    }).catch(() => { backendSync.value = "后台状态暂不可读，请先完成登录授权"; });
+    }).catch(() => { backendReady.value = false; backendSync.value = "后台状态暂不可读，请先完成登录授权"; });
   }
 });
 
@@ -318,6 +320,11 @@ onUnmounted(stopRun);
 
 <template>
   <view class="sg-page contract-page">
+    <view v-if="productionBuild && !backendReady" class="production-empty">
+      <text class="production-empty-title">等待后台合同订单</text>
+      <text class="production-empty-text">正式环境需要后台返回真实订单和签署状态后才展示合同包；本地合同示例不会混入生产数据。</text>
+    </view>
+    <template v-else>
     <view class="hero">
       <view class="hero-top"><text class="hero-k">数智供社 v8533 · 订单 {{ orderNo }}</text><text class="hero-state">{{ packState }}</text></view>
       <text class="hero-t">CA合同包与履约计划</text>
@@ -432,11 +439,15 @@ onUnmounted(stopRun);
       <view class="bottom-ghost" @tap="goFulfillment">进入履约计划</view>
       <view class="bottom-main" @tap="signSelected">{{ signedCount === 14 ? "合同包已完整" : `继续签署 ${signedCount + 1}/14` }}</view>
     </view>
+    </template>
   </view>
 </template>
 
 <style lang="scss" scoped>
 .contract-page { padding-bottom: 150rpx; background: #f3f6f5; }
+.production-empty { margin: 48rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 .hero-sync { display: block; margin-top: 10rpx; color: #d7f7e6; font-size: 20rpx; }
 .party-switch { display: flex; align-items: center; gap: 12rpx; margin-top: 14rpx; }
 .party-label { color: rgba(255,255,255,.78); font-size: 20rpx; }

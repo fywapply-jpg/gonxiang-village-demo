@@ -88,6 +88,11 @@ function sign() {
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">暂无后台托管项目</text>
+      <text class="production-empty-text">正式环境只展示后台返回的地块、服务组织、价格和验收数据；本地托管测算不会混入生产项目。</text>
+    </view>
+    <template v-else>
     <view class="hero">
       <text class="ht">🚜 土地托管 · 农业社会化服务</text>
       <text class="hs">地还是你的，活我们干。不流转土地、不改承包权，只把"耕种防收烘储"委托给服务组织——解决"谁来种地"。</text>
@@ -200,6 +205,7 @@ function sign() {
     <view class="tip">🔗 农业生产托管是供销社为农服务的主责主业:不流转土地、不改变承包关系,把一家一户干不了、干不好、干起来不划算的环节集中起来干。作业全程北斗定位+逐环节农户验收+上链存证,既防服务组织虚报糊弄,也让农事记录自动沉淀进溯源与认证——服务组织的信誉同样可算、可比、可换钱。</view>
 
     <view class="bar"><view class="bar-btn" @tap="sign">签订托管协议 · 约 ¥{{ ((menuCount === menu.length ? FULL_PRICE : menuTotal) * ACRES / 10000).toFixed(1) }} 万 / {{ ACRES }} 亩</view></view>
+    </template>
   </view>
 </template>
 
@@ -288,4 +294,7 @@ function sign() {
 .tip { margin: 20rpx 24rpx 30rpx; font-size: 21rpx; color: $sg-text-3; line-height: 1.6; }
 .bar { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom)); box-shadow: 0 -4rpx 20rpx rgba(0,0,0,0.06); }
 .bar-btn { text-align: center; padding: 22rpx 0; border-radius: 999rpx; font-size: 26rpx; font-weight: 700; background: linear-gradient(135deg, $sg-primary, $sg-primary-deep); color: #fff; }
+.production-empty { margin: 48rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>

@@ -34,6 +34,7 @@ const batches = ref([
 const current = ref(2);
 const orderId = ref("SO-2026-08504");
 const backendSync = ref("");
+const backendReady = ref(!productionBuild);
 const backendItems = ref<Array<{ id: number; qty: number }>>([]);
 const settling = ref(false);
 const normalAmount = computed(() => batches.value.filter((b) => b.status === "已验收").reduce((sum, b) => sum + b.amount, 0));
@@ -45,9 +46,10 @@ onLoad((q) => {
   if (q?.order) orderId.value = String(q.order);
   if (orderId.value.startsWith("SZGS-")) {
     getTrade(orderId.value).then((data) => {
+      backendReady.value = true;
       backendItems.value = Array.isArray(data?.items) ? data.items.map((item: any) => ({ id: Number(item.id), qty: Number(item.qty) })) : [];
       backendSync.value = `后台订单：${data.status} · 资金：${data.payment_status} · 发票：${data.invoice_status}`;
-    }).catch(() => { backendSync.value = "后台状态暂不可读，请先完成登录授权"; });
+    }).catch(() => { backendReady.value = false; backendSync.value = "后台状态暂不可读，请先完成登录授权"; });
   }
 });
 
@@ -132,6 +134,11 @@ function contracts() {
 
 <template>
   <view class="sg-page fulfill-page">
+    <view v-if="productionBuild && !backendReady" class="production-empty">
+      <text class="production-empty-title">等待后台履约订单</text>
+      <text class="production-empty-text">正式环境需要后台返回真实订单、批次和资金状态后才展示履约计划；本地履约示例不会混入生产数据。</text>
+    </view>
+    <template v-else>
     <view class="hero">
       <text class="hero-k">数智供社 v8533 · 合同 {{ contract.no }}</text>
       <text class="hero-t">合同履约计划与资金放行</text>
@@ -206,11 +213,15 @@ function contracts() {
       <text class="boundary-t">履约与签约衔接原则</text>
       <text>合同模板只定义权利义务；业务事件生成真实证据；系统校验条件后只向持牌机构发送资金指令。时间戳、哈希与链上存证补强证据，但不替代主体CA签章、授权和真实履约事实。</text>
     </view>
+    </template>
   </view>
 </template>
 
 <style lang="scss" scoped>
 .fulfill-page { padding-bottom: 38rpx; background: #f3f6f5; }
+.production-empty { margin: 48rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 .hero { padding: 32rpx 26rpx 28rpx; color: #fff; background: linear-gradient(145deg, #0c5737, #16884c 58%, #1e6d85); border-radius: 0 0 32rpx 32rpx; }
 .hero-k { display: block; font-size: 20rpx; opacity: .8; }
 .hero-t { display: block; margin-top: 12rpx; font-size: 36rpx; font-weight: 900; }

@@ -232,6 +232,11 @@ async function reset() {
       <text>每个项目都按“主体—任务—单据—证据—资金—验收”运行，点击即可逐环节生成真实形态的业务结果。</text>
       <text class="backend-badge" :class="{ online: backendOnline }">{{ syncing ? "正在连接后台" : backendOnline ? "前后台已同步 · SQLite 工作流" : productionBuild ? "正式环境需后台授权岗位" : "本地联调模式 · 点击刷新重试" }}</text>
     </view>
+    <view v-if="productionBuild && !backendOnline" class="production-empty">
+      <text class="production-empty-title">等待后台运营目录</text>
+      <text class="production-empty-text">正式环境连接后台成功后才展示项目、数量和业务事件；本地项目样例不会混入生产数据。</text>
+    </view>
+    <template v-else>
     <scroll-view scroll-x class="module-scroll">
       <view class="module-row">
         <view v-for="m in modules" :key="m.key" class="module" :class="{ on: activeKey === m.key }" @tap="activeKey = m.key">
@@ -258,6 +263,7 @@ async function reset() {
     </view>
     <view v-else class="empty">选择任一项目，点击“执行下一环节”开始办理。</view>
     <view class="note">当前仅保存项目进度和业务日志，不直接扣款、开票、报关或调用政府与机构系统；正式办理需逐一签约并接入对应权威接口。</view>
+    </template>
   </view>
 </template>
 
@@ -270,6 +276,9 @@ async function reset() {
 .hero text:last-child { margin-top: 7rpx; font-size: 19rpx; line-height: 1.55; opacity: .85; }
 .backend-badge { display: inline-block !important; width: fit-content; margin-top: 12rpx !important; padding: 6rpx 12rpx; border-radius: 999rpx; color: #ffe6a3; background: rgba(255,255,255,.12); font-size: 17rpx !important; opacity: 1 !important; }
 .backend-badge.online { color: #d7ffe6; background: rgba(40,190,112,.25); }
+.production-empty { margin: 48rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 .module-scroll { white-space: nowrap; padding: 17rpx 0 3rpx; }
 .module-row { display: inline-flex; gap: 10rpx; padding: 0 24rpx; }
 .module { width: 130rpx; padding: 13rpx; border: 2rpx solid transparent; border-radius: 15rpx; background: #fff; display: inline-flex; flex-direction: column; align-items: center; }

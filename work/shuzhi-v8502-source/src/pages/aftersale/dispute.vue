@@ -127,6 +127,11 @@ const liableTag = computed(() => scene.value.liable === "buyer" ? "买方担责"
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">暂无后台争议工单</text>
+      <text class="production-empty-text">正式环境只展示后台返回的订单、证据和责任认定；本地争议案例不会混入生产数据。</text>
+    </view>
+    <template v-else>
     <view class="hero">
       <text class="ht">⚖️ 质量争议 · 判责理赔闭环</text>
       <text class="hs">生鲜 B2B 到货争议：一键调证（复磅·第三方检测·冷链温控·溯源）→ 自动判责 → 理赔 → 追责</text>
@@ -195,7 +200,7 @@ const liableTag = computed(() => scene.value.liable === "buyer" ? "买方担责"
       <text class="pen" v-for="(p, i) in scene.penalties" :key="i">· {{ p }}</text>
     </view>
 
-    <view class="tip">🔗 争议判责依据全链数据（复磅/第三方检测/冷链温控/GPS/溯源批次）交叉核验，责任方自动锁定；理赔可走货损险/质量险先行代偿，追责联动信用分、商户星级、党组织背书连带与黑名单，形成"谁失责谁担责"闭环。</view>
+    </template>
   </view>
 </template>
 
@@ -247,5 +252,8 @@ const liableTag = computed(() => scene.value.liable === "buyer" ? "买方担责"
 .st-v { font-size: 28rpx; font-weight: 800; }
 .penalties { margin: 0 24rpx; background: #fff; border-radius: $sg-radius-lg; box-shadow: $sg-shadow; padding: 18rpx 22rpx; }
 .pen { display: block; font-size: 22rpx; color: $sg-text-2; line-height: 1.9; }
-.tip { margin: 20rpx 24rpx 40rpx; font-size: 21rpx; color: $sg-text-3; line-height: 1.6; }
+ .tip { margin: 20rpx 24rpx 40rpx; font-size: 21rpx; color: $sg-text-3; line-height: 1.6; }
+ .production-empty { margin: 48rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+ .production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+ .production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>

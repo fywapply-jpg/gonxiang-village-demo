@@ -59,6 +59,11 @@ const scenes = [
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">暂无后台四流交易</text>
+      <text class="production-empty-text">正式环境只展示后台返回的合同、物流、资金和发票凭证；本地四流案例不会作为真实交易展示。</text>
+    </view>
+    <template v-else>
     <view class="hero">
       <text class="ht">🔗 四流合一 · 融资贸易风控</text>
       <text class="hs">合同流 · 物流 · 资金流 · 发票流 四流一致，才放款/付款——防走单走票不走货、空转、重复质押</text>
@@ -109,6 +114,7 @@ const scenes = [
     </view>
 
     <view class="tip">🔗 四流数据（合同/物流/发票/资金）全程上链、交叉存证，隐私计算联合银行/税务/海关核验；四流合一是放款与大额付款的前置硬条件，杜绝虚假贸易骗取融资。</view>
+    </template>
   </view>
 </template>
 
@@ -151,4 +157,7 @@ const scenes = [
 .scenes { padding: 0 24rpx; }
 .scene { display: block; background: #fff; border-radius: $sg-radius; box-shadow: $sg-shadow; padding: 16rpx 18rpx; margin-bottom: 10rpx; font-size: 22rpx; color: $sg-text-2; }
 .tip { margin: 20rpx 24rpx 30rpx; font-size: 21rpx; color: $sg-text-3; line-height: 1.6; }
+.production-empty { margin: 48rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>

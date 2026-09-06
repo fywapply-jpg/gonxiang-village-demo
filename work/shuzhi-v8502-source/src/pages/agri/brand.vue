@@ -61,6 +61,11 @@ function nav(url: string) { uni.navigateTo({ url }); }
 
 <template>
   <view class="sg-page">
+    <view v-if="productionBuild" class="production-empty">
+      <text class="production-empty-title">暂无后台品牌资产</text>
+      <text class="production-empty-text">正式环境只展示品牌管理机构返回的授权、证书和溢价数据；本地品牌案例不会混入生产数据。</text>
+    </view>
+    <template v-else>
     <view class="hero">
       <text class="ht">🏆 区域公用品牌运营中心</text>
       <text class="hs">把「赣南脐橙」这类地标做成品牌资产：授权用标、一品一码防伪、守标者享溢价、冒用劣质者摘牌——好品质卖出好价钱，良币驱逐劣币。</text>
@@ -138,6 +143,7 @@ function nav(url: string) { uni.navigateTo({ url }); }
     </view>
 
     <view class="tip">🔗 区域公用品牌是全体守标者共有的无形资产,最怕"一颗老鼠屎坏一锅汤"——个别冒用、以次充好会砸掉整个地标的招牌。运营中心用"严准入、强监管、一品一码防伪、违规即摘牌"守住品质底线,让守标的好农户拿到品牌溢价、劣质冒用者被踢出局。品质→品牌→溢价→反哺品质,飞轮转起来,良币驱逐劣币。</view>
+    </template>
   </view>
 </template>
 
@@ -202,4 +208,7 @@ function nav(url: string) { uni.navigateTo({ url }); }
 .lk-d { font-size: 19rpx; color: $sg-text-3; margin-top: 2rpx; }
 .lk-go { font-size: 30rpx; color: $sg-text-3; }
 .tip { margin: 20rpx 24rpx 30rpx; font-size: 21rpx; color: $sg-text-3; line-height: 1.6; }
+.production-empty { margin: 48rpx 24rpx; padding: 34rpx 28rpx; border: 2rpx solid #d8e7de; border-radius: 22rpx; background: #f7fbf8; }
+.production-empty-title { display: block; color: #145d3c; font-size: 32rpx; font-weight: 900; }
+.production-empty-text { display: block; margin-top: 16rpx; color: #5e7167; font-size: 24rpx; line-height: 1.7; }
 </style>
