@@ -52,8 +52,8 @@ const validateParty = (party, provider, field) => {
 
 const validateMoney = (money, provider) => {
   if (!money || typeof money !== "object" || Array.isArray(money)) throw new InstitutionAdapterError("INVALID_COMMAND", `${provider} 机构命令缺少 money`);
-  const amount = Number(money.amount);
-  if (!Number.isFinite(amount) || amount <= 0 || Math.abs(amount * 100 - Math.round(amount * 100)) > 1e-7 || money.currency !== "CNY") throw new InstitutionAdapterError("INVALID_COMMAND", `${provider} 机构命令 money 必须是精确到人民币分的 CNY 金额`);
+  const amount = money.amount;
+  if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0 || Math.abs(amount * 100 - Math.round(amount * 100)) > 1e-7 || money.currency !== "CNY") throw new InstitutionAdapterError("INVALID_COMMAND", `${provider} 机构命令 money 必须是精确到人民币分的 CNY 数值金额`);
 };
 
 const validateProviderCommand = (provider, command) => {
@@ -76,7 +76,7 @@ const validateProviderCommand = (provider, command) => {
     if (!Array.isArray(command.goods) || command.goods.length < 1) throw new InstitutionAdapterError("INVALID_COMMAND", "logistics 机构命令 goods 不能为空");
     for (const item of command.goods) {
       requiredText(item, ["product_id", "name", "unit"], provider);
-      if (!Number.isFinite(Number(item.quantity)) || Number(item.quantity) <= 0) throw new InstitutionAdapterError("INVALID_COMMAND", "logistics 机构命令 goods.quantity 不合法");
+      if (typeof item.quantity !== "number" || !Number.isFinite(item.quantity) || item.quantity <= 0) throw new InstitutionAdapterError("INVALID_COMMAND", "logistics 机构命令 goods.quantity 必须是正数值");
     }
     validateParty(command.consignor, provider, "consignor");
     validateParty(command.consignee, provider, "consignee");
@@ -91,7 +91,7 @@ const validateProviderCommand = (provider, command) => {
     if (!Array.isArray(command.items) || command.items.length < 1) throw new InstitutionAdapterError("INVALID_COMMAND", "invoice 机构命令 items 不能为空");
     for (const item of command.items) {
       requiredText(item, ["name"], provider);
-      if (!Number.isFinite(Number(item.quantity)) || Number(item.quantity) <= 0 || !Number.isFinite(Number(item.unit_price)) || Number(item.unit_price) < 0 || !Number.isFinite(Number(item.tax_rate)) || Number(item.tax_rate) < 0 || Number(item.tax_rate) > 1) throw new InstitutionAdapterError("INVALID_COMMAND", "invoice 机构命令商品金额或税率不合法");
+      if (typeof item.quantity !== "number" || !Number.isFinite(item.quantity) || item.quantity <= 0 || typeof item.unit_price !== "number" || !Number.isFinite(item.unit_price) || item.unit_price < 0 || typeof item.tax_rate !== "number" || !Number.isFinite(item.tax_rate) || item.tax_rate < 0 || item.tax_rate > 1) throw new InstitutionAdapterError("INVALID_COMMAND", "invoice 机构命令商品金额或税率必须是数值且在协议范围内");
     }
     return;
   }
