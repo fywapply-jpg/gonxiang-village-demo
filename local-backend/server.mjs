@@ -1068,6 +1068,7 @@ const processIntegrationWebhook = async (provider, req, res) => {
         if (!accepted || (productionMode && !acceptanceCompleteForOrder(orderId))) throw new HttpError(409, "全量验收合格前不得接收开票回调");
         if (db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(orderId)) throw new HttpError(409, "交易已完成结算，禁止发票回调覆盖账本");
         if (invoice.status === "已开具" && invoiceState !== "verified") throw new HttpError(409, "发票已开具，禁止回调回退状态");
+        if (invoice.status === "已开具" && String(invoice.invoice_no || "").trim() && String(invoice.invoice_no).trim() !== invoiceNo) throw new HttpError(409, "发票已开具，禁止回调替换发票号码");
         const verified = invoiceState === "verified";
         const nextInvoiceStatus = verified ? "已开具" : invoiceState === "failed" ? "开票失败" : "待验真";
         db.prepare("UPDATE invoices SET invoice_no=?,status=?,issued_at=? WHERE id=?").run(invoiceNo, nextInvoiceStatus, verified ? (invoice.issued_at || t) : invoice.issued_at, invoice.id);

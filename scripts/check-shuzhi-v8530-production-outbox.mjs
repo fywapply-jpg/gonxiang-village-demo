@@ -212,7 +212,16 @@ try {
   add(ledgerMissingInvoiceNo.status === 200 && ledgerMissingInvoiceNo.payload?.reconciliation?.acceptance_invoice_gate === false, "账本缺少发票号码不得显示四流通过", `HTTP ${ledgerMissingInvoiceNo.status}`);
   const dbInvoiceMissingNoRestore = new DatabaseSync(dbPath);
   dbInvoiceMissingNoRestore.prepare("UPDATE invoices SET status='待开具',invoice_no=NULL,issued_at=NULL WHERE order_id=?").run(orderId);
+  dbInvoiceMissingNoRestore.prepare("UPDATE orders SET invoice_status='待开票' WHERE id=?").run(orderId);
   dbInvoiceMissingNoRestore.close();
+  const invoiceCallback = await webhook(prodPort, "invoice", { event_id: `outbox-invoice-callback-${Date.now()}`, order_id: orderId, invoice_no: "PROD-INVOICE-CALLBACK-001", status: "verified", amount: 276000 }, baseEnv.INVOICE_WEBHOOK_SECRET);
+  add(invoiceCallback.status === 202, "发票验真回调落账", `HTTP ${invoiceCallback.status}`);
+  const invoiceOverwriteCallback = await webhook(prodPort, "invoice", { event_id: `outbox-invoice-overwrite-${Date.now()}`, order_id: orderId, invoice_no: "PROD-INVOICE-CALLBACK-002", status: "verified", amount: 276000 }, baseEnv.INVOICE_WEBHOOK_SECRET);
+  add(invoiceOverwriteCallback.status === 409, "已开具发票号码禁止回调替换", `HTTP ${invoiceOverwriteCallback.status}`);
+  const dbInvoiceCallbackRestore = new DatabaseSync(dbPath);
+  dbInvoiceCallbackRestore.prepare("UPDATE invoices SET status='待开具',invoice_no=NULL,issued_at=NULL WHERE order_id=?").run(orderId);
+  dbInvoiceCallbackRestore.prepare("UPDATE orders SET invoice_status='待开票' WHERE id=?").run(orderId);
+  dbInvoiceCallbackRestore.close();
   const dbInvoiceMismatch = new DatabaseSync(dbPath);
   dbInvoiceMismatch.prepare("UPDATE invoices SET amount=amount+1 WHERE order_id=?").run(orderId);
   dbInvoiceMismatch.close();
