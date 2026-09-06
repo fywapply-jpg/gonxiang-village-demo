@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 
 // 待定标的供应链金融业务包
 const pkg = {

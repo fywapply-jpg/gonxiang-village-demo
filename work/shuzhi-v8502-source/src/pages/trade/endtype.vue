@@ -4,7 +4,7 @@ import { onLoad } from "@dcloudio/uni-app";
 import { cityMarkets, endTypeDetail } from "@/mock/citymarket";
 import { useTradeStore } from "@/store/trade";
 const trade = useTradeStore();
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 
 const mkey = ref(cityMarkets[0].key);
 const key = ref("market");

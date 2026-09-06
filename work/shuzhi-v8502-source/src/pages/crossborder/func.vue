@@ -5,7 +5,7 @@ import { cbFuncs, cbHubs, type CbFunc } from "@/mock/crossborder";
 import { useUserStore } from "@/store/user";
 import { recordPlatformEvent } from "@/services/localApi";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 
 const user = useUserStore();
 const f = ref<CbFunc>(cbFuncs[0]);

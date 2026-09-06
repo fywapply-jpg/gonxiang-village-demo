@@ -5,7 +5,7 @@ import { mainBankOf } from "@/mock/mainbank";
 import { useUserStore } from "@/store/user";
 
 const user = useUserStore();
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const name = ref("订单贷");
 onLoad((q) => { if (q?.name) name.value = decodeURIComponent(q.name); });
 const bank = computed(() => mainBankOf(name.value));

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const products = [
   { name: "种植保险", icon: "🌾", desc: "自然灾害/病虫害减产保障", premium: "8 元/亩起" },
   { name: "货运险", icon: "🚚", desc: "运输途中货损、冷链失温保障", premium: "0.3% 货值" },

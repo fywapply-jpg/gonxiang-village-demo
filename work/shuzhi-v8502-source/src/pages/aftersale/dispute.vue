@@ -2,7 +2,7 @@
 import { ref, reactive, computed } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const productionBlocked = () => uni.showModal({ title: "需后台争议服务", content: "正式环境的取证、判责和退款必须由后台工单及授权岗位处理，当前未执行本地判责。", showCancel: false });
 
 // 一笔真实 B2B 订单（60 吨现货单 · 4.6 元/斤 = ¥55.2 万；与年度合约 OA-2026-0781/600 吨 各自独立）

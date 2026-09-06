@@ -6,7 +6,7 @@ import { useAuthStore } from "@/store/auth";
 import { useUserStore } from "@/store/user";
 import { useTradeStore } from "@/store/trade";
 import { createEscrowPayment, getTrade, recordPlatformEvent } from "@/services/localApi";
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const auth = useAuthStore();
 const user = useUserStore();
 const trade = useTradeStore();

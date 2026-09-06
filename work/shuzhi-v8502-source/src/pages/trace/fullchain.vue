@@ -3,7 +3,7 @@ import { ref, computed } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { recordPlatformEvent } from "@/services/localApi";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 
 // 支持两类溯源：植物源（脐橙，默认）/ 动物源（生猪）
 type TraceType = "produce" | "meat";

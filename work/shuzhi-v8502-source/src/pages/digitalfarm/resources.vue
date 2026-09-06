@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from "vue";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const productionBlocked = () => uni.showModal({ title: "需后台资源服务", content: "正式环境的资源匹配必须使用县级审定底图和后台规则服务，当前未执行本地匹配。", showCancel: false });
 
 type TabKey = "map" | "match" | "execute";

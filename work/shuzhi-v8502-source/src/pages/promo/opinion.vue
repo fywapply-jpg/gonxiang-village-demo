@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { promoTickets } from "@/mock/promo";
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const list = ref(promoTickets.map((t) => ({ ...t })));
 const handleFlow = ["2h 内响应", "属地核实", "线下化解", "回访确认", "闭环上报"];
 const statusColor: Record<string, string> = { 待处理: "#d64541", 处理中: "#d99a2b", 已化解: "#16884c" };

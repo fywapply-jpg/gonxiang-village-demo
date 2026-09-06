@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { recordPlatformEvent } from "@/services/localApi";
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const types = ["功能建议", "体验问题", "数据错误", "投诉举报", "其他"];
 const type = ref("功能建议");
 const text = ref("");

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 
 // 社区团长（数智供社 · 民生团购，区别于 B2B 推广组织）
 const me = { name: "王阿姨", store: "龙南镇 · 数智供社 3 号店", members: 128, level: "金牌团长", month: 2360, orders: 186 };

@@ -2,7 +2,7 @@
 import { ref, computed } from "vue";
 import { villageProducts } from "@/mock/products";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 
 const storeTypes = [
   { key: "cvs", icon: "🏪", n: "社区便利店" },

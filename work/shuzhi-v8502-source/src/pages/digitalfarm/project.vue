@@ -3,7 +3,7 @@ import { computed, onUnmounted, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { recordPlatformEvent } from "@/services/localApi";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 
 type ProjectType = "plant" | "livestock";
 type Stage = {

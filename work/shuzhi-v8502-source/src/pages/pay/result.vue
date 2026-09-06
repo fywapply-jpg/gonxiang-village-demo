@@ -3,7 +3,7 @@ import { ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { payMethods } from "@/utils/pay";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const r = ref({ ok: true, method: "wechat", amount: 0, no: "", trade: "" });
 onLoad((q) => {
   if (productionBuild) {

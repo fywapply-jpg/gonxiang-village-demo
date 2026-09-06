@@ -4,7 +4,7 @@ import { onLoad } from "@dcloudio/uni-app";
 import { cbHubs, type CbHub } from "@/mock/crossborder";
 import { useUserStore } from "@/store/user";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 
 const user = useUserStore();
 const h = ref<CbHub>(cbHubs[0]);

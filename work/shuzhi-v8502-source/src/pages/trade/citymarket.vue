@@ -3,7 +3,7 @@ import { ref, computed } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { cityMarkets, cityLoop, cityRelations } from "@/mock/citymarket";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const productionBlocked = () => uni.showModal({ title: "需后台市场服务", content: "正式环境的市场闭环必须由后台订单、仓储、物流和结算数据驱动，当前未执行本地闭环。", showCancel: false });
 
 const mkey = ref(cityMarkets[0].key);

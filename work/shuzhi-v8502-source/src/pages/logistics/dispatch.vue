@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { netHub, satellites, terminals, slaTiers, tempZones, tempCurve, routeStats, trackNodes } from "@/mock/dispatch";
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const productionBlocked = () => uni.showModal({ title: "需第三方物流服务", content: "正式环境轨迹和温控必须来自已签约物流商回传，当前未执行本地轨迹播放。", showCancel: false });
 const tmax = Math.max(...tempCurve) + 1;
 const step = ref(0);

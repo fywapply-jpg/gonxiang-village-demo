@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { dividend as d } from "@/mock";
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 function withdraw() {
   if (productionBuild) return uni.showModal({ title: "需要持牌结算服务", content: "正式环境的收益提现必须由后台审核并由银行/支付机构返回受理结果，当前未提交提现。", showCancel: false });
   uni.showModal({ title: "收益提现", content: `提现 ¥${d.total} 至数字人民币钱包 / 微信钱包？`,

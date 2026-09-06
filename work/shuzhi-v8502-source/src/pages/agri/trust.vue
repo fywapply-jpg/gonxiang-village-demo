@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const productionBlocked = () => uni.showModal({
   title: "需后台农业托管服务",
   content: "正式环境的托管协议必须由后台核验土地/服务组织、作业范围、机构结算条件和授权签署后生成真实合同；当前不会在前台确认签约。",

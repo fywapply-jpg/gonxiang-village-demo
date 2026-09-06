@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 // 村社综合服务站 · 一村/一社区一站，依托村集体，一站通办
 const station = { name: "范庄村社综合服务站", master: "张建国（村集体聘 · 兼推广员）", addr: "江西省赣州市信丰县安西镇范庄村口 · 供销社旧址改建" };
 

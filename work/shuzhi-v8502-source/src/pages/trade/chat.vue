@@ -2,7 +2,7 @@
 import { ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 
 const to = ref("采购方");
 onLoad((q) => { if (q?.to) to.value = decodeURIComponent(q.to); });

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const productionBlocked = () => uni.showModal({ title: "需后台风控服务", content: "正式环境的风险评估必须由后台风控引擎返回可审计结果，当前未执行本地扫描。", showCancel: false });
 
 const kpis = [

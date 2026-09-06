@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 
 const kpis = [
   { n: "86 亿", l: "年进口额" }, { n: "320", l: "进口品类" },

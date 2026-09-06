@@ -197,7 +197,7 @@ const current = ref(-1);
 const completed = ref(0);
 const running = ref(false);
 const finished = ref(false);
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const productionBlocked = () => uni.showModal({
   title: "需后台交易编排服务",
   content: "正式环境的 18 步交易流程必须由后台根据真实订单、合同、物流、发票和结算回执逐节点推进；当前页面只提供流程说明，不会本地生成完成结果。",

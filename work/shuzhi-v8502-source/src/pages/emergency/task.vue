@@ -2,7 +2,7 @@
 import { ref } from "vue";
 import { recordPlatformEvent } from "@/services/localApi";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const productionBlocked = (action: string) => uni.showModal({ title: "需后台应急台账", content: `正式环境${action}必须由后台校验征召令、主体、签收证据和财政结算条件；当前未执行本地状态变更。`, showCancel: false });
 
 const order = {

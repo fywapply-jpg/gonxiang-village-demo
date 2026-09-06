@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 
 // 同一品类：赣南脐橙。同样的地、同样的品种、同样产 100 吨，信誉不同 → 收益不同
 const BASE = 4.6;      // 基准收购价 元/斤

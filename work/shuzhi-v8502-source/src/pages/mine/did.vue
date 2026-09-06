@@ -2,7 +2,7 @@
 import { useUserStore } from "@/store/user";
 import { recordPlatformEvent } from "@/services/localApi";
 const user = useUserStore();
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const did = productionBuild ? "" : (user.did || "did:sg:0x7f3a9cb3c50a");
 function copy() { void recordPlatformEvent("mine", "COPY_DID", { did }).catch(() => {}); uni.setClipboardData({ data: did, success: () => uni.showToast({ title: "已复制", icon: "none" }) }); }
 </script>

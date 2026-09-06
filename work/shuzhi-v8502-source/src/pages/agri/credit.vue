@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const productionBlocked = () => uni.showModal({
   title: "需后台信用服务",
   content: "正式环境的信用扣分、背书资格和白名单变化必须由后台基于真实履约证据、授权岗位和审计记录计算；当前页面不会修改本地信用结果。",

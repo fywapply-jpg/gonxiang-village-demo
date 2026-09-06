@@ -11,7 +11,7 @@ import {
 } from "@/services/settlementEngine";
 import { recordPlatformEvent } from "@/services/localApi";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const productionBlocked = () => uni.showModal({ title: "需后台机构结算", content: "正式环境结算进度只能来自持牌机构回调和后台对账结果；当前页面为流程展示，不会推进资金状态。", showCancel: false });
 
 const STORAGE_KEY = "shuzhi-settlement-v8533";

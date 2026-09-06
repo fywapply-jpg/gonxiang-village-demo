@@ -3,7 +3,7 @@ import { computed, onUnmounted, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { getTrade, signTradeContract } from "@/services/localApi";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const productionBlocked = () => uni.showModal({ title: "需 CA 合同服务", content: "正式环境合同包必须由 CA/电子签平台签署并回传证据，当前未执行本地签署。", showCancel: false });
 
 type ContractTemplate = {

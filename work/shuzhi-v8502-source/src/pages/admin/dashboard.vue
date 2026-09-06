@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 
 // 时间维度筛选
 const periods = [{ k: "今日", m: 1 }, { k: "本周", m: 6.5 }, { k: "本月", m: 28 }, { k: "本年", m: 320 }];

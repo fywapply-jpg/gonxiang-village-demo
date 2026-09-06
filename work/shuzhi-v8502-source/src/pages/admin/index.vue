@@ -4,7 +4,7 @@ import { useAdminStore, MGMT_ROLES, MGMT_MODULES, MGMT_MATRIX, PERM_LABEL, type 
 import { useAuthStore } from "@/store/auth";
 import { getAdminContext, recordPlatformEvent, switchAdminRole } from "@/services/localApi";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const admin = useAdminStore();
 const auth = useAuthStore();
 const backendOnline = ref(false);

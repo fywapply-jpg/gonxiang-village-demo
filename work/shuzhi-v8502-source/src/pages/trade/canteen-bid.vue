@@ -2,7 +2,7 @@
 import { ref, computed } from "vue";
 import { bidCase, bidScore } from "@/mock/procure";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const productionBlocked = () => uni.showModal({ title: "需后台招采服务", content: "正式环境的公告、报价、评标和中标结果必须来自后台招采单及授权采购岗位，当前页面不生成本地中标结果。", showCancel: false });
 
 const opened = ref(false);

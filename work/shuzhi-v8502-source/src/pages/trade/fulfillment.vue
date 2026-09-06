@@ -3,7 +3,7 @@ import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { acceptTrade, getTrade, settleTrade } from "@/services/localApi";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const productionBlocked = (action: string) => uni.showModal({ title: "需后台履约接口", content: `正式环境${action}必须由后台写入订单、批次和证据，并由相应岗位授权；当前页面不会在本地推进状态。`, showCancel: false });
 
 const contract = {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { SPLIT, promoEligibility, promoDuties, promoKpis, promoFlow, promoOrgs } from "@/mock/promo";
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 function nav(u: string) { uni.navigateTo({ url: u }); }
 const step = ref(0);
 const running = ref(false);

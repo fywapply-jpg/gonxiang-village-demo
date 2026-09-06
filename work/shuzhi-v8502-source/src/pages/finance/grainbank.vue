@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { mainBankOf } from "@/mock/mainbank";
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const bank = mainBankOf("粮食银行");
 
 // 我的存粮（电子粮票）—— 多品类，一粮多用

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { villageProducts } from "@/mock/products";
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const directSupply = villageProducts.slice(0, 4);
 
 const meals = [

@@ -3,7 +3,7 @@ import { ref } from "vue";
 import { villageProducts } from "@/mock/products";
 import { recordPlatformEvent } from "@/services/localApi";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const productionBlocked = (action: string) => uni.showModal({ title: "需后台社区团购", content: `正式环境${action}必须先创建后台团购订单、核验团长和收款条件，当前不会生成本地支付订单。`, showCancel: false });
 
 // 团长

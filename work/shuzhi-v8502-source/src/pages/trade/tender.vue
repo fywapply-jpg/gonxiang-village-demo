@@ -29,7 +29,7 @@ const bids = ref<Bid[]>([
 ]);
 
 const opened = ref(false);
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const productionBlocked = () => uni.showModal({
   title: "需后台招采服务",
   content: "正式环境的开标、评标和中标结果必须来自后台招采单、授权采购岗位和可审计评标记录；当前页面不会生成本地中标结果。",

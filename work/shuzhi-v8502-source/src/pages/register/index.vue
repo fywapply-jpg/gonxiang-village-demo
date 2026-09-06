@@ -6,7 +6,7 @@ import { useAuthStore } from "@/store/auth";
 import { submitMerchantApplication } from "@/services/localApi";
 const user = useUserStore();
 const auth = useAuthStore();
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 onShow(() => { if (auth.legalVerified) faceDone.value = true; });
 
 // 主体类型 —— 全部以企业法人为主

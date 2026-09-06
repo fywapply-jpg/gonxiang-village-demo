@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 
 // —— 套期保值盈亏测算（可拉动价格）——
 const H = { spot: 800, hedge: 600, base: 4.5, jin: 2000 }; // 现货800吨/对冲600吨/基准价/斤每吨

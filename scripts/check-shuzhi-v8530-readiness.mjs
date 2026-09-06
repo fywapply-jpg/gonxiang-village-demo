@@ -138,6 +138,17 @@ const collectVueFiles = (directory) => readdirSync(resolve(root, directory), { w
   if (entry.isDirectory()) return collectVueFiles(relative);
   return entry.isFile() && entry.name.endsWith(".vue") ? [relative] : [];
 });
+const sourceVueFiles = collectVueFiles("work/shuzhi-v8502-source/src");
+const productionModeFiles = [...sourceVueFiles, "work/shuzhi-v8502-source/src/services/localApi.ts", "work/shuzhi-v8502-source/src/utils/pay.ts"]
+  .filter((path) => text(path).includes("productionBuild"));
+const legacyProductionModeFiles = sourceVueFiles.filter((path) => {
+  const source = text(path);
+  return source.includes("Boolean(import.meta.env.PROD)") || source.includes('import.meta.env.MODE === "production"');
+});
+const inconsistentProductionModeFiles = productionModeFiles.filter((path) => !text(path).includes('String(import.meta.env.VITE_API_BASE || "").startsWith("https://")'));
+add(legacyProductionModeFiles.length === 0 && inconsistentProductionModeFiles.length === 0 ? "pass" : "fail", "前端演示/生产模式判定一致", legacyProductionModeFiles.length === 0 && inconsistentProductionModeFiles.length === 0
+  ? `${productionModeFiles.length} 个页面以 HTTPS API 根地址进入正式模式；本地 HTTP 小程序保留演示模式`
+  : `旧判定：${legacyProductionModeFiles.join(", ") || "无"}；不一致：${inconsistentProductionModeFiles.join(", ") || "无"}`);
 const mockPageFiles = collectVueFiles("work/shuzhi-v8502-source/src/pages")
   .filter((path) => text(path).includes("from \"@/mock"));
 const mockPageGuardFailures = mockPageFiles.filter((path) => {
@@ -229,7 +240,7 @@ add(serverSource.includes("platform_fee_base") && serverSource.includes("orderGo
 add(apiSource.includes("Idempotency-Key") && apiSource.includes("newIdempotencyKey") && apiSource.includes("createTradeOrder") && apiSource.includes("createPurchaseDemand") && apiSource.includes("signTradeContract") && apiSource.includes("settleTrade") && apiSource.includes("getPurchaseDemands") && apiSource.includes("submitDemandQuote") && apiSource.includes("acceptDemandQuote") && apiSource.includes("quote_id?: string") ? "pass" : "fail", "前台后端接线", "订单创建、采购需求发布/报价、报价确认、合同、验收、开票、结算动作调用后台并携带幂等键及服务端金额");
 add(apiSource.includes("destination_lat?: number | null") && apiSource.includes("delivery_address?: string") && apiSource.includes("delivery_lat?: number") && text("work/shuzhi-v8502-source/src/pages/trade/publish.vue").includes("chooseDestination") && text("work/shuzhi-v8502-source/src/pages/trade/supply-detail.vue").includes("chooseDeliveryLocation") && text("work/shuzhi-v8502-source/src/pages/trade/batch-workbench.vue").includes("delivery_lat: currentTx.deliveryLat") ? "pass" : "fail", "前台收货坐标接线", "正式采购需求、直接下单和批量建单都能采集收货地址与坐标，交由后台服务半径闸门复核");
 add(serverProductBlock.includes("const requestedMerchantId") && serverProductBlock.includes("principal?.merchant_ids") && serverProductBlock.includes("role IN ('supplier','agri')") && publishPageSource.includes("const productionBuild") && publishPageSource.includes("...(productionBuild ? {} : { merchant_id: \"m-supplier\" })") && publishPageSource.includes("...(productionBuild ? {} : { buyer_id: \"m-buyer\" })") ? "pass" : "fail", "交易主体会话绑定", "生产商品/采购发布不依赖前端写死主体 ID，服务端按认证会话绑定主体并校验供货/采购角色");
-add(apiSource.includes("const productionBuild") && apiSource.includes('API_BASE.startsWith("https://")') && apiSource.includes('(productionBuild ? "" : "local-demo-token")') && apiSource.includes("const authHeader") && apiSource.includes("...authHeader()") ? "pass" : "fail", "生产会话令牌边界", "正式构建或指向 HTTPS API 的联调构建无会话时不发送本地演示令牌，演示构建仍保留受控联调令牌");
+add(apiSource.includes("const productionBuild") && (apiSource.includes('API_BASE.startsWith("https://")') || apiSource.includes('String(import.meta.env.VITE_API_BASE || "").startsWith("https://")')) && apiSource.includes('(productionBuild ? "" : "local-demo-token")') && apiSource.includes("const authHeader") && apiSource.includes("...authHeader()") ? "pass" : "fail", "生产会话令牌边界", "正式构建或指向 HTTPS API 的联调构建无会话时不发送本地演示令牌，演示构建仍保留受控联调令牌");
 add(/export function advanceLocalTrade[\s\S]*?requestJson<void>/.test(apiSource) && /export function resetLocalTrade[\s\S]*?requestJson<void>/.test(apiSource) ? "pass" : "fail", "前台履约推进幂等接线", "交易履约推进与演示重置复用统一请求封装，生产写操作不会漏传幂等键");
 add(adminSource.includes("requestHeaders.set(\"Idempotency-Key\"") && adminSource.includes("method === \"POST\" || method === \"PUT\" || method === \"PATCH\"") ? "pass" : "fail", "后台写操作幂等接线", "管理台审批、审核、启用和流程推进统一携带服务端幂等键，生产不会因漏传被拦截");
 add(["getOperationCatalog", "advanceOperation", "resetOperation", "getPlatformFeatures", "recordPlatformEvent", "createPurchaseDemand", "createTradeOrder", "cancelTrade", "signTradeContract", "acceptTrade", "issueTradeInvoice", "settleTrade"].every((name) => apiSource.includes(name)) && ["/api/v1/operations/catalog", "operationAdvanceMatch", "platform/features", "platform/events", "path === \"/api/v1/purchase-demands\" && req.method === \"POST\"", "path === \"/api/v1/trades\" && req.method === \"POST\"", "cancelMatch", "contractSignMatch", "acceptMatch", "invoiceMatch", "settleMatch"].every((route) => serverSource.includes(route)) ? "pass" : "fail", "前台接口路由闭包", "采购需求发布、订单创建、取消、业务工作流、平台事件和交易合同—验收—开票—结算调用均有对应后端路由");

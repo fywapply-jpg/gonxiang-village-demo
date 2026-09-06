@@ -3,7 +3,7 @@ import { reactive } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { traceBatch } from "@/mock";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 
 // 以扫码/跳转带入的溯源码为准（预览环境使用同一批脐橙数据，溯源码随扫码变化）
 const b = reactive({ ...traceBatch });

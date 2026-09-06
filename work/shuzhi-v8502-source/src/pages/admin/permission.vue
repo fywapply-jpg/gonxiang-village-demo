@@ -2,7 +2,7 @@
 import { mgmtAccounts, scopeLevels } from "@/mock/regions";
 import { MGMT_ROLES, MGMT_MODULES, MGMT_MATRIX, PERM_LABEL } from "@/store/admin";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 
 const scopeColor: Record<string, string> = { 全国: "#c0392b", 省域: "#d99a2b", 地市: "#16884c", 单点: "#2b6cb0" };
 

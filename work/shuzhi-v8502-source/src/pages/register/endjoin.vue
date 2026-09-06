@@ -5,7 +5,7 @@ import { cityMarkets, endTypeDetail } from "@/mock/citymarket";
 import { promoOrgs, promoters } from "@/mock/promo";
 import { useAuthStore } from "@/store/auth";
 const auth = useAuthStore();
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 
 // 推荐推广组织 / 推广员（建立服务关系，费用按生效合同结算）
 const orgIdx = ref(0);

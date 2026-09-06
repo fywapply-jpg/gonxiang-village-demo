@@ -2,7 +2,7 @@
 import { ref } from "vue";
 import { recordPlatformEvent } from "@/services/localApi";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const productionBlocked = (action: string) => uni.showModal({ title: "需后台隐私工单", content: `正式环境${action}必须由后台验证当前用户、记录授权版本并返回可审计结果；当前未修改本地授权状态。`, showCancel: false });
 
 // 授权项（最小必要原则：仅在使用对应功能时申请）

@@ -14,7 +14,7 @@ export interface PayOrder { title: string; amount: number; no: string; }
 export interface PayResult { ok: boolean; method: string; tradeNo: string; msg?: string; }
 
 const prefix: Record<string, string> = { wechat: "WX", alipay: "ALI", dcep: "DC", bank: "BANK" };
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 
 /**
  * 发起支付。正式构建禁止模拟成功；真实支付必须由后端向持牌机构统一下单并由机构回调确认。

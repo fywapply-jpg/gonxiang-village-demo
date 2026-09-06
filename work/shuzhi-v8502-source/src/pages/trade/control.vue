@@ -2,7 +2,7 @@
 import { computed, ref } from "vue";
 import { useUserStore } from "@/store/user";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const productionBlocked = () => uni.showModal({ title: "需后台交易控制台", content: "正式环境六项核验必须由后台根据真实订单、合同、物流、发票和结算回执返回，当前未执行本地核验。", showCancel: false });
 
 const user = useUserStore();

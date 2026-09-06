@@ -2,7 +2,7 @@
 import { ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 
 const filed = ref(false);        // 是否已完成保供备案
 const emergency = ref(false);    // 应急响应是否激活

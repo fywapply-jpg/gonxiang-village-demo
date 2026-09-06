@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { regions } from "@/mock/regions";
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 function assign(city: string) {
   if (productionBuild) return uni.showModal({ title: "需后台区域权限审批", content: `正式环境「${city}」区域权限必须在独立管理后台按组织层级、岗位和数据范围审批；当前未执行本地分配。`, showCancel: false });
   uni.showModal({ title: "区域权限分配", content: `为「${city}」指派区域管理员并设置数据权限范围（地市级）。`,

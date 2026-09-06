@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 
 type AssetState = "在售" | "在租" | "作业中" | "维保中" | "冻结";
 type AuditState = "verified" | "warning" | "blocked";

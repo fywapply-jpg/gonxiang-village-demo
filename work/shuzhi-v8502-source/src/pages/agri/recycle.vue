@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const productionBlocked = () => uni.showModal({
   title: "需后台循环农业服务",
   content: "正式环境的回收计量、财政补贴、绿色积分和碳减排量必须由后台凭真实称重、转运和持牌处置回执入账；当前不展示或修改本地积分。",

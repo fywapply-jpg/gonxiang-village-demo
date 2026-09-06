@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 
 const zones = ["全部", "冷冻 -18℃", "冷藏 0~4℃", "恒温 10~15℃", "常温"];
 const zone = ref("全部");

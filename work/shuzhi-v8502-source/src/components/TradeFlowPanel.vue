@@ -4,7 +4,7 @@ import { getTradeConfig } from "@/services/localApi";
 
 const props = defineProps<{ side: "supply" | "demand" }>();
 type PlanKey = "advance" | "custody" | "cod" | "credit";
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production" || String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 
 const step = ref(-1);
 const planKey = ref<PlanKey>("custody");

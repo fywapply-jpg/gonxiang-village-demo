@@ -3,7 +3,7 @@ import { ref, computed } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { useAuthStore } from "@/store/auth";
 const auth = useAuthStore();
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 
 const scene = ref<"legal" | "admin" | "review" | "pay">("legal");
 const name = ref("");

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { stationBoard as s } from "@/mock";
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const actDesc: Record<string, string> = {
   线下业务登记: "现场录入产地收购、质检结果、入库信息，数据实时上链存证。",
   物联网设备运维: "冷库温控、传感器等终端故障报修与运维记录上报。",

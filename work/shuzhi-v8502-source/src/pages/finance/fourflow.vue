@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const productionBlocked = () => uni.showModal({ title: "需后台四流核验", content: "正式环境四流一致性必须由后台核验真实凭证，当前未执行本地核验。", showCancel: false });
 
 // 一笔交易的四流数据

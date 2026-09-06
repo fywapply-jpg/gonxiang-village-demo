@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const productionBlocked = () => uni.showModal({ title: "需链上验真服务", content: "正式环境只能展示后台/链上返回的存证和验真结果，当前未生成本地结论。", showCancel: false });
 
 const kpis = [

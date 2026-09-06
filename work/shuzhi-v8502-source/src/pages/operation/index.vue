@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import { advanceOperation, getOperationCatalog, resetOperation, type OperationModule as BackendOperationModule } from "@/services/localApi";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const productionBlocked = () => uni.showModal({ title: "需后台授权岗位", content: "正式环境业务工作流只能由后台授权岗位推进，前台不能在后台断联时本地生成完成结果。", showCancel: false });
 
 interface OperationModule {

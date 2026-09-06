@@ -2,7 +2,7 @@
 import { ref, computed } from "vue";
 import { recordPlatformEvent } from "@/services/localApi";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const productionBlocked = (action: string) => uni.showModal({ title: "需后台核验后执行", content: `正式环境${action}必须由后台写入真实养殖档案，并校验主体、兽医/检测机构和官方检疫证据；当前未执行本地状态变更。`, showCancel: false });
 
 // 多品类养殖切换

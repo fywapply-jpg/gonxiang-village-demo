@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 
 // 出口订单示例
 const order = { no: "EX-2027-0451", goods: "赣南脐橙 特级", qty: "3 × 40尺冷柜 · 约 84 吨", buyer: "新加坡 FreshMart Pte", hub: "海南自贸港枢纽", incoterm: "CIF 新加坡", amount: "US$ 92,400", settle: "数字人民币结汇" };

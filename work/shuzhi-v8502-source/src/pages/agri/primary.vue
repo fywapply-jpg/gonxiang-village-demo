@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const productionBlocked = () => uni.showModal({
   title: "需后台初加工服务",
   content: "正式环境的代加工下单必须由后台核验产能、批次、质量标准、合同和收货方后生成真实订单；当前不会创建本地订单。",

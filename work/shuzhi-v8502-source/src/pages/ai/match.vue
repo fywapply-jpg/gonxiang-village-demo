@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 
 // 一条采购需求，AI 撮合供应商
 const demand = { title: "求购净菜（叶菜类）5 吨/日 · 冷链直配", buyer: "沪上团餐中央厨房", addr: "上海·闵行", need: "A级溯源 · T+0 到厂 · 账期30天" };

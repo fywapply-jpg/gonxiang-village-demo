@@ -5,7 +5,7 @@ import { useUserStore } from "@/store/user";
 import { createPurchaseDemand, submitProduct } from "@/services/localApi";
 
 const user = useUserStore();
-const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
+const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("https://");
 const type = ref<"supply" | "demand">("supply");
 onLoad((q) => { if (q?.type === "demand") type.value = "demand"; });
 
