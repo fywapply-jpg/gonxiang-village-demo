@@ -1018,7 +1018,7 @@ const processIntegrationWebhook = async (provider, req, res) => {
           if (!paidStates.has(payment.status)) throw new HttpError(409, "分账回调前托管资金尚未进入可分账状态");
           const contract = db.prepare("SELECT id,status FROM contracts WHERE order_id=? ORDER BY id LIMIT 1").get(orderId);
           const accepted = db.prepare("SELECT id FROM acceptances WHERE order_id=? AND result='accepted' LIMIT 1").get(orderId);
-          const invoice = db.prepare("SELECT id,amount,status FROM invoices WHERE order_id=? AND status='已开具' LIMIT 1").get(orderId);
+          const invoice = db.prepare("SELECT id,amount,status,invoice_no,issued_at FROM invoices WHERE order_id=? AND status='已开具' AND issued_at IS NOT NULL AND TRIM(COALESCE(invoice_no,''))<>'' LIMIT 1").get(orderId);
           const orderAmount = Number(order.amount);
           const paymentAmount = Number(payment.amount);
           const invoiceAmount = Number(invoice?.amount);
@@ -2206,9 +2206,9 @@ const server = createServer(async (req, res) => {
     if (productionMode && orderGoodsNet(orderId) <= 0) return error(res, 409, "结算缺少商品明细，禁止按订单总额回退计费；请先补齐订单明细并复核");
     const accepted = db.prepare("SELECT id FROM acceptances WHERE order_id=? AND result='accepted' LIMIT 1").get(orderId);
     if (!accepted || (productionMode && !acceptanceCompleteForOrder(orderId))) return error(res, 409, "全量验收合格前不得结算");
-    const invoice = db.prepare("SELECT id FROM invoices WHERE order_id=? AND status='已开具' LIMIT 1").get(orderId);
+    const invoice = db.prepare("SELECT id FROM invoices WHERE order_id=? AND status='已开具' AND issued_at IS NOT NULL AND TRIM(COALESCE(invoice_no,''))<>'' LIMIT 1").get(orderId);
     if (!invoice) return error(res, 409, "发票验真前不得结算");
-    const invoiceDetail = db.prepare("SELECT amount FROM invoices WHERE order_id=? AND status='已开具' LIMIT 1").get(orderId);
+    const invoiceDetail = db.prepare("SELECT amount FROM invoices WHERE order_id=? AND status='已开具' AND issued_at IS NOT NULL AND TRIM(COALESCE(invoice_no,''))<>'' LIMIT 1").get(orderId);
     if (productionMode) {
       moneyCents(order.amount, "订单金额");
       if (invoiceDetail) moneyCents(invoiceDetail.amount, "发票金额");
