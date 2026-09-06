@@ -8,6 +8,8 @@ on:
       - "cloud-server/README.md"
       - "deploy/shuzhi-v8530.service"
       - "admin/App2.tsx"
+      - "admin/**"
+      - "vite.admin.config.ts"
       - "scripts/check-shuzhi-*.mjs"
       - "scripts/run-shuzhi-local-smoke.mjs"
       - "scripts/check-secret-hygiene.mjs"
@@ -24,6 +26,8 @@ on:
       - "cloud-server/README.md"
       - "deploy/shuzhi-v8530.service"
       - "admin/App2.tsx"
+      - "admin/**"
+      - "vite.admin.config.ts"
       - "scripts/check-shuzhi-*.mjs"
       - "scripts/run-shuzhi-local-smoke.mjs"
       - "scripts/check-secret-hygiene.mjs"
@@ -60,6 +64,8 @@ jobs:
         run: npm ci
       - name: Compile current WeChat preview package
         run: npm run build:shuzhi-mp
+      - name: Build current admin console
+        run: npm run build:local-admin
       - name: Check credential hygiene
         run: npm run check:secret-hygiene
       - name: Check v8533 readiness and release assets
