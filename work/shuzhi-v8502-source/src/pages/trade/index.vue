@@ -26,7 +26,7 @@ const productionBuild = String(import.meta.env.VITE_API_BASE || "").startsWith("
 
 onLoad((q) => { if (q && q.tab === "demand") tab.value = "demand"; });
 onLoad(() => {
-  getMerchantServiceArea("m-supplier").then((data) => { serviceArea.value = data; }).catch(() => undefined);
+  if (!productionBuild) getMerchantServiceArea("m-supplier").then((data) => { serviceArea.value = data; }).catch(() => undefined);
   loadRemoteProducts();
   loadRemoteDemands();
 });
@@ -196,9 +196,13 @@ function startBatch() {
   const proceed = () => {
     if (isBuyer) {
       const lines = supplyList.value.filter((p) => selectedSupply.value.includes(p.id)).map((p) => ({
-        id: p.id, supplierId: (p as any).merchant_id || "m-supplier", name: p.name, spec: p.spec, counterparty: p.supplier,
+        id: p.id, supplierId: (p as any).merchant_id || (!productionBuild ? "m-supplier" : ""), name: p.name, spec: p.spec, counterparty: p.supplier,
         origin: p.origin, unit: p.unit, qty: 100, price: p.price, pic: p.pic,
       }));
+      if (productionBuild && lines.some((line) => !line.supplierId)) {
+        uni.showModal({ title: "商品主体缺失", content: "正式批量下单必须使用后台返回的已核验供货主体，当前商品缺少主体绑定。", showCancel: false });
+        return;
+      }
       trade.createBatchCase("buyerSupply", lines, user.certOrg);
     } else {
       const lines = demandList.value.filter((d) => selectedDemand.value.includes(d.id)).map((d, i) => {

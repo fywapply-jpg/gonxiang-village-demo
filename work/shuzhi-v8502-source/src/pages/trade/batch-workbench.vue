@@ -102,7 +102,7 @@ async function executeNext(showToast = true) {
   const step = steps.value[index];
   if (!step) return;
   const evidence = `${step.evidence}-${tx.value.id.slice(-8)}-${String(index + 1).padStart(2, "0")}`;
-  const backendOrderId = tx.value.backendOrderId || (backendMode.value === "production" && !isBuyer.value ? "" : demoBackendOrderId);
+  const backendOrderId = tx.value.backendOrderId || (backendMode.value === "production" ? "" : demoBackendOrderId);
   if (!backendLinked.value && backendMode.value === "production") {
     uni.showModal({ title: "生产后台未连接", content: "生产交易必须先完成订单创建和后台状态同步，当前节点不会在前台本地推进。", showCancel: false });
     return;
@@ -148,7 +148,7 @@ async function syncBackendTrade() {
   try {
     const health = await getLocalHealth();
     backendMode.value = health.runtime_mode === "production" ? "production" : "local-demo";
-    let backendOrderId = currentTx.backendOrderId || (currentTx.scene === "buyerSupply" ? demoBackendOrderId : "");
+    let backendOrderId = currentTx.backendOrderId || (backendMode.value === "production" ? "" : demoBackendOrderId);
     if (backendMode.value === "production" && !currentTx.backendOrderId) {
       if (currentTx.scene === "supplierDemand") {
         const quoteIds = currentTx.quoteIds || [];
@@ -229,7 +229,7 @@ function reset() {
   if (timer) clearInterval(timer);
   timer = null;
   running.value = false;
-  if (backendLinked.value && backendMode.value === "production") {
+  if (backendMode.value === "production") {
     uni.showModal({ title: "生产交易不可重置", content: "生产环境不允许重置真实订单；请由后台按授权流程处理撤销或售后。", showCancel: false });
     return;
   }
