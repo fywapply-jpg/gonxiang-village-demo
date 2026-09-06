@@ -938,7 +938,15 @@ const processIntegrationWebhook = async (provider, req, res) => {
           const contract = db.prepare("SELECT id,status FROM contracts WHERE order_id=? ORDER BY id LIMIT 1").get(orderId);
           const accepted = db.prepare("SELECT id FROM acceptances WHERE order_id=? AND result='accepted' LIMIT 1").get(orderId);
           const invoice = db.prepare("SELECT id,amount,status FROM invoices WHERE order_id=? AND status='已开具' LIMIT 1").get(orderId);
-          if (!contract || contract.status !== "已签署" || !accepted || !invoice || Math.abs(Number(invoice.amount) - Number(payment.amount)) > 0.01) throw new HttpError(409, "合同、验收和发票条件未齐备，禁止机构分账回调落账");
+          const orderAmount = Number(order.amount);
+          const paymentAmount = Number(payment.amount);
+          const invoiceAmount = Number(invoice?.amount);
+          if (productionMode) {
+            moneyCents(orderAmount, "订单金额");
+            moneyCents(paymentAmount, "托管金额");
+            if (invoice) moneyCents(invoiceAmount, "发票金额");
+          }
+          if (!contract || contract.status !== "已签署" || !accepted || !invoice || Math.abs(invoiceAmount - paymentAmount) > 0.01 || Math.abs(orderAmount - paymentAmount) > 0.01 || Math.abs(orderAmount - invoiceAmount) > 0.01) throw new HttpError(409, "合同、验收、发票和托管金额未全部一致，禁止机构分账回调落账");
           const feeCalc = platformFeeForOrder(orderId, Number(payment.amount));
           const instructionRef = String(payload.provider_transaction_id || payload.instruction_ref || eventId).trim().slice(0, 180);
           if (db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(orderId)) throw new HttpError(409, "交易已经存在分账记录，禁止重复分账");
@@ -2052,6 +2060,10 @@ const server = createServer(async (req, res) => {
     if (!invoiceDetail || Math.abs(Number(invoiceDetail.amount) - Number(order.amount)) > 0.01) return error(res, 409, "发票金额与订单金额不一致，禁止结算");
     const payment = db.prepare("SELECT * FROM payments WHERE order_id=? ORDER BY rowid DESC LIMIT 1").get(orderId);
     if (!payment || !["已入金待验收", "待验收分账", "机构已确认（验收后分账）", "已支付"].includes(payment.status)) return error(res, 409, "托管资金尚未确认，禁止结算");
+    if (productionMode) {
+      moneyCents(payment.amount, "托管金额");
+      if (Math.abs(Number(payment.amount) - Number(order.amount)) > 0.01) return error(res, 409, "托管金额与订单金额不一致，禁止结算");
+    }
     if (db.prepare("SELECT id FROM payment_refunds WHERE order_id=? AND status IN ('机构待受理','退款处理中') LIMIT 1").get(orderId)) return error(res, 409, "退款机构指令尚未完成，禁止同时分账");
     if (productionMode && process.env.SHUZHI_PAYMENT_READY !== "true") return error(res, 503, "支付机构尚未完成联调，暂不接受生产分账");
     const amount = Number(order.amount);

@@ -192,6 +192,17 @@ try {
   add(deliveredCallback.status === 202 && deliveredCallback.payload?.next_action?.includes("验收"), "物流送达回调推进验收节点", `HTTP ${deliveredCallback.status}${deliveredCallback.status !== 202 ? ` · ${JSON.stringify(deliveredCallback.payload)}` : ""}`);
   const acceptanceAfterDelivery = await request(prodPort, `/api/v1/trades/${orderId}/accept`, buyerToken, { result: "accepted", accepted_qty: 1, evidence: "复磅/抽检/签收证据" }, "outbox-accept-after-delivery");
   add(acceptanceAfterDelivery.status === 201, "生产送达后才允许验收", `HTTP ${acceptanceAfterDelivery.status}${acceptanceAfterDelivery.status !== 201 ? ` · ${JSON.stringify(acceptanceAfterDelivery.payload)}` : ""}`);
+  const dbAmountMismatch = new DatabaseSync(dbPath);
+  const originalOrderAmount = dbAmountMismatch.prepare("SELECT amount FROM orders WHERE id=?").get(orderId)?.amount;
+  dbAmountMismatch.prepare("UPDATE orders SET amount=amount+1 WHERE id=?").run(orderId);
+  dbAmountMismatch.prepare("UPDATE invoices SET status='已开具',amount=? WHERE order_id=?").run(276000, orderId);
+  dbAmountMismatch.close();
+  const releaseAmountMismatch = await webhook(prodPort, "payment", { event_id: `outbox-payment-release-amount-mismatch-${Date.now()}`, action: "release", order_id: orderId, payment_id: retryPaymentId, status: "paid", amount: 276000, provider_transaction_id: "PROVIDER-RELEASE-AMOUNT-MISMATCH" }, baseEnv.PAYMENT_WEBHOOK_SECRET);
+  add(releaseAmountMismatch.status === 409, "订单/托管/发票金额不一致禁止分账", `HTTP ${releaseAmountMismatch.status}`);
+  const dbRestoreAmount = new DatabaseSync(dbPath);
+  dbRestoreAmount.prepare("UPDATE orders SET amount=? WHERE id=?").run(originalOrderAmount, orderId);
+  dbRestoreAmount.prepare("UPDATE invoices SET status='待开具' WHERE order_id=?").run(orderId);
+  dbRestoreAmount.close();
   const regulatorySubmission = await request(prodPort, "/api/v1/regulatory/submissions", auditToken, { action: "submit", subject_type: "merchant", subject_id: "m-supplier", authority_code: "AQSIQ-TEST", data_minimization_version: "2026-01", evidence_refs: ["MERCHANT-LICENSE-TEST", "PRODUCT-QUALITY-TEST"] }, "outbox-regulator-submit-000001");
   const regulatoryId = regulatorySubmission.payload?.id;
   add(regulatorySubmission.status === 202 && regulatorySubmission.payload?.institution_outbox?.provider === "regulator", "生产监管提交先入 Outbox", `HTTP ${regulatorySubmission.status}`);
