@@ -5,7 +5,7 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
 const serverFile = resolve(root, "local-backend/server.mjs");
@@ -76,6 +76,18 @@ const request = async (port, path, token, body, key) => {
   let payload = {}; try { payload = await response.json(); } catch {}
   return { status: response.status, payload: payload?.data || payload };
 };
+const webhook = async (port, provider, payload, secret) => {
+  const raw = JSON.stringify(payload);
+  const timestamp = Math.floor(Date.now() / 1000);
+  const signature = createHmac("sha256", secret).update(`${timestamp}.${raw}`).digest("hex");
+  const response = await fetch(`http://127.0.0.1:${port}/api/v1/integrations/${provider}/webhook`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Webhook-Timestamp": String(timestamp), "X-Webhook-Signature": signature, "X-Webhook-Id": payload.event_id, "Idempotency-Key": `production-${payload.event_id}` },
+    body: raw,
+  });
+  let body = {}; try { body = await response.json(); } catch {}
+  return { status: response.status, payload: body?.data || body };
+};
 const checks = [];
 const add = (ok, name, detail) => { checks.push(ok); console.log(`${ok ? "PASS" : "FAIL"}  ${name}  ${detail}`); };
 let seedServer;
@@ -110,11 +122,20 @@ try {
   dbPayment.close();
   const paymentCreate = await request(prodPort, `/api/v1/trades/${orderId}/pay`, buyerToken, { payer_credit_code: "91420100MA8V85013Y", payee_credit_code: "91360722MA8V85013X" }, "outbox-payment-create-000001");
   add(paymentCreate.status === 202 && paymentCreate.payload?.payment_pending === true, "生产托管入金先入 Outbox", `HTTP ${paymentCreate.status}`);
+  const dbRetry = new DatabaseSync(dbPath);
+  const failedPaymentId = dbRetry.prepare("SELECT id FROM payments WHERE order_id=? ORDER BY rowid DESC LIMIT 1").get(orderId)?.id;
+  dbRetry.prepare("UPDATE payments SET status='支付失败' WHERE id=?").run(failedPaymentId);
+  dbRetry.close();
+  const paymentRetry = await request(prodPort, `/api/v1/trades/${orderId}/pay`, buyerToken, { payer_credit_code: "91420100MA8V85013Y", payee_credit_code: "91360722MA8V85013X" }, "outbox-payment-retry-000001");
+  add(paymentRetry.status === 202 && paymentRetry.payload?.payment_pending === true && Array.isArray(paymentRetry.payload?.payments) && paymentRetry.payload.payments.length === 2, "支付失败重试创建新支付尝试", `HTTP ${paymentRetry.status}`);
+  const retryPaymentId = paymentRetry.payload?.payments?.at(-1)?.id;
+  const paymentCallbackMissingId = await webhook(prodPort, "payment", { event_id: `outbox-payment-missing-id-${Date.now()}`, order_id: orderId, status: "paid", amount: 276000, provider_transaction_id: "PROVIDER-TX-MISSING-PAYMENT-ID" }, baseEnv.PAYMENT_WEBHOOK_SECRET);
+  add(paymentCallbackMissingId.status === 400, "生产支付回调必须绑定支付尝试", `HTTP ${paymentCallbackMissingId.status}`);
   const dbAfter = new DatabaseSync(dbPath);
   dbAfter.prepare("UPDATE contracts SET status='已签署',signed_at=? WHERE order_id=?").run(t, orderId);
   dbAfter.prepare("UPDATE acceptances SET result='accepted',accepted_qty=1,accepted_at=?,evidence='生产验收回执' WHERE order_id=?").run(t, orderId);
   dbAfter.prepare("UPDATE invoices SET amount=276000 WHERE order_id=?").run(orderId);
-  dbAfter.prepare("UPDATE payments SET status='已入金待验收',paid_at=? WHERE order_id=?").run(t, orderId);
+  dbAfter.prepare("UPDATE payments SET status='已入金待验收',paid_at=? WHERE id=?").run(t, retryPaymentId);
   dbAfter.close();
   const invoiceMissingTax = await request(prodPort, `/api/v1/trades/${orderId}/invoice`, supplierToken, { amount: 276000, seller_credit_code: "91360722MA8V85013X", buyer_credit_code: "91420100MA8V85013Y", tax_rate: 0.09 }, "outbox-invoice-missing-tax-fields");
   add(invoiceMissingTax.status === 400, "生产开票缺少税务字段阻断", `HTTP ${invoiceMissingTax.status}`);

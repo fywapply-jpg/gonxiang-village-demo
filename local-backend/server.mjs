@@ -235,7 +235,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS inventory_reservations (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, product_id TEXT NOT NULL, qty REAL NOT NULL, status TEXT NOT NULL DEFAULT 'reserved', reserved_at TEXT NOT NULL, released_at TEXT, release_reason TEXT, UNIQUE(order_id,product_id), FOREIGN KEY (order_id) REFERENCES orders(id), FOREIGN KEY (product_id) REFERENCES products(id));
   CREATE TABLE IF NOT EXISTS contracts (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, contract_type TEXT NOT NULL, status TEXT NOT NULL, signed_at TEXT, hash TEXT NOT NULL, FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS contract_signatures (id INTEGER PRIMARY KEY AUTOINCREMENT, contract_id TEXT NOT NULL, order_id TEXT NOT NULL, party TEXT NOT NULL, signer_id TEXT NOT NULL, signer_name TEXT NOT NULL, certificate_ref TEXT NOT NULL, signed_at TEXT NOT NULL, UNIQUE(contract_id,party), FOREIGN KEY (contract_id) REFERENCES contracts(id), FOREIGN KEY (order_id) REFERENCES orders(id));
-  CREATE TABLE IF NOT EXISTS payments (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, payer TEXT NOT NULL, payee TEXT NOT NULL, amount REAL NOT NULL, channel TEXT NOT NULL, status TEXT NOT NULL, paid_at TEXT, FOREIGN KEY (order_id) REFERENCES orders(id));
+  CREATE TABLE IF NOT EXISTS payments (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, payer TEXT NOT NULL, payee TEXT NOT NULL, amount REAL NOT NULL, channel TEXT NOT NULL, status TEXT NOT NULL, paid_at TEXT, provider_transaction_id TEXT, FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS settlement_records (id TEXT PRIMARY KEY, order_id TEXT NOT NULL UNIQUE, amount REAL NOT NULL, platform_fee REAL NOT NULL DEFAULT 0, status TEXT NOT NULL, instruction_ref TEXT NOT NULL, settled_at TEXT, created_at TEXT NOT NULL, FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS fulfillment_events (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id TEXT NOT NULL, step INTEGER NOT NULL, title TEXT NOT NULL, evidence TEXT NOT NULL, actor TEXT NOT NULL, created_at TEXT NOT NULL, FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS invoices (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, invoice_no TEXT, amount REAL NOT NULL, status TEXT NOT NULL, issued_at TEXT, invoice_type TEXT NOT NULL DEFAULT '', tax_category_code TEXT NOT NULL DEFAULT '', tax_rate REAL, seller_credit_code TEXT, buyer_credit_code TEXT, FOREIGN KEY (order_id) REFERENCES orders(id));
@@ -274,6 +274,9 @@ if (!db.prepare("PRAGMA table_info(shipments)").all().some((column) => column.na
 }
 if (!db.prepare("PRAGMA table_info(shipments)").all().some((column) => column.name === "consignee_address")) {
   db.exec("ALTER TABLE shipments ADD COLUMN consignee_address TEXT NOT NULL DEFAULT ''");
+}
+if (!db.prepare("PRAGMA table_info(payments)").all().some((column) => column.name === "provider_transaction_id")) {
+  db.exec("ALTER TABLE payments ADD COLUMN provider_transaction_id TEXT");
 }
 for (const [name, definition] of [["invoice_type", "TEXT NOT NULL DEFAULT ''"], ["tax_category_code", "TEXT NOT NULL DEFAULT ''"], ["tax_rate", "REAL"], ["seller_credit_code", "TEXT"], ["buyer_credit_code", "TEXT"]]) {
   if (!db.prepare("PRAGMA table_info(invoices)").all().some((column) => column.name === name)) db.exec(`ALTER TABLE invoices ADD COLUMN ${name} ${definition}`);
@@ -317,7 +320,7 @@ const seed = () => {
     db.prepare("INSERT INTO contracts VALUES (?,?,?,?,?,?)").run("CA-SZGS-850901", orderId, "主合同+子订单+质量附件", "已签署", t, "0x850901ca…c4");
     db.prepare("INSERT INTO contract_signatures(contract_id,order_id,party,signer_id,signer_name,certificate_ref,signed_at) VALUES (?,?,?,?,?,?,?)").run("CA-SZGS-850901", orderId, "buyer", "m-buyer", "华中商贸采购中心有限公司授权签约人", "CA-BUYER-DEMO", t);
     db.prepare("INSERT INTO contract_signatures(contract_id,order_id,party,signer_id,signer_name,certificate_ref,signed_at) VALUES (?,?,?,?,?,?,?)").run("CA-SZGS-850901", orderId, "supplier", "m-supplier", "赣南优品农业合作社授权签约人", "CA-SUPPLIER-DEMO", t);
-    db.prepare("INSERT INTO payments VALUES (?,?,?,?,?,?,?,?)").run("PAY-SZGS-850901", orderId, "华中商贸采购中心有限公司", "持牌结算机构托管户", 276000, "机构监管结算", "待验收分账", null);
+    db.prepare("INSERT INTO payments(id,order_id,payer,payee,amount,channel,status,paid_at,provider_transaction_id) VALUES (?,?,?,?,?,?,?,?,?)").run("PAY-SZGS-850901", orderId, "华中商贸采购中心有限公司", "持牌结算机构托管户", 276000, "机构监管结算", "待验收分账", null, null);
     db.prepare("INSERT INTO invoices(id,order_id,invoice_no,amount,status,issued_at,invoice_type,tax_category_code,tax_rate,seller_credit_code,buyer_credit_code) VALUES (?,?,?,?,?,?,?,?,?,?,?)").run("INV-SZGS-850901", orderId, null, 276000, "待开具", null, "增值税电子普通发票", "农业产品", null, "91360722MA8V85013X", "91420100MA8V85013Y");
     db.prepare("INSERT INTO shipments(id,order_id,provider,tracking_no,carrier_name,vehicle_no,temperature,status,departed_at,arrived_at,evidence,updated_at,consignor_address,consignee_address) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run("SHP-SZGS-850901", orderId, "third-party", "SF202608030001", "顺丰冷运", "鄂A·85013", 4.2, "运输中", t, null, "温控/GPS/签封已绑定", t, "江西省赣州市寻乌县农产品仓", "湖北省武汉市洪山区团餐配送中心");
     db.prepare("INSERT INTO acceptances VALUES (?,?,?,?,?,?,?,?)").run("ACC-SZGS-850901", orderId, "华中商贸采购中心有限公司验收岗", "pending", null, "待到货复磅、抽检和签收", null, null);
@@ -760,6 +763,9 @@ const processIntegrationWebhook = async (provider, req, res) => {
         if (!shipment) throw new HttpError(404, "回调关联的运单不存在");
         const status = normalizeWebhookStatus("logistics", payload.status);
         if (!status) throw new HttpError(400, "物流回调状态不在允许范围");
+        if (payload.temperature !== undefined && (!Number.isFinite(Number(payload.temperature)) || Number(payload.temperature) < -80 || Number(payload.temperature) > 80)) throw new HttpError(400, "物流回调温度必须在 -80℃ 至 80℃之间");
+        const duplicateTracking = db.prepare("SELECT id,order_id FROM shipments WHERE tracking_no=? AND id<>? LIMIT 1").get(trackingNo, shipment.id);
+        if (duplicateTracking) throw new HttpError(409, "物流机构运单号已绑定其他交易，禁止覆盖履约证据");
         if (db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(orderId)) throw new HttpError(409, "交易已完成结算，禁止物流回调覆盖履约账本");
         if (shipment.status === "已送达" && status !== "已送达") throw new HttpError(409, "运单已送达，禁止回调回退覆盖");
         const arrivedAt = status === "已送达" ? t : shipment.arrived_at;
@@ -770,10 +776,18 @@ const processIntegrationWebhook = async (provider, req, res) => {
         const paymentState = normalizeWebhookStatus("payment", payload.status);
         if (!paymentState) throw new HttpError(400, "支付回调状态不在允许范围");
         const paymentId = String(payload.payment_id || "").trim();
+        if (productionMode && !paymentId) throw new HttpError(400, "生产支付回调必须提供 payment_id 以绑定支付尝试");
         const payment = db.prepare("SELECT * FROM payments WHERE order_id=? AND (?='' OR id=?) LIMIT 1").get(orderId, paymentId, paymentId);
         if (!payment) throw new HttpError(404, "回调关联的托管支付记录不存在");
+        const providerTransactionId = String(payload.provider_transaction_id || "").trim();
         if (productionMode && payload.amount === undefined) throw new HttpError(400, "生产支付回调必须提供 amount 用于资金核对");
-        if (productionMode && !String(payload.provider_transaction_id || "").trim()) throw new HttpError(400, "生产支付回调必须提供机构交易号");
+        if (productionMode && !providerTransactionId) throw new HttpError(400, "生产支付回调必须提供机构交易号");
+        if (providerTransactionId.length > 180) throw new HttpError(400, "机构交易号过长");
+        if (providerTransactionId && payment.provider_transaction_id && payment.provider_transaction_id !== providerTransactionId) throw new HttpError(409, "同一托管支付已绑定其他机构交易号");
+        if (providerTransactionId) {
+          const duplicateTransaction = db.prepare("SELECT id,order_id FROM payments WHERE provider_transaction_id=? AND id<>? LIMIT 1").get(providerTransactionId, payment.id);
+          if (duplicateTransaction) throw new HttpError(409, "机构交易号已绑定其他托管支付，禁止重复落账");
+        }
         if (payload.amount !== undefined && (!finitePositive(payload.amount, 1e12) || Math.abs(Number(payload.amount) - Number(payment.amount)) > 0.01)) throw new HttpError(409, "支付回调金额与托管记录不一致");
         if (db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(orderId)) throw new HttpError(409, "交易已完成结算，禁止支付回调覆盖账本");
         const paidStates = new Set(["已入金待验收", "待验收分账", "机构已确认（验收后分账）", "已支付"]);
@@ -792,7 +806,7 @@ const processIntegrationWebhook = async (provider, req, res) => {
           const instructionRef = String(payload.provider_transaction_id || payload.instruction_ref || eventId).trim().slice(0, 180);
           if (db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(orderId)) throw new HttpError(409, "交易已经存在分账记录，禁止重复分账");
           db.prepare("INSERT INTO settlement_records(id,order_id,amount,platform_fee,platform_fee_base,status,instruction_ref,settled_at,created_at) VALUES (?,?,?,?,?,?,?,?,?)").run(instructionRef, orderId, Number(payment.amount), feeCalc.fee, feeCalc.base, "settled", instructionRef, t, t);
-          db.prepare("UPDATE payments SET status='已分账',paid_at=COALESCE(paid_at,?) WHERE id=?").run(t, payment.id);
+          db.prepare("UPDATE payments SET status='已分账',paid_at=COALESCE(paid_at,?),provider_transaction_id=COALESCE(provider_transaction_id,?) WHERE id=?").run(t, providerTransactionId || null, payment.id);
           db.prepare("UPDATE orders SET status='已完成',payment_status='已分账',fulfillment_step=CASE WHEN fulfillment_step<11 THEN 11 ELSE fulfillment_step END,updated_at=? WHERE id=?").run(t, orderId);
           db.prepare("INSERT INTO fulfillment_events(order_id,step,title,evidence,actor,created_at) VALUES (?,?,?,?,?,?)").run(orderId, 10, "机构条件分账结算", instructionRef, `integration-payment:${payload.provider_transaction_id || eventId}`, t);
           db.prepare("INSERT INTO fulfillment_events(order_id,step,title,evidence,actor,created_at) VALUES (?,?,?,?,?,?)").run(orderId, 11, "四流三账对账关账", `RECON-${instructionRef}`, `integration-payment:${payload.provider_transaction_id || eventId}`, t);
@@ -800,17 +814,20 @@ const processIntegrationWebhook = async (provider, req, res) => {
         } else {
         const paid = paymentState === "paid";
         const nextPaymentStatus = paid ? (paidStates.has(payment.status) ? payment.status : "已入金待验收") : paymentState === "failed" ? "支付失败" : "机构待确认";
-        db.prepare("UPDATE payments SET status=?,paid_at=? WHERE id=?").run(nextPaymentStatus, paid ? (payment.paid_at || t) : payment.paid_at, payment.id);
+        db.prepare("UPDATE payments SET status=?,paid_at=?,provider_transaction_id=COALESCE(provider_transaction_id,?) WHERE id=?").run(nextPaymentStatus, paid ? (payment.paid_at || t) : payment.paid_at, providerTransactionId || null, payment.id);
         db.prepare("UPDATE orders SET payment_status=?,updated_at=? WHERE id=?").run(paid ? "机构已确认（验收后分账）" : nextPaymentStatus === "支付失败" ? "支付失败" : "机构待确认", t, orderId);
         nextAction = paid ? "资金已入托管，验收合格后才能分账" : nextPaymentStatus === "支付失败" ? "支付失败，请按机构退款/重试流程处理" : "等待支付机构最终确认";
         }
       } else if (provider === "invoice") {
         const invoiceNo = String(payload.invoice_no || "").trim();
         if (!invoiceNo) throw new HttpError(400, "发票回调缺少 invoice_no");
+        if (invoiceNo.length > 80) throw new HttpError(400, "发票号码过长");
         const invoiceState = normalizeWebhookStatus("invoice", payload.status);
         if (!invoiceState) throw new HttpError(400, "发票回调状态不在允许范围");
         const invoice = db.prepare("SELECT * FROM invoices WHERE order_id=? LIMIT 1").get(orderId);
         if (!invoice) throw new HttpError(404, "回调关联的发票记录不存在");
+        const duplicateInvoice = db.prepare("SELECT id,order_id FROM invoices WHERE invoice_no=? AND id<>? LIMIT 1").get(invoiceNo, invoice.id);
+        if (duplicateInvoice) throw new HttpError(409, "发票号码已绑定其他交易，禁止重复入账");
         if (payload.amount !== undefined && (!finitePositive(payload.amount, 1e12) || Math.abs(Number(payload.amount) - Number(invoice.amount)) > 0.01)) throw new HttpError(409, "发票回调金额与订单发票金额不一致");
         if (productionMode && payload.amount === undefined) throw new HttpError(400, "生产发票回调必须提供 amount 用于四流核对");
         const accepted = db.prepare("SELECT id FROM acceptances WHERE order_id=? AND result='accepted' LIMIT 1").get(orderId);
@@ -1359,7 +1376,7 @@ const server = createServer(async (req, res) => {
         db.prepare("INSERT INTO inventory_reservations(id,order_id,product_id,qty,status,reserved_at) VALUES (?,?,?,?,?,?)").run(`RSV-${orderId}-${item.product.id}`, orderId, item.product.id, item.qty, "reserved", t);
       }
       db.prepare("INSERT INTO contracts VALUES (?,?,?,?,?,?)").run(contractId, orderId, "主合同+子订单+质量附件", "待双方签署", null, `0x${randomUUID().replaceAll("-", "").slice(0, 16)}…c4`);
-      db.prepare("INSERT INTO payments VALUES (?,?,?,?,?,?,?,?)").run(paymentId, orderId, buyer.name, supplier.name, amount, "持牌结算机构托管户", "待机构确认", null);
+      db.prepare("INSERT INTO payments(id,order_id,payer,payee,amount,channel,status,paid_at,provider_transaction_id) VALUES (?,?,?,?,?,?,?,?,?)").run(paymentId, orderId, buyer.name, supplier.name, amount, "持牌结算机构托管户", "待机构确认", null, null);
       db.prepare("INSERT INTO invoices(id,order_id,invoice_no,amount,status,issued_at,invoice_type,tax_category_code,tax_rate,seller_credit_code,buyer_credit_code) VALUES (?,?,?,?,?,?,?,?,?,?,?)").run(invoiceId, orderId, null, amount, "待开具", null, invoiceType, "", null, null, null);
       db.prepare("INSERT INTO acceptances VALUES (?,?,?,?,?,?,?,?)").run(acceptanceId, orderId, `${buyer.name}验收岗`, "pending", null, "待到货复磅、抽检和签收", null, null);
       db.prepare("INSERT INTO fulfillment_events(order_id,step,title,evidence,actor,created_at) VALUES (?,?,?,?,?,?)").run(orderId, 0, "批量清单拆单", `ORDER-CREATE-${orderId.slice(-8)}`, principal?.id || "交易创建岗", t);
@@ -1404,7 +1421,7 @@ const server = createServer(async (req, res) => {
     if (!order) return error(res, 404, "交易不存在");
     if (!canActForOrder(req, order, "buyer")) return error(res, 403, "只有采购方或授权后台岗位可以发起托管入金");
     if (productionMode && process.env.SHUZHI_PAYMENT_READY !== "true") return error(res, 503, "支付机构尚未完成联调，暂不接受生产托管入金");
-    const payment = db.prepare("SELECT * FROM payments WHERE order_id=? LIMIT 1").get(id);
+    let payment = db.prepare("SELECT * FROM payments WHERE order_id=? ORDER BY rowid DESC LIMIT 1").get(id);
     if (!payment) return error(res, 404, "交易托管支付记录不存在");
     if (!["待机构确认", "待支付", "支付失败"].includes(payment.status)) return error(res, 409, "当前资金状态不允许重复发起托管入金");
     const amount = Number(order.amount);
@@ -1419,14 +1436,21 @@ const server = createServer(async (req, res) => {
       if (!payerCreditCode || !payeeCreditCode) return error(res, 400, "生产托管入金必须提供付款方和收款方统一社会信用代码");
       db.exec("BEGIN");
       try {
+        // 失败的机构支付尝试保留原始机构交易号和审计证据；重试创建新的支付记录，
+        // 不复用旧 Outbox 幂等键，避免把不同的资金尝试误合并为同一笔入金。
+        if (payment.status === "支付失败") {
+          const retryPaymentId = `PAY-${id}-${randomUUID().slice(0, 12)}`;
+          db.prepare("INSERT INTO payments(id,order_id,payer,payee,amount,channel,status,paid_at,provider_transaction_id) VALUES (?,?,?,?,?,?,?,?,?)").run(retryPaymentId, id, payment.payer, payment.payee, amount, payment.channel, "待机构确认", null, null);
+          payment = db.prepare("SELECT * FROM payments WHERE id=?").get(retryPaymentId);
+        }
         const queued = enqueueProductionInstitutionCommand({
           provider: "payment",
           aggregateType: "order",
           aggregateId: id,
           commandType: "create",
-          idempotencyKey: `PAYMENT:CREATE:${id}`,
+          idempotencyKey: `PAYMENT:CREATE:${payment.id}`,
           command: {
-            command_id: `CMD-PAYMENT-CREATE-${id}`,
+            command_id: `CMD-PAYMENT-CREATE-${payment.id}`,
             action: "create",
             order_id: id,
             payment_id: payment.id,
@@ -1666,7 +1690,7 @@ const server = createServer(async (req, res) => {
     if (!invoice) return error(res, 409, "发票验真前不得结算");
     const invoiceDetail = db.prepare("SELECT amount FROM invoices WHERE order_id=? AND status='已开具' LIMIT 1").get(orderId);
     if (!invoiceDetail || Math.abs(Number(invoiceDetail.amount) - Number(order.amount)) > 0.01) return error(res, 409, "发票金额与订单金额不一致，禁止结算");
-    const payment = db.prepare("SELECT * FROM payments WHERE order_id=? LIMIT 1").get(orderId);
+    const payment = db.prepare("SELECT * FROM payments WHERE order_id=? ORDER BY rowid DESC LIMIT 1").get(orderId);
     if (!payment || !["已入金待验收", "待验收分账", "机构已确认（验收后分账）", "已支付"].includes(payment.status)) return error(res, 409, "托管资金尚未确认，禁止结算");
     if (productionMode && process.env.SHUZHI_PAYMENT_READY !== "true") return error(res, 503, "支付机构尚未完成联调，暂不接受生产分账");
     const amount = Number(order.amount);

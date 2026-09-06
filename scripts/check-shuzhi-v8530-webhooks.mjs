@@ -41,6 +41,8 @@ const caReplay = await send("ca", caPayload, { eventId: ca.eventId, idempotencyK
 add(caReplay.status === 200 && caReplay.body?.data?.replayed === true, "CA重复回调重放", `HTTP ${caReplay.status}`);
 const logistics = await send("logistics", logisticsPayload);
 add(logistics.status === 202, "物流签名回调", `HTTP ${logistics.status}`);
+const invalidTemperature = await send("logistics", { ...logisticsPayload, event_id: `v8530-logistics-temp-${Date.now()}`, temperature: 999 });
+add(invalidTemperature.status === 400, "物流异常温度拦截", `HTTP ${invalidTemperature.status}`);
 const logisticsReplay = await send("logistics", logisticsPayload, { eventId: logistics.eventId, idempotencyKey: logistics.key });
 add(logisticsReplay.status === 200 && logisticsReplay.body?.data?.replayed === true, "物流重复回调重放", `HTTP ${logisticsReplay.status}`);
 const badSignature = await send("logistics", { ...logisticsPayload, event_id: `v8530-bad-${Date.now()}` }, { signature: "00" });
