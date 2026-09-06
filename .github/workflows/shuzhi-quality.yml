@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "local-backend/**"
+      - "cloud-server/README.md"
       - "admin/App2.tsx"
       - "scripts/check-shuzhi-*.mjs"
       - "scripts/run-shuzhi-local-smoke.mjs"
@@ -17,6 +18,7 @@ on:
   pull_request:
     paths:
       - "local-backend/**"
+      - "cloud-server/README.md"
       - "admin/App2.tsx"
       - "scripts/check-shuzhi-*.mjs"
       - "scripts/run-shuzhi-local-smoke.mjs"
