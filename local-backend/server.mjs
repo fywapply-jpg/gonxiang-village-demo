@@ -665,6 +665,9 @@ const platformFeeForOrder = (orderId, orderAmount) => {
 const tradeLedger = (id) => {
   const order = orderView(id);
   if (!order) return null;
+  const contractOrderMatch = order.contracts.length > 0 && order.contracts.every((contract) => String(contract.order_id) === String(order.id));
+  const invoiceGate = order.invoices.length > 0 && order.invoices.every((invoice) => invoice.status === "待开具" || Boolean(invoice.issued_at));
+  const paymentReady = order.payments.some((payment) => ["已入金待验收", "待验收分账", "机构已确认（验收后分账）", "已支付", "已分账"].includes(payment.status));
   return {
     order: { id: order.id, scene: order.scene, status: order.status, amount: order.amount, buyer: order.buyer_name, supplier: order.supplier_name },
     settlement: order.settlement,
@@ -683,7 +686,7 @@ const tradeLedger = (id) => {
       payment: order.payments,
       acceptance: order.acceptances,
     },
-    reconciliation: { contract_order_match: true, order_logistics_match: order.shipments.length > 0, acceptance_invoice_gate: order.invoices.every((item) => item.status === "待开具" || item.issued_at), payment_release_gate: order.acceptances.some((item) => item.result === "accepted") && order.invoices.some((item) => item.status === "已开具"), settlement_complete: order.settlement?.status === "settled" },
+    reconciliation: { contract_order_match: contractOrderMatch, order_logistics_match: order.shipments.length > 0, acceptance_invoice_gate: invoiceGate, payment_release_gate: order.acceptances.some((item) => item.result === "accepted") && order.invoices.some((item) => item.status === "已开具") && paymentReady, settlement_complete: order.settlement?.status === "settled" },
   };
 };
 const applicationView = (id) => {
