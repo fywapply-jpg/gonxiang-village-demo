@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "local-backend/**"
+      - "institution-adapters/**"
+      - "docs/openapi/**"
       - "cloud-server/README.md"
       - "deploy/shuzhi-v8530.service"
       - "admin/App2.tsx"
@@ -24,6 +26,8 @@ on:
   pull_request:
     paths:
       - "local-backend/**"
+      - "institution-adapters/**"
+      - "docs/openapi/**"
       - "cloud-server/README.md"
       - "deploy/shuzhi-v8530.service"
       - "admin/App2.tsx"
@@ -75,5 +79,11 @@ jobs:
           npm run check:shuzhi-readiness
           npm run check:shuzhi-production-env-staged
           npm run check:shuzhi-release-integrity
+      - name: Check institution contracts and asynchronous boundaries
+        run: |
+          npm run check:shuzhi-institution-contract
+          npm run check:shuzhi-institution-client
+          npm run check:shuzhi-institution-outbox
+          npm run check:shuzhi-production-outbox
       - name: Run isolated local transaction smoke tests
         run: npm run smoke:shuzhi-local
