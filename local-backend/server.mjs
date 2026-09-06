@@ -2229,6 +2229,7 @@ const server = createServer(async (req, res) => {
     if (!order) return error(res, 404, "交易不存在");
     if (!canActForOrder(req, order, "supplier")) return error(res, 403, "只有供货方或授权后台岗位可以登记发票");
     if (["已取消", "已完成"].includes(order.status) || db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(id)) return error(res, 409, "交易已取消或已关账，禁止新增发票");
+    if (productionMode && ["退款待机构受理", "退款处理中", "部分退款", "已退款", "退款失败"].includes(String(order.payment_status || ""))) return error(res, 409, "交易存在退款或退款异常，普通发票暂不得开具；请先完成财务复核或走红冲流程");
     if (productionMode && process.env.SHUZHI_INVOICE_READY !== "true") return error(res, 503, "发票机构尚未完成联调，暂不接受生产开票登记");
     if (db.prepare("SELECT id FROM invoices WHERE order_id=? AND status='已开具' LIMIT 1").get(id)) return error(res, 409, "该交易发票已开具，禁止重复登记");
     const accepted = db.prepare("SELECT id FROM acceptances WHERE order_id=? AND result='accepted'").get(id);

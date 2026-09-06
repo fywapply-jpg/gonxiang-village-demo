@@ -217,6 +217,8 @@ try {
   const finalRefundId = finalRefund.payload?.refunds?.at(-1)?.id;
   const finalRefundCallback = await webhook(prodPort, "payment", { event_id: `outbox-payment-refund-final-callback-${Date.now()}`, action: "refund", refund_id: finalRefundId, order_id: orderId, payment_id: retryPaymentId, status: "refunded", amount: 275900, provider_transaction_id: "PROVIDER-REFUND-002" }, baseEnv.PAYMENT_WEBHOOK_SECRET);
   add(finalRefundCallback.status === 202 && finalRefundCallback.payload?.next_action?.includes("全部退回"), "生产全额退款回调落账", `HTTP ${finalRefundCallback.status}${finalRefundCallback.status !== 202 ? ` · ${JSON.stringify(finalRefundCallback.payload)}` : ""}`);
+  const invoiceAfterRefund = await request(prodPort, `/api/v1/trades/${orderId}/invoice`, supplierToken, { amount: 276000, seller_credit_code: "91360722MA8V85013X", buyer_credit_code: "91420100MA8V85013Y", tax_rate: 0.09, invoice_type: "增值税电子普通发票", tax_category_code: "农业产品" }, "outbox-invoice-after-refund");
+  add(invoiceAfterRefund.status === 409, "全额退款后禁止普通开票", `HTTP ${invoiceAfterRefund.status}`);
   const dbAfter = new DatabaseSync(dbPath);
   dbAfter.prepare("UPDATE contracts SET status='已签署',signed_at=? WHERE order_id=?").run(t, orderId);
   dbAfter.prepare("UPDATE acceptances SET result='accepted',accepted_qty=1,accepted_at=?,evidence='生产验收回执' WHERE order_id=?").run(t, orderId);
