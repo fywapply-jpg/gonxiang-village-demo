@@ -75,20 +75,35 @@ add(
 
 const cloudMissing = frontendRoutes.filter((route) => !sourceHasRoute(cloud, route));
 const cloudMissingActions = actionRoutes.filter((route) => !sourceHasRoute(cloud, route));
+const historicalCloudIsolated =
+  read("cloud-server/README.md").includes("历史隔离说明（数智供社 v8533）") &&
+  read("cloud-server/README.md").includes("不得将本目录接入当前生产域名或小程序") &&
+  read("docs/frontend-backend-sync.md").includes("生产配置不得直连 cloud-server");
+const frontendSelectsHistoricalCloud = api.includes("cloud-server") || api.includes("cloudServer");
 add(
-  cloudMissing.length === frontendRoutes.length && cloudMissingActions.length === actionRoutes.length ? "fail" : "warn",
-  "cloud-server 直连门禁",
-  cloudMissing.length === frontendRoutes.length && cloudMissingActions.length === actionRoutes.length
-    ? "cloud-server 未实现前台 legacy BFF 路由；不得把 VITE_API_BASE 直接切到 cloud-server，需先完成适配层"
-    : `cloud-server 仍缺少 ${cloudMissing.length} 个资源路由和 ${cloudMissingActions.length} 个交易动作`,
+  frontendSelectsHistoricalCloud
+    ? "fail"
+    : historicalCloudIsolated
+      ? "pass"
+      : "warn",
+  "cloud-server 历史隔离",
+  frontendSelectsHistoricalCloud
+    ? "前台源码仍直接引用历史 cloud-server，禁止切换生产 API"
+    : historicalCloudIsolated
+      ? `cloud-server 已明确标记为历史后端（当前缺少 ${cloudMissing.length} 个资源路由和 ${cloudMissingActions.length} 个交易动作），当前 v8533 前台只接 local-backend；迁移须另行完成适配层`
+      : `历史隔离证据不完整或出现部分路由，仍缺少 ${cloudMissing.length} 个资源路由和 ${cloudMissingActions.length} 个交易动作`,
 );
 
 add(
-  cloud.includes("accessToken") && cloud.includes("expiresAt") && !cloud.includes("token: string")
-    ? "fail"
-    : "pass",
-  "cloud-server 登录字段隔离",
-  "cloud-server 当前返回 accessToken/expiresAt 且不返回前台要求的 token/expires_at/user，属于未完成适配的证据",
+  historicalCloudIsolated
+    ? "pass"
+    : cloud.includes("accessToken") && cloud.includes("expiresAt") && !cloud.includes("token: string")
+      ? "fail"
+      : "pass",
+  "历史后端登录契约隔离",
+  historicalCloudIsolated
+    ? "历史 cloud-server 的 accessToken/expiresAt 契约不参与当前 v8533 前台"
+    : "cloud-server 当前返回 accessToken/expiresAt，若要迁移必须补齐 token/expires_at/user 适配",
 );
 
 for (const item of checks) console.log(`${item.level === "pass" ? "PASS" : item.level === "warn" ? "WARN" : "FAIL"}  ${item.name}  ${item.detail}`);
