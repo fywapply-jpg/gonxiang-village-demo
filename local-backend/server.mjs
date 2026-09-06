@@ -794,6 +794,12 @@ const moneyCents = (value, label = "金额", { allowZero = false } = {}) => {
   if (Math.abs(number * 100 - cents) > 1e-7) throw new HttpError(400, `${label}必须精确到人民币分`);
   return cents;
 };
+// 生产账务比较必须按整数分，不允许把恰好一分钱的差额当作浮点误差；
+// 本地演示继续保留历史宽松比较，避免改变离线演示的底层行为。
+const amountsDiffer = (left, right) => {
+  if (!productionMode) return Math.abs(Number(left) - Number(right)) > 0.01;
+  try { return moneyCents(left, "金额") !== moneyCents(right, "金额"); } catch { return true; }
+};
 const centsMoney = (cents) => Math.round(Number(cents)) / 100;
 const prepaidShipmentModels = new Set(["advance", "预付款 + 尾款", "custody", "机构监管结算", "持牌机构条件结算（验收后分账）"]);
 const shipmentPaymentReady = (order) => {
@@ -977,7 +983,7 @@ const processIntegrationWebhook = async (provider, req, res) => {
           if (duplicateTransaction) throw new HttpError(409, "机构交易号已绑定其他托管支付，禁止重复落账");
         }
         if (productionMode && payload.amount !== undefined) moneyCents(payload.amount, "支付回调金额");
-        if (action !== "refund" && payload.amount !== undefined && (!finitePositive(payload.amount, 1e12) || Math.abs(Number(payload.amount) - Number(payment.amount)) > 0.01)) throw new HttpError(409, "支付回调金额与托管记录不一致");
+        if (action !== "refund" && payload.amount !== undefined && (!finitePositive(payload.amount, 1e12) || amountsDiffer(payload.amount, payment.amount))) throw new HttpError(409, "支付回调金额与托管记录不一致");
         if (db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(orderId)) throw new HttpError(409, "交易已完成结算，禁止支付回调覆盖账本");
         const paidStates = new Set(["已入金待验收", "待验收分账", "机构已确认（验收后分账）", "已支付"]);
         const failedStates = new Set(["支付失败", "已退款"]);
@@ -990,7 +996,7 @@ const processIntegrationWebhook = async (provider, req, res) => {
           const refund = db.prepare("SELECT * FROM payment_refunds WHERE id=? AND order_id=? AND payment_id=? LIMIT 1").get(refundId, orderId, payment.id);
           if (!refund) throw new HttpError(404, "回调关联的退款记录不存在");
           const nextRefundStatus = refundSuccessStates.has(rawPaymentStatus) ? "已退款" : refundFailedStates.has(rawPaymentStatus) ? "退款失败" : "退款处理中";
-          if (payload.amount !== undefined && Math.abs(Number(payload.amount) - Number(refund.amount)) > 0.01) throw new HttpError(409, "退款回调金额与退款申请不一致");
+          if (payload.amount !== undefined && amountsDiffer(payload.amount, refund.amount)) throw new HttpError(409, "退款回调金额与退款申请不一致");
           if (refund.status === "已退款" && nextRefundStatus !== "已退款") throw new HttpError(409, "退款已完成，禁止回调回退状态");
           if (providerTransactionId) {
             const duplicateRefund = db.prepare("SELECT id FROM payment_refunds WHERE provider_ref=? AND id<>? LIMIT 1").get(providerTransactionId, refund.id);
@@ -1027,7 +1033,7 @@ const processIntegrationWebhook = async (provider, req, res) => {
             moneyCents(paymentAmount, "托管金额");
             if (invoice) moneyCents(invoiceAmount, "发票金额");
           }
-          if (!contract || contract.status !== "已签署" || !accepted || (productionMode && !acceptanceCompleteForOrder(orderId)) || !invoice || Math.abs(invoiceAmount - paymentAmount) > 0.01 || Math.abs(orderAmount - paymentAmount) > 0.01 || Math.abs(orderAmount - invoiceAmount) > 0.01) throw new HttpError(409, "合同、全量验收、发票和托管金额未全部一致，禁止机构分账回调落账");
+          if (!contract || contract.status !== "已签署" || !accepted || (productionMode && !acceptanceCompleteForOrder(orderId)) || !invoice || amountsDiffer(invoiceAmount, paymentAmount) || amountsDiffer(orderAmount, paymentAmount) || amountsDiffer(orderAmount, invoiceAmount)) throw new HttpError(409, "合同、全量验收、发票和托管金额未全部一致，禁止机构分账回调落账");
           const feeCalc = platformFeeForOrder(orderId, Number(payment.amount));
           const instructionRef = String(payload.provider_transaction_id || payload.instruction_ref || eventId).trim().slice(0, 180);
           if (db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(orderId)) throw new HttpError(409, "交易已经存在分账记录，禁止重复分账");
@@ -1059,10 +1065,10 @@ const processIntegrationWebhook = async (provider, req, res) => {
         if (productionMode) {
           moneyCents(invoice.amount, "订单发票金额");
           moneyCents(order.amount, "订单金额");
-          if (Math.abs(Number(invoice.amount) - Number(order.amount)) > 0.01) throw new HttpError(409, "发票金额与订单金额不一致，禁止机构回调落账");
+          if (amountsDiffer(invoice.amount, order.amount)) throw new HttpError(409, "发票金额与订单金额不一致，禁止机构回调落账");
         }
         if (productionMode && payload.amount !== undefined) moneyCents(payload.amount, "发票回调金额");
-        if (payload.amount !== undefined && (!finitePositive(payload.amount, 1e12) || Math.abs(Number(payload.amount) - Number(invoice.amount)) > 0.01)) throw new HttpError(409, "发票回调金额与订单发票金额不一致");
+        if (payload.amount !== undefined && (!finitePositive(payload.amount, 1e12) || amountsDiffer(payload.amount, invoice.amount))) throw new HttpError(409, "发票回调金额与订单发票金额不一致");
         if (productionMode && payload.amount === undefined) throw new HttpError(400, "生产发票回调必须提供 amount 用于四流核对");
         const accepted = db.prepare("SELECT id FROM acceptances WHERE order_id=? AND result='accepted' LIMIT 1").get(orderId);
         if (!accepted || (productionMode && !acceptanceCompleteForOrder(orderId))) throw new HttpError(409, "全量验收合格前不得接收开票回调");
@@ -1724,7 +1730,7 @@ const server = createServer(async (req, res) => {
     }
     const amount = Math.round((goodsNet + serviceAmount) * 100) / 100;
     if (productionMode) moneyCents(amount, "订单金额");
-    if (payload.amount !== undefined && (!finitePositive(payload.amount, 1e12) || Math.abs(Number(payload.amount) - amount) > 0.01)) return error(res, 409, "订单金额必须等于商品明细净额与合同服务费用之和");
+    if (payload.amount !== undefined && (!finitePositive(payload.amount, 1e12) || amountsDiffer(payload.amount, amount))) return error(res, 409, "订单金额必须等于商品明细净额与合同服务费用之和");
     const scene = String(payload.scene || (acceptedQuote ? "supplierDemand" : "buyerSupply")).trim();
     if (!["buyerSupply", "supplierDemand"].includes(scene)) return error(res, 400, "交易场景不合法");
     if (acceptedQuote && scene !== "supplierDemand") return error(res, 409, "已确认采购报价必须以供货方响应场景生成订单");
@@ -2225,12 +2231,12 @@ const server = createServer(async (req, res) => {
       moneyCents(order.amount, "订单金额");
       if (invoiceDetail) moneyCents(invoiceDetail.amount, "发票金额");
     }
-    if (!invoiceDetail || Math.abs(Number(invoiceDetail.amount) - Number(order.amount)) > 0.01) return error(res, 409, "发票金额与订单金额不一致，禁止结算");
+    if (!invoiceDetail || amountsDiffer(invoiceDetail.amount, order.amount)) return error(res, 409, "发票金额与订单金额不一致，禁止结算");
     const payment = db.prepare("SELECT * FROM payments WHERE order_id=? ORDER BY rowid DESC LIMIT 1").get(orderId);
     if (!payment || !["已入金待验收", "待验收分账", "机构已确认（验收后分账）", "已支付"].includes(payment.status)) return error(res, 409, "托管资金尚未确认，禁止结算");
     if (productionMode) {
       moneyCents(payment.amount, "托管金额");
-      if (Math.abs(Number(payment.amount) - Number(order.amount)) > 0.01) return error(res, 409, "托管金额与订单金额不一致，禁止结算");
+      if (amountsDiffer(payment.amount, order.amount)) return error(res, 409, "托管金额与订单金额不一致，禁止结算");
     }
     if (db.prepare("SELECT id FROM payment_refunds WHERE order_id=? AND status IN ('机构待受理','退款处理中') LIMIT 1").get(orderId)) return error(res, 409, "退款机构指令尚未完成，禁止同时分账");
     if (productionMode && process.env.SHUZHI_PAYMENT_READY !== "true") return error(res, 503, "支付机构尚未完成联调，暂不接受生产分账");
@@ -2452,12 +2458,12 @@ const server = createServer(async (req, res) => {
       } catch (cause) {
         return error(res, cause.status || 400, cause.message);
       }
-      if (Math.abs(Number(invoice.amount) - Number(order.amount)) > 0.01) return error(res, 409, "发票金额与订单金额不一致");
+      if (amountsDiffer(invoice.amount, order.amount)) return error(res, 409, "发票金额与订单金额不一致");
     }
     if (productionMode && payload.amount !== undefined) {
       try { moneyCents(payload.amount, "开票金额"); } catch (cause) { return error(res, cause.status || 400, cause.message); }
     }
-    if (!invoice || (payload.amount !== undefined && (!finitePositive(payload.amount, 1e12) || Math.abs(Number(payload.amount) - Number(invoice.amount)) > 0.01))) return error(res, 409, "发票金额与订单金额不一致");
+    if (!invoice || (payload.amount !== undefined && (!finitePositive(payload.amount, 1e12) || amountsDiffer(payload.amount, invoice.amount)))) return error(res, 409, "发票金额与订单金额不一致");
     if (productionMode && payload.amount === undefined) return error(res, 400, "生产开票必须提供 amount 用于四流核对");
     const t = now();
     if (productionMode) {
