@@ -1835,8 +1835,15 @@ const server = createServer(async (req, res) => {
     const idemKey = requestKey(req, payload);
     if (productionMode && !idemKey) return error(res, 400, "生产商品提交必须提供 Idempotency-Key");
     if (replayIdempotent(req, res, idemKey, payload)) return;
-    if (!["merchant_id", "name", "category", "price", "stock"].every((key) => payload[key] !== undefined && String(payload[key]).trim() !== "")) return error(res, 400, "商品名称、品类、价格、库存和商户不能为空");
-    const merchant = db.prepare("SELECT * FROM merchants WHERE id=? AND license_status='verified' AND bank_status='verified'").get(String(payload.merchant_id));
+    if (!["name", "category", "price", "stock"].every((key) => payload[key] !== undefined && String(payload[key]).trim() !== "")) return error(res, 400, "商品名称、品类、价格和库存不能为空");
+    const principal = principalFor(req);
+    const requestedMerchantId = String(payload.merchant_id || "").trim();
+    // 生产请求以认证会话绑定的主体为准；前端不应自行决定代表哪家商户。
+    // 本地演示仍接受显式 merchant_id，保持既有回归和离线演示兼容。
+    const merchantId = requestedMerchantId || (principal?.merchant_ids || [])[0] || (!productionMode && principal?.type === "demo" ? "m-supplier" : "");
+    if (!merchantId) return error(res, 403, "当前会话未绑定可发布商品的供货主体");
+    if (!privileged(req) && requestedMerchantId && !canAccessMerchant(req, requestedMerchantId)) return error(res, 403, "无权以该商户身份发布商品");
+    const merchant = db.prepare("SELECT * FROM merchants WHERE id=? AND role IN ('supplier','agri') AND license_status='verified' AND bank_status='verified'").get(merchantId);
     if (!merchant || !merchantVerificationReady(merchant.id)) return error(res, 403, "商户未完成资质和对公账户核验");
     if (!canAccessMerchant(req, merchant.id)) return error(res, 403, "无权以该商户身份发布商品");
     const price = Number(payload.price), stock = Number(payload.stock), name = String(payload.name).trim(), category = String(payload.category).trim();

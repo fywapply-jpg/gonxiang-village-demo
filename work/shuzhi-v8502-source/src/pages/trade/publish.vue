@@ -5,6 +5,7 @@ import { useUserStore } from "@/store/user";
 import { createPurchaseDemand, submitProduct } from "@/services/localApi";
 
 const user = useUserStore();
+const productionBuild = Boolean(import.meta.env.PROD) || import.meta.env.MODE === "production";
 const type = ref<"supply" | "demand">("supply");
 onLoad((q) => { if (q?.type === "demand") type.value = "demand"; });
 
@@ -62,7 +63,7 @@ async function submit() {
   if (type.value === "supply") {
     uni.showLoading({ title: "提交上架审核…" });
     try {
-      const result = await submitProduct({ merchant_id: "m-supplier", name: form.value.name, category: form.value.cat, price: Number.parseFloat(form.value.price) || 0, stock: Number.parseFloat(form.value.qty) || 0, spec: form.value.spec, media: [...images.value.map((url) => ({ media_type: "image", url })), ...(video.value ? [{ media_type: "video", url: video.value }] : [])] });
+      const result = await submitProduct({ ...(productionBuild ? {} : { merchant_id: "m-supplier" }), name: form.value.name, category: form.value.cat, price: Number.parseFloat(form.value.price) || 0, stock: Number.parseFloat(form.value.qty) || 0, spec: form.value.spec, media: [...images.value.map((url) => ({ media_type: "image", url })), ...(video.value ? [{ media_type: "video", url: video.value }] : [])] });
       uni.hideLoading();
       uni.showModal({ title: "已提交上架审核", content: `商品编号：${result.id}\n状态：后台审核中，审核通过后展示在供货大厅`, showCancel: false, success: () => uni.navigateBack() });
     } catch (e) { uni.hideLoading(); uni.showToast({ title: (e as Error).message || "提交失败", icon: "none" }); }
@@ -70,7 +71,7 @@ async function submit() {
     uni.showLoading({ title: "提交采购需求…" });
     try {
       const result = await createPurchaseDemand({
-        buyer_id: "m-buyer",
+        ...(productionBuild ? {} : { buyer_id: "m-buyer" }),
         title: form.value.name,
         category: form.value.cat,
         qty: Number.parseFloat(form.value.qty) || 0,

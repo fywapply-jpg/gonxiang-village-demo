@@ -256,7 +256,7 @@ export function submitMerchantApplication(payload: MerchantApplicationPayload) {
   });
 }
 
-export function submitProduct(payload: { merchant_id: string; name: string; category: string; price: number; stock: number; spec?: string; origin?: string; media?: { media_type: string; url: string }[] }) {
+export function submitProduct(payload: { merchant_id?: string; name: string; category: string; price: number; stock: number; spec?: string; origin?: string; media?: { media_type: string; url: string }[] }) {
   return new Promise<{ id: string; status: string }>((resolve, reject) => {
     uni.request({
       url: `${API_BASE}/api/v1/products`, method: "POST",

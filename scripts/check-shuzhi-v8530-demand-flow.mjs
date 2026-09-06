@@ -56,6 +56,11 @@ try {
   const createdDemandReplay = await request("/api/v1/purchase-demands", { token: "buyer-flow-token", method: "POST", key: "demand-flow-create-001", body: createDemandPayload });
   expect(createdDemandReplay.status === 201 && createdDemandReplay.data?.data?.id === createdDemand.data?.data?.id, "采购需求发布幂等重放", createdDemand.data?.data?.id || "未返回原需求号");
 
+  const sessionBoundProduct = await request("/api/v1/products", { token: "supplier-flow-token", method: "POST", key: "demand-flow-session-product", body: { name: "会话主体推导商品", category: "水果", price: 68, stock: 20 } });
+  expect(sessionBoundProduct.status === 201 && sessionBoundProduct.data?.data?.status === "pending_review", "商品上架从会话主体推导", sessionBoundProduct.data?.data?.id || "未返回商品号");
+  const productImpersonation = await request("/api/v1/products", { token: "supplier-flow-token", method: "POST", key: "demand-flow-product-impersonation", body: { merchant_id: "m-buyer", name: "越权主体商品", category: "水果", price: 68, stock: 20 } });
+  expect(productImpersonation.status === 403, "商品上架主体越权拦截", `HTTP ${productImpersonation.status}`);
+
   const demands = await request("/api/v1/purchase-demands", { token: "supplier-flow-token" });
   const demand = demands.data?.data?.find((item) => item.id === "DEM-SZGS-0001");
   expect(demands.status === 200 && demand?.buyer_id === "m-buyer", "供货方读取已绑定采购需求", demand ? `${demand.id} · ${demand.buyer_name}` : "未找到 DEM-SZGS-0001");
