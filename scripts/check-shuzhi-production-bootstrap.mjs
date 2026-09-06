@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
@@ -64,6 +65,13 @@ const validAbsoluteOutsideRepo = (value) => {
   return !canonical.startsWith(`${root}/`);
 };
 const values = existsSync(envFile) ? parseEnv(readFileSync(envFile, "utf8")) : {};
+
+try {
+  execFileSync("sqlite3", ["--version"], { stdio: "ignore" });
+  add(true, "sqlite3 备份工具", "系统 sqlite3 命令可用，备份与恢复服务具备运行依赖");
+} catch {
+  add(false, "sqlite3 备份工具", "系统未安装 sqlite3 命令；每日备份、校验和恢复演练无法运行");
+}
 
 if (!existsSync(envFile)) {
   add(false, "生产配置文件存在", `${envFile} 不存在`);

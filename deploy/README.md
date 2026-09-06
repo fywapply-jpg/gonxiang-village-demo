@@ -11,6 +11,8 @@ shuzhi-v8530-backup.timer
 nginx-shuzhi-api-v8530.conf.example
 ```
 
+API 服务器必须预装与当前 Node 运行时兼容的 `sqlite3` 命令行工具；备份、SHA-256/完整性校验和隔离恢复脚本都会在 bootstrap 阶段检查该依赖。没有 `sqlite3` 时禁止启用 API、Outbox worker 或备份 timer。
+
 旧的 `v8514`—`v8529` 配置文件仅为历史归档，不能用于当前环境，也不能复制到生产服务器。它们可能包含旧的 API 路径、旧版本变量或已废弃的前端令牌配置。
 
 当前 v8533 生产试运营服务仍是 `local-backend/server.mjs` + 受保护的 SQLite 文件（`SHUZHI_DB`）；`cloud-server/` 的 Fastify + MySQL 服务是独立候选实现，未完成前台兼容适配和机构联调前不得与本服务混用，也不能把 `DATABASE_URL` 当作 `SHUZHI_DB` 使用。
