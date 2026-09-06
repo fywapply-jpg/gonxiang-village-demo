@@ -47,6 +47,7 @@ add(invoice.status === 200, "供货方开票落账", `HTTP ${invoice.status}`);
 const settled = await request(`/api/v1/trades/${orderId}/settle`, { method: "POST", token: financeToken, role: "finance", key: "v8530-settle", body: { instruction_ref: "SETTLE-V8530-0001" } });
 add(settled.status === 201 && settled.payload?.data?.settlement?.status === "settled", "财务结算与四流关账", `HTTP ${settled.status}`);
 add(settled.payload?.data?.settlement?.platform_fee_base === Math.round(goodsNet * 100) / 100 && settled.payload?.data?.settlement?.platform_fee === expectedPlatformFee, "平台费按商品净额计收", `基数=¥${settled.payload?.data?.settlement?.platform_fee_base} 费额=¥${settled.payload?.data?.settlement?.platform_fee}`);
+add(settled.payload?.data?.settlement?.platform_fee_collection_status === "pending_collection" && settled.payload?.data?.platform_fee_collection?.recognized_as_revenue === false, "平台费应收与已收分离", "未具备独立服务合同、发票及收款回执前，只记录 pending_collection，不把核算值视为平台收入");
 const replay = await request(`/api/v1/trades/${orderId}/settle`, { method: "POST", token: financeToken, role: "finance", key: "v8530-settle", body: { instruction_ref: "SETTLE-V8530-0001" } });
 add(replay.status === 201 && replay.payload?.data?.settlement?.status === "settled", "结算请求幂等重放", `HTTP ${replay.status}`);
 const duplicate = await request(`/api/v1/trades/${orderId}/settle`, { method: "POST", token: financeToken, role: "finance", key: "v8530-settle-duplicate", body: { instruction_ref: "SETTLE-V8530-0002" } });

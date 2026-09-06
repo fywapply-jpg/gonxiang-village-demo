@@ -282,7 +282,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS contract_signatures (id INTEGER PRIMARY KEY AUTOINCREMENT, contract_id TEXT NOT NULL, order_id TEXT NOT NULL, party TEXT NOT NULL, signer_id TEXT NOT NULL, signer_name TEXT NOT NULL, certificate_ref TEXT NOT NULL, signed_at TEXT NOT NULL, UNIQUE(contract_id,party), FOREIGN KEY (contract_id) REFERENCES contracts(id), FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS payments (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, payer TEXT NOT NULL, payee TEXT NOT NULL, amount REAL NOT NULL, channel TEXT NOT NULL, status TEXT NOT NULL, paid_at TEXT, provider_transaction_id TEXT, FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS payment_refunds (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, payment_id TEXT NOT NULL, amount REAL NOT NULL, reason TEXT NOT NULL, status TEXT NOT NULL, provider_ref TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY (order_id) REFERENCES orders(id), FOREIGN KEY (payment_id) REFERENCES payments(id));
-  CREATE TABLE IF NOT EXISTS settlement_records (id TEXT PRIMARY KEY, order_id TEXT NOT NULL UNIQUE, amount REAL NOT NULL, platform_fee REAL NOT NULL DEFAULT 0, status TEXT NOT NULL, instruction_ref TEXT NOT NULL, settled_at TEXT, created_at TEXT NOT NULL, FOREIGN KEY (order_id) REFERENCES orders(id));
+  CREATE TABLE IF NOT EXISTS settlement_records (id TEXT PRIMARY KEY, order_id TEXT NOT NULL UNIQUE, amount REAL NOT NULL, platform_fee REAL NOT NULL DEFAULT 0, status TEXT NOT NULL, instruction_ref TEXT NOT NULL, settled_at TEXT, created_at TEXT NOT NULL, platform_fee_collection_status TEXT NOT NULL DEFAULT 'pending_collection', platform_fee_collection_ref TEXT NOT NULL DEFAULT '', FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS fulfillment_events (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id TEXT NOT NULL, step INTEGER NOT NULL, title TEXT NOT NULL, evidence TEXT NOT NULL, actor TEXT NOT NULL, created_at TEXT NOT NULL, FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS invoices (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, invoice_no TEXT, amount REAL NOT NULL, status TEXT NOT NULL, issued_at TEXT, invoice_type TEXT NOT NULL DEFAULT '', tax_category_code TEXT NOT NULL DEFAULT '', tax_rate REAL, seller_credit_code TEXT, buyer_credit_code TEXT, FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS shipments (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, provider TEXT NOT NULL, tracking_no TEXT NOT NULL, carrier_name TEXT, vehicle_no TEXT, temperature REAL, status TEXT NOT NULL, departed_at TEXT, arrived_at TEXT, evidence TEXT, updated_at TEXT NOT NULL, consignor_address TEXT NOT NULL DEFAULT '', consignee_address TEXT NOT NULL DEFAULT '', FOREIGN KEY (order_id) REFERENCES orders(id));
@@ -309,6 +309,12 @@ ensureInstitutionOutboxSchema(db);
 // 避免只保存费额而无法证明“商品净额×费率”的口径。旧库安全补列，不改变历史结算记录。
 if (!db.prepare("PRAGMA table_info(settlement_records)").all().some((column) => column.name === "platform_fee_base")) {
   db.exec("ALTER TABLE settlement_records ADD COLUMN platform_fee_base REAL NOT NULL DEFAULT 0");
+}
+// v8533 平台服务费收款边界：platform_fee 只是按商品净额计算出的应收金额，
+// 不是持牌机构已收回执。独立服务合同、发票和收款回执到位前必须保持 pending_collection，
+// 避免后台把平台应收误报为平台已实现收入；旧库补列不改变既有结算记录。
+for (const [name, definition] of [["platform_fee_collection_status", "TEXT NOT NULL DEFAULT 'pending_collection'"], ["platform_fee_collection_ref", "TEXT NOT NULL DEFAULT ''"]]) {
+  if (!db.prepare("PRAGMA table_info(settlement_records)").all().some((column) => column.name === name)) db.exec(`ALTER TABLE settlement_records ADD COLUMN ${name} ${definition}`);
 }
 // v8530 schema migration: legacy SQLite files default existing applications to
 // supplier; new applications explicitly record the selected business role.
@@ -654,7 +660,7 @@ const platformFeeForOrder = (orderId, orderAmount) => {
   const base = goodsNet > 0 ? goodsNet : Math.round(Number(orderAmount || 0) * 100) / 100;
   const baseCents = productionMode ? moneyCents(base, "平台费计费基数") : Math.round(base * 100);
   const feeCents = Math.round(baseCents * Number(tradeConfig.fee_rules.platform_rate));
-  return { base: centsMoney(baseCents), fee: centsMoney(feeCents), fallback: goodsNet <= 0 };
+  return { base: centsMoney(baseCents), fee: centsMoney(feeCents), fallback: goodsNet <= 0, collection_status: feeCents > 0 ? "pending_collection" : "not_applicable" };
 };
 const tradeLedger = (id) => {
   const order = orderView(id);
@@ -662,6 +668,13 @@ const tradeLedger = (id) => {
   return {
     order: { id: order.id, scene: order.scene, status: order.status, amount: order.amount, buyer: order.buyer_name, supplier: order.supplier_name },
     settlement: order.settlement,
+    platform_fee_collection: order.settlement ? {
+      amount: Number(order.settlement.platform_fee || 0),
+      basis: Number(order.settlement.platform_fee_base || 0),
+      status: String(order.settlement.platform_fee_collection_status || "pending_collection"),
+      evidence_ref: String(order.settlement.platform_fee_collection_ref || ""),
+      recognized_as_revenue: String(order.settlement.platform_fee_collection_status || "") === "collected",
+    } : null,
     four_flows: {
       contract: order.contracts,
       order: { id: order.id, items: order.items, status: order.status },
@@ -963,7 +976,7 @@ const processIntegrationWebhook = async (provider, req, res) => {
           if (db.prepare("SELECT id FROM settlement_records WHERE order_id=? LIMIT 1").get(orderId)) throw new HttpError(409, "交易已经存在分账记录，禁止重复分账");
           const duplicateSettlementRef = db.prepare("SELECT id,order_id FROM settlement_records WHERE (id=? OR instruction_ref=?) AND order_id<>? LIMIT 1").get(instructionRef, instructionRef, orderId);
           if (duplicateSettlementRef) throw new HttpError(409, "机构分账流水号已绑定其他交易，禁止重复入账");
-          db.prepare("INSERT INTO settlement_records(id,order_id,amount,platform_fee,platform_fee_base,status,instruction_ref,settled_at,created_at) VALUES (?,?,?,?,?,?,?,?,?)").run(instructionRef, orderId, Number(payment.amount), feeCalc.fee, feeCalc.base, "settled", instructionRef, t, t);
+          db.prepare("INSERT INTO settlement_records(id,order_id,amount,platform_fee,platform_fee_base,status,instruction_ref,settled_at,created_at,platform_fee_collection_status,platform_fee_collection_ref) VALUES (?,?,?,?,?,?,?,?,?,?,?)").run(instructionRef, orderId, Number(payment.amount), feeCalc.fee, feeCalc.base, "settled", instructionRef, t, t, feeCalc.collection_status, "");
           db.prepare("UPDATE payments SET status='已分账',paid_at=COALESCE(paid_at,?),provider_transaction_id=COALESCE(provider_transaction_id,?) WHERE id=?").run(t, providerTransactionId || null, payment.id);
           db.prepare("UPDATE orders SET status='已完成',payment_status='已分账',fulfillment_step=CASE WHEN fulfillment_step<11 THEN 11 ELSE fulfillment_step END,updated_at=? WHERE id=?").run(t, orderId);
           db.prepare("INSERT INTO fulfillment_events(order_id,step,title,evidence,actor,created_at) VALUES (?,?,?,?,?,?)").run(orderId, 10, "机构条件分账结算", instructionRef, `integration-payment:${payload.provider_transaction_id || eventId}`, t);
@@ -2130,7 +2143,7 @@ const server = createServer(async (req, res) => {
     }
     db.exec("BEGIN");
     try {
-      db.prepare("INSERT INTO settlement_records(id,order_id,amount,platform_fee,platform_fee_base,status,instruction_ref,settled_at,created_at) VALUES (?,?,?,?,?,?,?,?,?)").run(instructionRef, orderId, amount, platformFee, feeCalc.base, "settled", instructionRef, t, t);
+      db.prepare("INSERT INTO settlement_records(id,order_id,amount,platform_fee,platform_fee_base,status,instruction_ref,settled_at,created_at,platform_fee_collection_status,platform_fee_collection_ref) VALUES (?,?,?,?,?,?,?,?,?,?,?)").run(instructionRef, orderId, amount, platformFee, feeCalc.base, "settled", instructionRef, t, t, feeCalc.collection_status, "");
       db.prepare("UPDATE payments SET status='已分账',paid_at=COALESCE(paid_at,?) WHERE order_id=?").run(t, orderId);
       db.prepare("UPDATE orders SET status='已完成',payment_status='已分账',fulfillment_step=CASE WHEN fulfillment_step<11 THEN 11 ELSE fulfillment_step END,updated_at=? WHERE id=?").run(t, orderId);
       db.prepare("INSERT INTO fulfillment_events(order_id,step,title,evidence,actor,created_at) VALUES (?,?,?,?,?,?)").run(orderId, 10, "机构条件分账结算", instructionRef, principalFor(req)?.id || "finance", t);
