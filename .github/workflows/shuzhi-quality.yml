@@ -79,6 +79,8 @@ jobs:
           npm run check:shuzhi-readiness
           npm run check:shuzhi-production-env-staged
           npm run check:shuzhi-release-integrity
+          npm run check:shuzhi-frontend-backend
+          npm run check:shuzhi-startup
       - name: Check institution contracts and asynchronous boundaries
         run: |
           npm run check:shuzhi-institution-contract
