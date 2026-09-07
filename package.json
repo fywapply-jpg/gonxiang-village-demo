@@ -37,6 +37,7 @@
     "check:shuzhi-institution-client": "node scripts/check-shuzhi-institution-client.mjs",
     "check:shuzhi-institution-outbox": "node scripts/check-shuzhi-institution-outbox.mjs",
     "check:shuzhi-production-outbox": "node scripts/check-shuzhi-v8530-production-outbox.mjs",
+    "check:shuzhi-concurrency": "node scripts/check-shuzhi-v8530-concurrency.mjs",
     "start:shuzhi-institution-worker": "node scripts/run-shuzhi-institution-worker.mjs",
     "check:secret-hygiene": "node scripts/check-secret-hygiene.mjs",
     "check:shuzhi-public": "node scripts/check-shuzhi-public-pages.mjs",

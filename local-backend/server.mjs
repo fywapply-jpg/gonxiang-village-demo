@@ -1794,7 +1794,10 @@ const server = createServer(async (req, res) => {
     const invoiceId = `INV-${orderId}`;
     const acceptanceId = `ACC-${orderId}`;
     const t = now();
-    db.exec("BEGIN");
+    // 订单创建同时写入订单、明细、库存和预占记录；使用 IMMEDIATE
+    // 在进入写事务时排队取得唯一写锁，避免多 API 进程在
+    // DEFERRED 事务读后升级写锁时把 SQLITE_BUSY 直接暴露成 500。
+    db.exec("BEGIN IMMEDIATE");
     try {
       const deliveryConstraint = productionDeliveryConstraint({ supplierId, destination: deliveryAddress, lat: deliveryLat, lng: deliveryLng, orderId });
       db.prepare("INSERT INTO orders VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(orderId, scene, buyerId, supplierId, "待复核", amount, "CNY", settlementModel, "待机构确认", -1, deliveryWindow, "待开票", "待双方签署", t, t);
