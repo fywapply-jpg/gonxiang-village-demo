@@ -408,6 +408,18 @@ add(serverSource.includes("!wechatAuthReady") && text("scripts/check-shuzhi-v853
 add(existsSync(resolve(root, "scripts/run-shuzhi-local-smoke.mjs")) && text("package.json").includes('"smoke:shuzhi-local": "node scripts/run-shuzhi-local-smoke.mjs"') ? "pass" : "fail", "本地烟测自启动", "烟测自动启动临时 API 并在结束后清理，避免依赖手动开启终端");
 add(existsSync(resolve(root, "scripts/check-shuzhi-v8530-production-settlement.mjs")) ? "pass" : "fail", "生产计费基数门禁", "生产订单缺少商品明细时禁止按订单总额回退计费");
 add(existsSync(resolve(root, "scripts/check-shuzhi-production-env-staged.mjs")) && text("package.json").includes('"check:shuzhi-production-env-staged": "node scripts/check-shuzhi-production-env-staged.mjs"') && text("scripts/check-shuzhi-production-env-staged.mjs").includes("未开通机构保持分阶段") && text("scripts/check-shuzhi-production-env-staged.mjs").includes("微信 ready 且主体映射完整") ? "pass" : "fail", "分阶段配置回归", "未 ready 的机构保持写接口关闭，单项 ready 只有真实凭证和主体验收完整时才通过");
+const atomicWriteRoutes = [
+  ["商户审核", "const reviewMatch = path.match", "const verificationMatch = path.match"],
+  ["商品审核", "const productReviewMatch = path.match", "const contractSignMatch = path.match"],
+  ["交易验收", "const acceptMatch = path.match", "const invoiceAdjustmentMatch = path.match"],
+];
+const atomicWriteChecks = atomicWriteRoutes.map(([, start, end]) => {
+  const from = serverSource.indexOf(start);
+  const to = serverSource.indexOf(end, from + start.length);
+  const block = from >= 0 && to > from ? serverSource.slice(from, to) : "";
+  return block.includes('db.exec("BEGIN IMMEDIATE")') && block.includes('db.exec("COMMIT")') && block.includes('db.exec("ROLLBACK")');
+});
+add(atomicWriteChecks.every(Boolean) ? "pass" : "fail", "关键管理写事务原子性", "商户准入、商品审核和交易验收的多表写入统一使用 IMMEDIATE 事务，失败时回滚，避免半提交状态");
 const deferredWriteBeginCount = (serverSource.match(/db\.exec\("BEGIN"\);/g) || []).length;
 add(deferredWriteBeginCount === 1 && (serverSource.match(/db\.exec\("BEGIN IMMEDIATE"\);/g) || []).length >= 17 ? "pass" : "fail", "生产写事务锁门禁", "演示种子可使用普通事务；生产订单、回调、报价、资金、履约、发票和管理写事务必须先取得 SQLite 写锁，避免并发升级锁暴露 SQLITE_BUSY");
 add(existsSync(resolve(root, "scripts/check-shuzhi-v8530-concurrency.mjs")) && text("package.json").includes('"check:shuzhi-concurrency": "node scripts/check-shuzhi-v8530-concurrency.mjs"') && serverSource.includes("db.exec(\"BEGIN IMMEDIATE\")") && text("scripts/check-shuzhi-v8530-concurrency.mjs").includes("库存、预占和订单明细一致") ? "pass" : "fail", "并发库存写入门禁", "多个 API 进程共享生产 SQLite 时，订单写事务按 IMMEDIATE 排队，库存、预占和订单明细不能超卖或暴露锁错误");

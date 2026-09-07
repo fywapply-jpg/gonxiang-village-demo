@@ -1223,10 +1223,18 @@ const server = createServer(async (req, res) => {
     const token = randomBytes(32).toString("base64url");
     const principal = { type: "user", id: String(configured.id), name: String(configured.name), role: String(configured.role), merchant_ids: merchantIds, application_ids: Array.isArray(configured.application_ids) ? configured.application_ids.map(String) : [] };
     const createdAt = Date.now(), expiresAt = new Date(createdAt + 12 * 60 * 60 * 1000).toISOString();
-    db.prepare("DELETE FROM user_sessions WHERE expires_at<? OR revoked_at IS NOT NULL").run(new Date().toISOString());
-    db.prepare("INSERT INTO user_sessions(token_hash,principal_json,expires_at,created_at,revoked_at) VALUES (?,?,?,?,NULL)").run(sessionTokenHash(token), JSON.stringify(principal), expiresAt, new Date(createdAt).toISOString());
-    log(`${principal.name}（${principal.id}）`, "WECHAT_LOGIN", principal.id, "微信 code 已换取短时会话，主体绑定和对公账户状态已核验");
-    return json(res, 200, { token, expires_at: expiresAt, user: { id: principal.id, name: principal.name, role: principal.role, merchant_ids: principal.merchant_ids } });
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      db.prepare("DELETE FROM user_sessions WHERE expires_at<? OR revoked_at IS NOT NULL").run(new Date().toISOString());
+      db.prepare("INSERT INTO user_sessions(token_hash,principal_json,expires_at,created_at,revoked_at) VALUES (?,?,?,?,NULL)").run(sessionTokenHash(token), JSON.stringify(principal), expiresAt, new Date(createdAt).toISOString());
+      log(`${principal.name}（${principal.id}）`, "WECHAT_LOGIN", principal.id, "微信 code 已换取短时会话，主体绑定和对公账户状态已核验");
+      const data = { token, expires_at: expiresAt, user: { id: principal.id, name: principal.name, role: principal.role, merchant_ids: principal.merchant_ids } };
+      db.exec("COMMIT");
+      return json(res, 200, data);
+    } catch (cause) {
+      db.exec("ROLLBACK");
+      throw cause;
+    }
   }
   if (path === "/api/v1/auth/logout" && req.method === "POST") {
     const token = bearerToken(req);
@@ -1506,23 +1514,30 @@ const server = createServer(async (req, res) => {
     if (!["pending", "review"].includes(app.status)) return error(res, 409, "该入驻申请已完成审核，不能重复改变结论");
     if (!["approve", "reject", "review"].includes(decision)) return error(res, 400, "审核决定不合法");
     const t = now();
-    if (decision === "approve") {
-      const orgId = `org-${app.id.toLowerCase()}`, merchantId = `m-${app.id.toLowerCase()}`;
-      const businessRole = Object.prototype.hasOwnProperty.call(merchantBusinessRoles, app.business_role) ? app.business_role : "supplier";
-      db.prepare("INSERT OR IGNORE INTO organizations VALUES (?,?,?,?,?,?)").run(orgId, app.name, app.entity_type, app.address || "", "active", t);
-      // 生产环境的“准入通过”只代表资料审核通过，不等于营业执照和对公账户
-      // 已被外部机构核验；必须由独立核验接口写入 verified 后才能启用交易。
-      const initialVerificationStatus = productionMode ? "pending" : "verified";
-      db.prepare("INSERT OR IGNORE INTO merchants VALUES (?,?,?,?,?,?,?,?)").run(merchantId, orgId, app.name, businessRole, initialVerificationStatus, initialVerificationStatus, "低", t);
-      db.prepare("INSERT OR IGNORE INTO merchant_identity(merchant_id,credit_code,legal_name,status,updated_at) VALUES (?,?,?,?,?)").run(merchantId, app.credit_code, app.name, "pending", t);
-      db.prepare("UPDATE merchant_applications SET status='approved',review_note=?,reviewer=?,reviewed_at=?,updated_at=? WHERE id=?").run(String(payload.note || "后台双人复核通过"), actorFor(req, "商户审核岗"), t, t, app.id);
-    } else {
-      db.prepare("UPDATE merchant_applications SET status=?,review_note=?,reviewer=?,reviewed_at=?,updated_at=? WHERE id=?").run(decision === "reject" ? "rejected" : "review", String(payload.note || ""), actorFor(req, "商户审核岗"), t, t, app.id);
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      if (decision === "approve") {
+        const orgId = `org-${app.id.toLowerCase()}`, merchantId = `m-${app.id.toLowerCase()}`;
+        const businessRole = Object.prototype.hasOwnProperty.call(merchantBusinessRoles, app.business_role) ? app.business_role : "supplier";
+        db.prepare("INSERT OR IGNORE INTO organizations VALUES (?,?,?,?,?,?)").run(orgId, app.name, app.entity_type, app.address || "", "active", t);
+        // 生产环境的“准入通过”只代表资料审核通过，不等于营业执照和对公账户
+        // 已被外部机构核验；必须由独立核验接口写入 verified 后才能启用交易。
+        const initialVerificationStatus = productionMode ? "pending" : "verified";
+        db.prepare("INSERT OR IGNORE INTO merchants VALUES (?,?,?,?,?,?,?,?)").run(merchantId, orgId, app.name, businessRole, initialVerificationStatus, initialVerificationStatus, "低", t);
+        db.prepare("INSERT OR IGNORE INTO merchant_identity(merchant_id,credit_code,legal_name,status,updated_at) VALUES (?,?,?,?,?)").run(merchantId, app.credit_code, app.name, "pending", t);
+        db.prepare("UPDATE merchant_applications SET status='approved',review_note=?,reviewer=?,reviewed_at=?,updated_at=? WHERE id=?").run(String(payload.note || "后台双人复核通过"), actorFor(req, "商户审核岗"), t, t, app.id);
+      } else {
+        db.prepare("UPDATE merchant_applications SET status=?,review_note=?,reviewer=?,reviewed_at=?,updated_at=? WHERE id=?").run(decision === "reject" ? "rejected" : "review", String(payload.note || ""), actorFor(req, "商户审核岗"), t, t, app.id);
+      }
+      log(actorFor(req, "商户审核岗"), `REVIEW_APPLICATION_${decision.toUpperCase()}`, app.id, String(payload.note || "").slice(0, 160));
+      const data = applicationView(app.id);
+      saveIdempotent(req, idemKey, 200, data, payload);
+      db.exec("COMMIT");
+      return json(res, 200, data);
+    } catch (cause) {
+      db.exec("ROLLBACK");
+      throw cause;
     }
-    log(actorFor(req, "商户审核岗"), `REVIEW_APPLICATION_${decision.toUpperCase()}`, app.id, String(payload.note || "").slice(0, 160));
-    const data = applicationView(app.id);
-    saveIdempotent(req, idemKey, 200, data, payload);
-    return json(res, 200, data);
   }
   const verificationMatch = path.match(/^\/api\/v1\/admin\/merchants\/([^/]+)\/verification$/);
   if (verificationMatch && req.method === "POST") {
@@ -2224,12 +2239,19 @@ const server = createServer(async (req, res) => {
     if (!["approve", "reject"].includes(decision)) return error(res, 400, "上架审核决定不合法");
     const product = db.prepare("SELECT * FROM products WHERE id=?").get(productReviewMatch[1]);
     if (!product) return error(res, 404, "商品不存在");
-    db.prepare("UPDATE products SET quality_status=? WHERE id=?").run(decision === "approve" ? "approved" : "rejected", product.id);
-    db.prepare("UPDATE product_media SET status=? WHERE product_id=?").run(decision === "approve" ? "approved" : "rejected", product.id);
-    log(actorFor(req, "商品审核岗"), `REVIEW_PRODUCT_${decision.toUpperCase()}`, product.id, String(payload.note || "").slice(0, 160));
-    const data = { id: product.id, status: decision === "approve" ? "approved" : "rejected" };
-    saveIdempotent(req, idemKey, 200, data, payload);
-    return json(res, 200, data);
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      db.prepare("UPDATE products SET quality_status=? WHERE id=?").run(decision === "approve" ? "approved" : "rejected", product.id);
+      db.prepare("UPDATE product_media SET status=? WHERE product_id=?").run(decision === "approve" ? "approved" : "rejected", product.id);
+      log(actorFor(req, "商品审核岗"), `REVIEW_PRODUCT_${decision.toUpperCase()}`, product.id, String(payload.note || "").slice(0, 160));
+      const data = { id: product.id, status: decision === "approve" ? "approved" : "rejected" };
+      saveIdempotent(req, idemKey, 200, data, payload);
+      db.exec("COMMIT");
+      return json(res, 200, data);
+    } catch (cause) {
+      db.exec("ROLLBACK");
+      throw cause;
+    }
   }
   const contractSignMatch = path.match(/^\/api\/v1\/trades\/([^/]+)\/contract\/sign$/);
   if (contractSignMatch && req.method === "POST") {
@@ -2513,14 +2535,21 @@ const server = createServer(async (req, res) => {
     const acceptanceId = `ACC-${randomUUID()}`, t = now();
     const acceptanceActor = productionMode ? actorFor(req, "采购验收岗") : String(payload.receiver || "采购验收岗");
     const evidence = String(payload.evidence || "复磅/抽检/签收证据").slice(0, 500);
-    db.prepare("INSERT INTO acceptances VALUES (?,?,?,?,?,?,?,?)").run(acceptanceId, id, acceptanceActor.slice(0, 120), result, acceptedQty, evidence, t, result === "disputed" ? String(payload.dispute_note || "").slice(0, 500) : null);
-    const acceptanceItemStmt = db.prepare("INSERT INTO acceptance_items(acceptance_id,order_item_id,accepted_qty,result,evidence) VALUES (?,?,?,?,?)");
-    for (const item of acceptedItems) acceptanceItemStmt.run(acceptanceId, Number(item.order_item_id), Number(item.accepted_qty), result, String(item.evidence || evidence).slice(0, 500));
-    db.prepare("UPDATE orders SET status=?,payment_status=?,updated_at=? WHERE id=?").run(result === "accepted" ? "待开票" : "争议处理中", result === "accepted" ? "待开票" : "争议款冻结", t, id);
-    log(acceptanceActor, result === "accepted" ? "ACCEPT_TRADE" : "DISPUTE_TRADE", id, String(payload.evidence || ""));
-    const data = tradeLedger(id);
-    saveIdempotent(req, idemKey, 201, data, payload);
-    return json(res, 201, data);
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      db.prepare("INSERT INTO acceptances VALUES (?,?,?,?,?,?,?,?)").run(acceptanceId, id, acceptanceActor.slice(0, 120), result, acceptedQty, evidence, t, result === "disputed" ? String(payload.dispute_note || "").slice(0, 500) : null);
+      const acceptanceItemStmt = db.prepare("INSERT INTO acceptance_items(acceptance_id,order_item_id,accepted_qty,result,evidence) VALUES (?,?,?,?,?)");
+      for (const item of acceptedItems) acceptanceItemStmt.run(acceptanceId, Number(item.order_item_id), Number(item.accepted_qty), result, String(item.evidence || evidence).slice(0, 500));
+      db.prepare("UPDATE orders SET status=?,payment_status=?,updated_at=? WHERE id=?").run(result === "accepted" ? "待开票" : "争议处理中", result === "accepted" ? "待开票" : "争议款冻结", t, id);
+      log(acceptanceActor, result === "accepted" ? "ACCEPT_TRADE" : "DISPUTE_TRADE", id, String(payload.evidence || ""));
+      const data = tradeLedger(id);
+      saveIdempotent(req, idemKey, 201, data, payload);
+      db.exec("COMMIT");
+      return json(res, 201, data);
+    } catch (cause) {
+      db.exec("ROLLBACK");
+      throw cause;
+    }
   }
   const invoiceAdjustmentMatch = path.match(/^\/api\/v1\/trades\/([^/]+)\/invoice-adjustments$/);
   if (invoiceAdjustmentMatch && req.method === "POST") {
