@@ -1285,11 +1285,18 @@ const server = createServer(async (req, res) => {
       if (existed) return json(res, 200, businessEventView(existed));
     }
     const t = now();
-    const result = db.prepare("INSERT INTO business_events(feature_key,domain,action,actor,payload,status,idempotency_key,created_at) VALUES (?,?,?,?,?,?,?,?)").run(featureKey, feature.domain, action, actor, JSON.stringify(payload.payload || {}), "accepted", idempotencyKey, t);
-    log(actor, "PLATFORM_EVENT", featureKey, `${action}${payload.reference_id ? ` · ${payload.reference_id}` : ""}`);
-    const data = businessEventView(db.prepare("SELECT * FROM business_events WHERE id=?").get(result.lastInsertRowid));
-    saveIdempotent(req, idemKey, 201, data, payload);
-    return json(res, 201, data);
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      const result = db.prepare("INSERT INTO business_events(feature_key,domain,action,actor,payload,status,idempotency_key,created_at) VALUES (?,?,?,?,?,?,?,?)").run(featureKey, feature.domain, action, actor, JSON.stringify(payload.payload || {}), "accepted", idempotencyKey, t);
+      log(actor, "PLATFORM_EVENT", featureKey, `${action}${payload.reference_id ? ` · ${payload.reference_id}` : ""}`);
+      const data = businessEventView(db.prepare("SELECT * FROM business_events WHERE id=?").get(result.lastInsertRowid));
+      saveIdempotent(req, idemKey, 201, data, payload);
+      db.exec("COMMIT");
+      return json(res, 201, data);
+    } catch (cause) {
+      db.exec("ROLLBACK");
+      throw cause;
+    }
   }
   const regulatorySubmissionMatch = path.match(/^\/api\/v1\/regulatory\/submissions(?:\/([^/]+))?$/);
   if (regulatorySubmissionMatch && req.method === "GET") {
@@ -1408,12 +1415,19 @@ const server = createServer(async (req, res) => {
     if (next >= rule.steps.length) return error(res, 409, "该业务模块已完成，请先重置后重新演示");
     const evidence = String(payload.evidence || `OP-${rule.domain.toUpperCase()}-${Date.now().toString().slice(-8)}-${next + 1}`);
     const operationActor = productionMode ? actorFor(req, "业务运营岗") : String(payload.actor || "前台经办人");
-    db.prepare("UPDATE operation_progress SET step=?,status=?,updated_at=? WHERE module_key=?").run(next, next === rule.steps.length - 1 ? "completed" : "running", t, moduleKey);
-    db.prepare("INSERT INTO operation_events(module_key,domain,step,title,evidence,actor,result,created_at) VALUES (?,?,?,?,?,?,?,?)").run(moduleKey, rule.domain, next, rule.steps[next], evidence, operationActor, "环节已完成，证据已归档", t);
-    log(operationActor, "ADVANCE_OPERATION", moduleKey, `${rule.steps[next]} · ${evidence}`);
-    const data = operationView(moduleKey);
-    saveIdempotent(req, idemKey, 200, data, payload);
-    return json(res, 200, data);
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      db.prepare("UPDATE operation_progress SET step=?,status=?,updated_at=? WHERE module_key=?").run(next, next === rule.steps.length - 1 ? "completed" : "running", t, moduleKey);
+      db.prepare("INSERT INTO operation_events(module_key,domain,step,title,evidence,actor,result,created_at) VALUES (?,?,?,?,?,?,?,?)").run(moduleKey, rule.domain, next, rule.steps[next], evidence, operationActor, "环节已完成，证据已归档", t);
+      log(operationActor, "ADVANCE_OPERATION", moduleKey, `${rule.steps[next]} · ${evidence}`);
+      const data = operationView(moduleKey);
+      saveIdempotent(req, idemKey, 200, data, payload);
+      db.exec("COMMIT");
+      return json(res, 200, data);
+    } catch (cause) {
+      db.exec("ROLLBACK");
+      throw cause;
+    }
   }
   if (path.startsWith("/api/v1/admin") && !authorized(req)) return error(res, 401, "需要管理员授权");
   if (path.startsWith("/api/v1/admin") && !adminAuthorized(req)) return error(res, 403, "当前令牌不是管理员岗位令牌");
@@ -1595,11 +1609,18 @@ const server = createServer(async (req, res) => {
     const merchant = db.prepare("SELECT license_status,bank_status FROM merchants WHERE id=?").get(merchantId);
     if (!merchant || !merchantVerificationReady(merchantId)) return error(res, 409, "营业资质和对公账户尚未完成独立核验，不能启用商户");
     const t = now();
-    db.prepare("UPDATE merchant_applications SET status='active',activated_at=?,updated_at=? WHERE id=?").run(t, t, app.id);
-    log(actorFor(req, "商户运营岗"), "ACTIVATE_MERCHANT", app.id, "商户业务资格已启用");
-    const data = applicationView(app.id);
-    saveIdempotent(req, idemKey, 200, data, payload);
-    return json(res, 200, data);
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      db.prepare("UPDATE merchant_applications SET status='active',activated_at=?,updated_at=? WHERE id=?").run(t, t, app.id);
+      log(actorFor(req, "商户运营岗"), "ACTIVATE_MERCHANT", app.id, "商户业务资格已启用");
+      const data = applicationView(app.id);
+      saveIdempotent(req, idemKey, 200, data, payload);
+      db.exec("COMMIT");
+      return json(res, 200, data);
+    } catch (cause) {
+      db.exec("ROLLBACK");
+      throw cause;
+    }
   }
   if (path === "/api/v1/purchase-demands" && req.method === "POST") {
     if (!authorized(req)) return error(res, 401, "需要采购需求发布授权");
@@ -1628,11 +1649,18 @@ const server = createServer(async (req, res) => {
     if (budgetMax !== null && !finitePositive(budgetMax, 1e12)) return error(res, 400, "采购预算必须为合法正数");
     const demandId = `DEM-SZGS-${new Date().getFullYear()}-${randomUUID().slice(0, 12).toUpperCase()}`;
     const t = now();
-    db.prepare("INSERT INTO purchase_demands(id,buyer_id,title,category,qty,unit,budget_max,destination,destination_lat,destination_lng,delivery_window,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(demandId, buyerId, title, category, qty, unit, budgetMax, destination, destinationLat, destinationLng, deliveryWindow, "open", t, t);
-    log(actorFor(req, "采购需求岗"), "CREATE_PURCHASE_DEMAND", demandId, `${buyer.name} · ${title} · ${qty}${unit}`);
-    const data = demandView(demandId);
-    saveIdempotent(req, idemKey, 201, data, payload);
-    return json(res, 201, data);
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      db.prepare("INSERT INTO purchase_demands(id,buyer_id,title,category,qty,unit,budget_max,destination,destination_lat,destination_lng,delivery_window,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(demandId, buyerId, title, category, qty, unit, budgetMax, destination, destinationLat, destinationLng, deliveryWindow, "open", t, t);
+      log(actorFor(req, "采购需求岗"), "CREATE_PURCHASE_DEMAND", demandId, `${buyer.name} · ${title} · ${qty}${unit}`);
+      const data = demandView(demandId);
+      saveIdempotent(req, idemKey, 201, data, payload);
+      db.exec("COMMIT");
+      return json(res, 201, data);
+    } catch (cause) {
+      db.exec("ROLLBACK");
+      throw cause;
+    }
   }
   if (path === "/api/v1/purchase-demands" && req.method === "GET") {
     if (!authorized(req)) return error(res, 401, "需要采购需求查看授权");

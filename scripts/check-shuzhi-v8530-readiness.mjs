@@ -410,8 +410,12 @@ add(existsSync(resolve(root, "scripts/check-shuzhi-v8530-production-settlement.m
 add(existsSync(resolve(root, "scripts/check-shuzhi-production-env-staged.mjs")) && text("package.json").includes('"check:shuzhi-production-env-staged": "node scripts/check-shuzhi-production-env-staged.mjs"') && text("scripts/check-shuzhi-production-env-staged.mjs").includes("未开通机构保持分阶段") && text("scripts/check-shuzhi-production-env-staged.mjs").includes("微信 ready 且主体映射完整") ? "pass" : "fail", "分阶段配置回归", "未 ready 的机构保持写接口关闭，单项 ready 只有真实凭证和主体验收完整时才通过");
 const atomicWriteRoutes = [
   ["商户审核", "const reviewMatch = path.match", "const verificationMatch = path.match"],
+  ["商户启用", "const activateMatch = path.match", "if (path === \"/api/v1/purchase-demands\" && req.method === \"POST\")"],
+  ["采购需求", "if (path === \"/api/v1/purchase-demands\" && req.method === \"POST\")", "if (path === \"/api/v1/purchase-demands\" && req.method === \"GET\")"],
   ["商品审核", "const productReviewMatch = path.match", "const contractSignMatch = path.match"],
   ["交易验收", "const acceptMatch = path.match", "const invoiceAdjustmentMatch = path.match"],
+  ["平台事件", "if (path === \"/api/v1/platform/events\" && req.method === \"POST\")", "const regulatorySubmissionMatch = path.match"],
+  ["业务工作流", "const operationAdvanceMatch = path.match", "if (path.startsWith(\"/api/v1/admin\") && !authorized(req))"],
 ];
 const atomicWriteChecks = atomicWriteRoutes.map(([, start, end]) => {
   const from = serverSource.indexOf(start);
