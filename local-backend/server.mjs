@@ -1468,11 +1468,18 @@ const server = createServer(async (req, res) => {
     if (!regionsValid || !deliveryModesValid || !["radius", "region"].includes(areaType) || ![lat, lng, radius].every(Number.isFinite) || lat < -90 || lat > 90 || lng < -180 || lng > 180 || radius <= 0 || radius > 500 || !Number.isInteger(maxDailyOrders) || maxDailyOrders < 0 || maxDailyOrders > 100000) return error(res, 400, "服务中心类型、坐标、半径、区域或日订单上限不合法");
     if (productionMode && !evidenceRef) return error(res, 400, "生产服务区域维护必须提供后台/机构验收证据引用");
     const t = now();
-    db.prepare("INSERT INTO merchant_service_areas VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET area_type=excluded.area_type,center_lat=excluded.center_lat,center_lng=excluded.center_lng,radius_km=excluded.radius_km,regions=excluded.regions,delivery_modes=excluded.delivery_modes,max_daily_orders=excluded.max_daily_orders,status='active',updated_at=excluded.updated_at").run(`AREA-${merchant.id}`, merchant.id, areaType, lat, lng, radius, JSON.stringify(regions), JSON.stringify(deliveryModes), maxDailyOrders, "active", t);
-    log(actorFor(req, "服务区域管理员"), "UPDATE_SERVICE_AREA", merchant.id, `类型${areaType} · 半径${radius}km · 证据${evidenceRef || "本地演示"}`);
-    const data = serviceAreaView(merchant.id);
-    saveIdempotent(req, idemKey, 200, data, payload);
-    return json(res, 200, data);
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      db.prepare("INSERT INTO merchant_service_areas VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET area_type=excluded.area_type,center_lat=excluded.center_lat,center_lng=excluded.center_lng,radius_km=excluded.radius_km,regions=excluded.regions,delivery_modes=excluded.delivery_modes,max_daily_orders=excluded.max_daily_orders,status='active',updated_at=excluded.updated_at").run(`AREA-${merchant.id}`, merchant.id, areaType, lat, lng, radius, JSON.stringify(regions), JSON.stringify(deliveryModes), maxDailyOrders, "active", t);
+      log(actorFor(req, "服务区域管理员"), "UPDATE_SERVICE_AREA", merchant.id, `类型${areaType} · 半径${radius}km · 证据${evidenceRef || "本地演示"}`);
+      const data = serviceAreaView(merchant.id);
+      saveIdempotent(req, idemKey, 200, data, payload);
+      db.exec("COMMIT");
+      return json(res, 200, data);
+    } catch (cause) {
+      db.exec("ROLLBACK");
+      throw cause;
+    }
   }
   const dispatchMatch = path.match(/^\/api\/v1\/trades\/([^/]+)\/dispatch-check$/);
   if (dispatchMatch && req.method === "GET") {
@@ -1502,11 +1509,18 @@ const server = createServer(async (req, res) => {
     const t = now();
     const businessRole = String(payload.business_role || "supplier").trim();
     if (!Object.prototype.hasOwnProperty.call(merchantBusinessRoles, businessRole)) return error(res, 400, "经营角色不合法，请选择供应商、采购商、农资采购方或基层服务站");
-    db.prepare("INSERT INTO merchant_applications VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(id, String(payload.entity_type), String(payload.name).trim(), creditCode, String(payload.legal_name).trim(), String(payload.legal_id_masked || ""), String(payload.address || ""), String(payload.scope || ""), String(payload.capital || ""), JSON.stringify(payload.documents || []), "pending", null, null, t, null, null, t, businessRole);
-    log("merchant-applicant", "SUBMIT_APPLICATION", id, "商户入驻申请已提交，等待后台审核");
-    const data = applicationView(id);
-    saveIdempotent(req, idemKey, 201, data, payload);
-    return json(res, 201, data);
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      db.prepare("INSERT INTO merchant_applications VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(id, String(payload.entity_type), String(payload.name).trim(), creditCode, String(payload.legal_name).trim(), String(payload.legal_id_masked || ""), String(payload.address || ""), String(payload.scope || ""), String(payload.capital || ""), JSON.stringify(payload.documents || []), "pending", null, null, t, null, null, t, businessRole);
+      log("merchant-applicant", "SUBMIT_APPLICATION", id, "商户入驻申请已提交，等待后台审核");
+      const data = applicationView(id);
+      saveIdempotent(req, idemKey, 201, data, payload);
+      db.exec("COMMIT");
+      return json(res, 201, data);
+    } catch (cause) {
+      db.exec("ROLLBACK");
+      throw cause;
+    }
   }
   const applicationMatch = path.match(/^\/api\/v1\/merchant-applications\/([^/]+)$/);
   if (applicationMatch && req.method === "GET") {

@@ -409,6 +409,8 @@ add(existsSync(resolve(root, "scripts/run-shuzhi-local-smoke.mjs")) && text("pac
 add(existsSync(resolve(root, "scripts/check-shuzhi-v8530-production-settlement.mjs")) ? "pass" : "fail", "生产计费基数门禁", "生产订单缺少商品明细时禁止按订单总额回退计费");
 add(existsSync(resolve(root, "scripts/check-shuzhi-production-env-staged.mjs")) && text("package.json").includes('"check:shuzhi-production-env-staged": "node scripts/check-shuzhi-production-env-staged.mjs"') && text("scripts/check-shuzhi-production-env-staged.mjs").includes("未开通机构保持分阶段") && text("scripts/check-shuzhi-production-env-staged.mjs").includes("微信 ready 且主体映射完整") ? "pass" : "fail", "分阶段配置回归", "未 ready 的机构保持写接口关闭，单项 ready 只有真实凭证和主体验收完整时才通过");
 const atomicWriteRoutes = [
+  ["服务区域", "const areaMatch = path.match", "const dispatchMatch = path.match"],
+  ["商户入驻", "if (path === \"/api/v1/merchant-applications\" && req.method === \"POST\")", "const applicationMatch = path.match"],
   ["商户审核", "const reviewMatch = path.match", "const verificationMatch = path.match"],
   ["商户启用", "const activateMatch = path.match", "if (path === \"/api/v1/purchase-demands\" && req.method === \"POST\")"],
   ["采购需求", "if (path === \"/api/v1/purchase-demands\" && req.method === \"POST\")", "if (path === \"/api/v1/purchase-demands\" && req.method === \"GET\")"],
