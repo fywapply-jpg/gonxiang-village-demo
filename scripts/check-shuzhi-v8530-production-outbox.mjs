@@ -123,6 +123,8 @@ try {
   const productionItems = orderItemsDb.prepare("SELECT id,qty FROM order_items WHERE order_id=? ORDER BY id").all(orderId);
   orderItemsDb.close();
   const fullAcceptanceItems = productionItems.map((item) => ({ order_item_id: Number(item.id), accepted_qty: Number(item.qty), evidence: "逐项复磅/抽检/签收证据" }));
+  const buyerInvoiceLedger = await getJson(prodPort, `/api/v1/invoices?order_id=${encodeURIComponent(orderId)}`, buyerToken);
+  add(buyerInvoiceLedger.status === 200 && buyerInvoiceLedger.payload?.[0]?.order_id === orderId && buyerInvoiceLedger.payload?.[0]?.can_adjust === false, "采购方只读发票台账", `HTTP ${buyerInvoiceLedger.status}`);
   const readOnlyWorkflow = await request(prodPort, "/api/v1/operations/alliance/advance", financeToken, { evidence: "只读财务岗位不应推进业务流程" }, "outbox-readonly-workflow");
   add(readOnlyWorkflow.status === 403, "生产只读岗位禁止推进业务工作流", `HTTP ${readOnlyWorkflow.status}`);
   const readOnlyArea = await request(prodPort, "/api/v1/merchants/m-supplier/service-area", financeToken, { center_lat: 24.91, center_lng: 115.65, radius_km: 120, max_daily_orders: 80 }, "outbox-readonly-service-area");
@@ -226,10 +228,12 @@ try {
   add(invoiceCallback.status === 202, "发票待验真回调落账", `HTTP ${invoiceCallback.status}`);
   const invoiceOverwriteCallback = await webhook(prodPort, "invoice", { event_id: `outbox-invoice-overwrite-${Date.now()}`, order_id: orderId, invoice_no: "PROD-INVOICE-CALLBACK-002", status: "verified", amount: 276000 }, baseEnv.INVOICE_WEBHOOK_SECRET);
   add(invoiceOverwriteCallback.status === 409, "发票机构号码禁止回调替换", `HTTP ${invoiceOverwriteCallback.status}`);
-  const invoiceVerifyCallback = await webhook(prodPort, "invoice", { event_id: `outbox-invoice-verify-${Date.now()}`, order_id: orderId, invoice_no: "PROD-INVOICE-CALLBACK-001", status: "verified", amount: 276000 }, baseEnv.INVOICE_WEBHOOK_SECRET);
+  const invoiceVerifyCallback = await webhook(prodPort, "invoice", { event_id: `outbox-invoice-verify-${Date.now()}`, order_id: orderId, invoice_no: "PROD-INVOICE-CALLBACK-001", status: "verified", amount: 276000, download_url: "https://invoice-adapter.example.com/files/PROD-INVOICE-CALLBACK-001.pdf" }, baseEnv.INVOICE_WEBHOOK_SECRET);
   add(invoiceVerifyCallback.status === 202, "同号码发票验真回调落账", `HTTP ${invoiceVerifyCallback.status}`);
+  const invoiceFileLedger = await getJson(prodPort, `/api/v1/invoices?order_id=${encodeURIComponent(orderId)}`, buyerToken);
+  add(invoiceFileLedger.status === 200 && invoiceFileLedger.payload?.[0]?.download_url === "https://invoice-adapter.example.com/files/PROD-INVOICE-CALLBACK-001.pdf", "发票机构文件地址进入后台台账", `HTTP ${invoiceFileLedger.status}`);
   const dbInvoiceCallbackRestore = new DatabaseSync(dbPath);
-  dbInvoiceCallbackRestore.prepare("UPDATE invoices SET status='待开具',invoice_no=NULL,issued_at=NULL WHERE order_id=?").run(orderId);
+  dbInvoiceCallbackRestore.prepare("UPDATE invoices SET status='待开具',invoice_no=NULL,issued_at=NULL,download_url=NULL WHERE order_id=?").run(orderId);
   dbInvoiceCallbackRestore.prepare("UPDATE orders SET invoice_status='待开票' WHERE id=?").run(orderId);
   dbInvoiceCallbackRestore.close();
   const dbInvoiceMismatch = new DatabaseSync(dbPath);
@@ -328,9 +332,13 @@ try {
   add(invoiceMissingTax.status === 400, "生产开票缺少税务字段阻断", `HTTP ${invoiceMissingTax.status}`);
   const invoice = await request(prodPort, `/api/v1/trades/${orderId}/invoice`, supplierToken, { amount: 276000, seller_credit_code: "91360722MA8V85013X", buyer_credit_code: "91420100MA8V85013Y", tax_rate: 0.09, invoice_type: "增值税电子普通发票", tax_category_code: "农业产品" }, "outbox-invoice-000001");
   add(invoice.status === 202, "生产发票先入 Outbox", `HTTP ${invoice.status}${invoice.status !== 202 ? ` · ${JSON.stringify(invoice.payload)} · ${productionServer.output().slice(-900)}` : ""}`);
+  const financeInvoiceLedger = await getJson(prodPort, `/api/v1/invoices?order_id=${encodeURIComponent(orderId)}`, financeToken);
+  add(financeInvoiceLedger.status === 200 && financeInvoiceLedger.payload?.[0]?.status === "待开具" && financeInvoiceLedger.payload?.[0]?.items?.length > 0 && financeInvoiceLedger.payload?.[0]?.can_adjust === false, "财务发票台账展示后台状态", `HTTP ${financeInvoiceLedger.status}`);
   const dbIssued = new DatabaseSync(dbPath);
   dbIssued.prepare("UPDATE invoices SET status='已开具',invoice_no='PROD-INVOICE-001',issued_at=? WHERE order_id=?").run(t, orderId);
   dbIssued.close();
+  const financeAdjustableLedger = await getJson(prodPort, `/api/v1/invoices?order_id=${encodeURIComponent(orderId)}`, financeToken);
+  add(financeAdjustableLedger.status === 200 && financeAdjustableLedger.payload?.[0]?.can_adjust === true, "财务台账开放合规调整入口", `HTTP ${financeAdjustableLedger.status}`);
   const redLetterMissingReview = await request(prodPort, `/api/v1/trades/${orderId}/invoice-adjustments`, financeToken, { action: "red_letter", amount: 100, items: [{ name: "赣南脐橙", quantity: 1, unit_price: 100 }], reason: "退款后的发票红冲" }, "outbox-invoice-red-letter-missing-review");
   add(redLetterMissingReview.status === 400, "红冲缺少财务复核引用阻断", `HTTP ${redLetterMissingReview.status}`);
   const redLetter = await request(prodPort, `/api/v1/trades/${orderId}/invoice-adjustments`, financeToken, { action: "red_letter", amount: 100, items: [{ name: "赣南脐橙", quantity: 1, unit_price: 100 }], reason: "退款后的发票红冲", financial_review_ref: "FIN-REVIEW-RED-001" }, "outbox-invoice-red-letter-000001");

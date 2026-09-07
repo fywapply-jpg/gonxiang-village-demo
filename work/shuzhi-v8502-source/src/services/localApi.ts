@@ -191,6 +191,37 @@ export function getTrades() {
   });
 }
 
+export type LocalInvoice = {
+  id: string;
+  order_id: string;
+  /** 本地演示记录的兼容字段；正式记录使用 invoice_no/issued_at。 */
+  no?: string;
+  target?: string;
+  time?: string;
+  order_status?: string;
+  invoice_no?: string | null;
+  amount: number;
+  status: string;
+  issued_at?: string | null;
+  download_url?: string | null;
+  invoice_type?: string;
+  tax_category_code?: string;
+  tax_rate?: number | null;
+  buyer_name?: string;
+  supplier_name?: string;
+  buyer_credit_code_masked?: string;
+  seller_credit_code_masked?: string;
+  items?: Array<{ order_item_id: number; product_id: string; name: string; qty: number; unit_price: number; unit?: string }>;
+  adjustments?: Array<{ id: string; action: "red_letter" | "void"; original_invoice_no: string; amount: number; reason: string; financial_review_ref?: string; status: string; adjustment_invoice_no?: string | null; provider_ref?: string | null; evidence_ref?: string | null; requested_by?: string; completed_at?: string | null; created_at: string; updated_at: string }>;
+  can_adjust?: boolean;
+};
+
+/** 正式发票台账：只读取后台已授权订单，前台不生成或猜测发票状态。 */
+export function getInvoices(orderId?: string) {
+  const query = orderId ? `?order_id=${encodeURIComponent(orderId)}` : "";
+  return requestJson<LocalInvoice[]>(`/api/v1/invoices${query}`);
+}
+
 export type CreateTradeOrderPayload = {
   scene?: "buyerSupply" | "supplierDemand";
   buyer_id?: string;

@@ -311,7 +311,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS settlement_records (id TEXT PRIMARY KEY, order_id TEXT NOT NULL UNIQUE, amount REAL NOT NULL, platform_fee REAL NOT NULL DEFAULT 0, status TEXT NOT NULL, instruction_ref TEXT NOT NULL, settled_at TEXT, created_at TEXT NOT NULL, platform_fee_collection_status TEXT NOT NULL DEFAULT 'pending_collection', platform_fee_collection_ref TEXT NOT NULL DEFAULT '', FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS platform_fee_collections (id TEXT PRIMARY KEY, order_id TEXT NOT NULL UNIQUE, settlement_id TEXT NOT NULL UNIQUE, payer_type TEXT NOT NULL, payer_merchant_id TEXT, payer_name TEXT NOT NULL, payer_credit_code TEXT NOT NULL, service_contract_ref TEXT NOT NULL, invoice_ref TEXT NOT NULL, provider TEXT NOT NULL, provider_transaction_id TEXT NOT NULL UNIQUE, amount REAL NOT NULL, currency TEXT NOT NULL DEFAULT 'CNY', status TEXT NOT NULL, evidence_ref TEXT NOT NULL, collected_at TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY (order_id) REFERENCES orders(id), FOREIGN KEY (settlement_id) REFERENCES settlement_records(id), FOREIGN KEY (payer_merchant_id) REFERENCES merchants(id));
   CREATE TABLE IF NOT EXISTS fulfillment_events (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id TEXT NOT NULL, step INTEGER NOT NULL, title TEXT NOT NULL, evidence TEXT NOT NULL, actor TEXT NOT NULL, created_at TEXT NOT NULL, FOREIGN KEY (order_id) REFERENCES orders(id));
-  CREATE TABLE IF NOT EXISTS invoices (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, invoice_no TEXT, amount REAL NOT NULL, status TEXT NOT NULL, issued_at TEXT, invoice_type TEXT NOT NULL DEFAULT '', tax_category_code TEXT NOT NULL DEFAULT '', tax_rate REAL, seller_credit_code TEXT, buyer_credit_code TEXT, FOREIGN KEY (order_id) REFERENCES orders(id));
+  CREATE TABLE IF NOT EXISTS invoices (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, invoice_no TEXT, amount REAL NOT NULL, status TEXT NOT NULL, issued_at TEXT, invoice_type TEXT NOT NULL DEFAULT '', tax_category_code TEXT NOT NULL DEFAULT '', tax_rate REAL, seller_credit_code TEXT, buyer_credit_code TEXT, download_url TEXT, FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE TABLE IF NOT EXISTS invoice_adjustments (id TEXT PRIMARY KEY, invoice_id TEXT NOT NULL, order_id TEXT NOT NULL, action TEXT NOT NULL CHECK(action IN ('red_letter','void')), original_invoice_no TEXT NOT NULL, amount REAL NOT NULL, reason TEXT NOT NULL, financial_review_ref TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT '待机构受理' CHECK(status IN ('待机构受理','处理中','已完成','失败')), adjustment_invoice_no TEXT, provider_ref TEXT, evidence_ref TEXT, requested_by TEXT NOT NULL, completed_at TEXT, idempotency_key TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, FOREIGN KEY (invoice_id) REFERENCES invoices(id), FOREIGN KEY (order_id) REFERENCES orders(id));
   CREATE INDEX IF NOT EXISTS idx_invoice_adjustments_order ON invoice_adjustments(order_id,created_at);
   CREATE TABLE IF NOT EXISTS shipments (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, provider TEXT NOT NULL, tracking_no TEXT NOT NULL, carrier_name TEXT, vehicle_no TEXT, temperature REAL, status TEXT NOT NULL, departed_at TEXT, arrived_at TEXT, evidence TEXT, updated_at TEXT NOT NULL, consignor_address TEXT NOT NULL DEFAULT '', consignee_address TEXT NOT NULL DEFAULT '', FOREIGN KEY (order_id) REFERENCES orders(id));
@@ -367,7 +367,7 @@ if (!db.prepare("PRAGMA table_info(shipments)").all().some((column) => column.na
 if (!db.prepare("PRAGMA table_info(payments)").all().some((column) => column.name === "provider_transaction_id")) {
   db.exec("ALTER TABLE payments ADD COLUMN provider_transaction_id TEXT");
 }
-for (const [name, definition] of [["invoice_type", "TEXT NOT NULL DEFAULT ''"], ["tax_category_code", "TEXT NOT NULL DEFAULT ''"], ["tax_rate", "REAL"], ["seller_credit_code", "TEXT"], ["buyer_credit_code", "TEXT"]]) {
+for (const [name, definition] of [["invoice_type", "TEXT NOT NULL DEFAULT ''"], ["tax_category_code", "TEXT NOT NULL DEFAULT ''"], ["tax_rate", "REAL"], ["seller_credit_code", "TEXT"], ["buyer_credit_code", "TEXT"], ["download_url", "TEXT"]]) {
   if (!db.prepare("PRAGMA table_info(invoices)").all().some((column) => column.name === name)) db.exec(`ALTER TABLE invoices ADD COLUMN ${name} ${definition}`);
 }
 
@@ -657,6 +657,15 @@ const saveIdempotent = (req, key, status, data, payload) => {
 const maskCreditCode = (value) => {
   const code = String(value || "");
   return code.length > 8 ? `${code.slice(0, 4)}${"*".repeat(code.length - 8)}${code.slice(-4)}` : code ? "****" : "";
+};
+const providerDownloadUrl = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  let parsed;
+  try { parsed = new URL(raw); } catch { throw new HttpError(400, "发票下载地址格式不正确"); }
+  if (productionMode && parsed.protocol !== "https:") throw new HttpError(400, "生产发票下载地址必须使用 HTTPS");
+  if (parsed.username || parsed.password || parsed.hash || raw.length > 1200) throw new HttpError(400, "发票下载地址包含不允许的凭证、片段或长度");
+  return parsed.toString();
 };
 const platformFeeCollectionView = (row) => row ? ({
   id: row.id,
@@ -1108,7 +1117,8 @@ const processIntegrationWebhook = async (provider, req, res) => {
         if (String(invoice.invoice_no || "").trim() && String(invoice.invoice_no).trim() !== invoiceNo) throw new HttpError(409, "发票已有机构号码，禁止回调替换发票号码");
         const verified = invoiceState === "verified";
         const nextInvoiceStatus = verified ? "已开具" : invoiceState === "failed" ? "开票失败" : "待验真";
-        db.prepare("UPDATE invoices SET invoice_no=?,status=?,issued_at=? WHERE id=?").run(invoiceNo, nextInvoiceStatus, verified ? (invoice.issued_at || t) : invoice.issued_at, invoice.id);
+        const downloadUrl = providerDownloadUrl(payload.download_url);
+        db.prepare("UPDATE invoices SET invoice_no=?,status=?,issued_at=?,download_url=COALESCE(?,download_url) WHERE id=?").run(invoiceNo, nextInvoiceStatus, verified ? (invoice.issued_at || t) : invoice.issued_at, downloadUrl, invoice.id);
         db.prepare("UPDATE orders SET invoice_status=?,updated_at=? WHERE id=?").run(verified ? "已验真" : nextInvoiceStatus === "开票失败" ? "开票失败" : "待验真", t, orderId);
         nextAction = verified ? "发票已验真，进入四流对账" : nextInvoiceStatus === "开票失败" ? "发票处理失败，请由开票机构重试" : "等待发票验真结果";
         }
@@ -1822,6 +1832,49 @@ const server = createServer(async (req, res) => {
       ? db.prepare("SELECT o.id,o.scene,o.status,o.amount,o.settlement_model,o.payment_status,o.fulfillment_step,o.delivery_window,o.created_at,b.name buyer_name,s.name supplier_name FROM orders o JOIN merchants b ON b.id=o.buyer_id JOIN merchants s ON s.id=o.supplier_id ORDER BY o.created_at DESC").all()
       : db.prepare("SELECT o.id,o.scene,o.status,o.amount,o.settlement_model,o.payment_status,o.fulfillment_step,o.delivery_window,o.created_at,b.name buyer_name,s.name supplier_name FROM orders o JOIN merchants b ON b.id=o.buyer_id JOIN merchants s ON s.id=o.supplier_id WHERE o.buyer_id IN (SELECT value FROM json_each(?)) OR o.supplier_id IN (SELECT value FROM json_each(?)) ORDER BY o.created_at DESC").all(JSON.stringify(principal.merchant_ids), JSON.stringify(principal.merchant_ids));
     return json(res, 200, list);
+  }
+  if (path === "/api/v1/invoices" && req.method === "GET") {
+    if (!authorized(req)) return error(res, 401, "需要发票查看授权");
+    const principal = principalFor(req);
+    const query = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+    const orderId = String(query.searchParams.get("order_id") || "").trim();
+    const rawLimit = Number(query.searchParams.get("limit") || 50);
+    const limit = Number.isInteger(rawLimit) ? Math.max(1, Math.min(rawLimit, 100)) : 50;
+    const conditions = ["1=1"];
+    const params = [];
+    if (orderId) { conditions.push("i.order_id=?"); params.push(orderId); }
+    if (!privileged(req)) {
+      conditions.push("(o.buyer_id IN (SELECT value FROM json_each(?)) OR o.supplier_id IN (SELECT value FROM json_each(?)))");
+      params.push(JSON.stringify(principal.merchant_ids), JSON.stringify(principal.merchant_ids));
+    }
+    params.push(limit);
+    const rows = db.prepare(`SELECT i.*,o.status order_status,b.name buyer_name,s.name supplier_name FROM invoices i JOIN orders o ON o.id=i.order_id JOIN merchants b ON b.id=o.buyer_id JOIN merchants s ON s.id=o.supplier_id WHERE ${conditions.join(" AND ")} ORDER BY COALESCE(i.issued_at,o.created_at) DESC LIMIT ?`).all(...params);
+    const canAdjust = productionMode && process.env.SHUZHI_INVOICE_READY === "true" && hasAdminPermission(req, "finance", true);
+    return json(res, 200, rows.map((invoice) => ({
+      id: invoice.id,
+      order_id: invoice.order_id,
+      order_status: invoice.order_status,
+      invoice_no: invoice.invoice_no,
+      amount: Number(invoice.amount),
+      status: invoice.status,
+      issued_at: invoice.issued_at,
+      download_url: invoice.download_url || null,
+      invoice_type: invoice.invoice_type,
+      tax_category_code: invoice.tax_category_code,
+      tax_rate: invoice.tax_rate == null ? null : Number(invoice.tax_rate),
+      buyer_name: invoice.buyer_name,
+      supplier_name: invoice.supplier_name,
+      buyer_credit_code_masked: maskCreditCode(invoice.buyer_credit_code),
+      seller_credit_code_masked: maskCreditCode(invoice.seller_credit_code),
+      items: db.prepare("SELECT oi.id AS order_item_id,oi.product_id,oi.name,oi.qty,oi.unit_price,p.unit FROM order_items oi JOIN products p ON p.id=oi.product_id WHERE oi.order_id=? ORDER BY oi.id").all(invoice.order_id),
+      adjustments: db.prepare("SELECT id,action,original_invoice_no,amount,reason,financial_review_ref,status,adjustment_invoice_no,provider_ref,evidence_ref,requested_by,completed_at,created_at,updated_at FROM invoice_adjustments WHERE invoice_id=? ORDER BY created_at").all(invoice.id).map((adjustment) => ({
+        ...adjustment,
+        amount: Number(adjustment.amount),
+        financial_review_ref: privileged(req) ? adjustment.financial_review_ref : undefined,
+        requested_by: privileged(req) ? adjustment.requested_by : undefined,
+      })),
+      can_adjust: canAdjust && invoice.status === "已开具" && Boolean(invoice.issued_at) && Boolean(String(invoice.invoice_no || "").trim()),
+    })));
   }
   const tradeMatch = path.match(/^\/api\/v1\/trades\/([^/]+)$/);
   if (tradeMatch && req.method === "GET") {

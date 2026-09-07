@@ -43,6 +43,7 @@ const frontendRoutes = [
   "/api/v1/products",
   "/api/v1/purchase-demands",
   "/api/v1/trades",
+  "/api/v1/invoices",
   "/api/v1/purchase-quotes",
   "/api/v1/merchants",
   "/api/v1/merchant-applications",
