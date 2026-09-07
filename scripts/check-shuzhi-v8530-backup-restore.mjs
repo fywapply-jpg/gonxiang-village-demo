@@ -30,10 +30,12 @@ try {
   copyFileSync(source, restored);
   const integrity = execFileSync("sqlite3", [restored, "PRAGMA integrity_check;"], { encoding: "utf8" }).trim();
   if (integrity !== "ok") throw new Error(`恢复库完整性检查失败：${integrity}`);
-  const counts = JSON.parse(execFileSync("sqlite3", ["-json", restored, "SELECT (SELECT COUNT(*) FROM organizations) organizations, (SELECT COUNT(*) FROM merchants) merchants, (SELECT COUNT(*) FROM orders) orders, (SELECT COUNT(*) FROM audit_logs) audit_logs, (SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='platform_fee_collections') platform_fee_collections_table;"], { encoding: "utf8" }))[0];
-  const coreCounts = [counts?.organizations, counts?.merchants, counts?.orders, counts?.audit_logs];
-  if (!counts || coreCounts.some((value) => Number(value) < 1) || Number(counts.platform_fee_collections_table) !== 1) throw new Error("恢复库关键业务表为空或平台费台账表缺失，恢复演练未通过");
-  console.log(JSON.stringify({ source, restored, version: manifest.version, bytes: statSync(restored).size, sha256, integrity, counts, restored_to_temporary_database: true }, null, 2));
+  const counts = JSON.parse(execFileSync("sqlite3", ["-json", restored, "SELECT (SELECT COUNT(*) FROM organizations) organizations, (SELECT COUNT(*) FROM merchants) merchants, (SELECT COUNT(*) FROM orders) orders, (SELECT COUNT(*) FROM contracts) contracts, (SELECT COUNT(*) FROM payments) payments, (SELECT COUNT(*) FROM shipments) shipments, (SELECT COUNT(*) FROM invoices) invoices, (SELECT COUNT(*) FROM acceptances) acceptances, (SELECT COUNT(*) FROM audit_logs) audit_logs;"], { encoding: "utf8" }))[0];
+  const tables = JSON.parse(execFileSync("sqlite3", ["-json", restored, "SELECT name FROM sqlite_master WHERE type='table';"], { encoding: "utf8" })).map((row) => String(row.name));
+  const requiredTables = ["organizations", "merchants", "orders", "order_items", "contracts", "contract_signatures", "payments", "shipments", "invoices", "acceptances", "acceptance_items", "audit_logs", "platform_fee_collections", "institution_outbox"];
+  const missingTables = requiredTables.filter((table) => !tables.includes(table));
+  if (!counts || missingTables.length) throw new Error(`恢复库缺少关键业务表：${missingTables.join(", ") || "未知"}`);
+  console.log(JSON.stringify({ source, restored, version: manifest.version, bytes: statSync(restored).size, sha256, integrity, counts, required_tables: requiredTables, restored_to_temporary_database: true }, null, 2));
 } finally {
   rmSync(workDir, { recursive: true, force: true });
 }
