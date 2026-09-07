@@ -17,9 +17,13 @@ const tempRoot = mkdtempSync(join(tmpdir(), "shuzhi-production-concurrency-"));
 const dbPath = join(tempRoot, "production.sqlite");
 const ports = [9600 + Math.floor(Math.random() * 100), 9700 + Math.floor(Math.random() * 100)];
 const buyerToken = "concurrency-buyer-123456789012345";
+const supplierToken = "concurrency-supplier-123456789012";
 const apiToken = "concurrency-api-12345678901234567890";
 const adminToken = "concurrency-admin-123456789012345";
-const userPrincipals = JSON.stringify({ [buyerToken]: { id: "concurrency-buyer", name: "并发采购经办人", role: "buyer", merchant_id: "m-buyer" } });
+const userPrincipals = JSON.stringify({
+  [buyerToken]: { id: "concurrency-buyer", name: "并发采购经办人", role: "buyer", merchant_id: "m-buyer" },
+  [supplierToken]: { id: "concurrency-supplier", name: "并发供货经办人", role: "supplier", merchant_id: "m-supplier" },
+});
 const adminRoles = JSON.stringify({ [adminToken]: "super" });
 const baseEnv = {
   SHUZHI_DB: dbPath,
@@ -73,6 +77,16 @@ const createOrder = async (port, index) => {
   try { payload = await response.json(); } catch {}
   return { status: response.status, body: payload, port };
 };
+const createProduct = async (port, index) => {
+  const response = await fetch(`http://127.0.0.1:${port}/api/v1/products`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${supplierToken}`, "Content-Type": "application/json", "Idempotency-Key": `concurrency-product-${index}-${Date.now()}` },
+    body: JSON.stringify({ name: `并发上架商品-${index}`, category: "农产品", price: 10, stock: 20, unit: "件" }),
+  });
+  let payload = {};
+  try { payload = await response.json(); } catch {}
+  return { status: response.status, body: payload, port };
+};
 
 const checks = [];
 const add = (ok, name, detail) => { checks.push(ok); console.log(`${ok ? "PASS" : "FAIL"}  ${name}  ${detail}`); };
@@ -112,6 +126,13 @@ try {
   const orders = dbAfter.prepare("SELECT COUNT(*) count FROM order_items WHERE product_id='p-concurrency'").get();
   dbAfter.close();
   add(Number(product?.stock) === 0 && Number(reservations?.qty) === 5 && Number(orders?.count) === 5, "库存、预占和订单明细一致", `库存 ${product?.stock} · 预占 ${reservations?.qty} · 明细 ${orders?.count}`);
+  const productResults = await Promise.all(Array.from({ length: 20 }, (_, index) => createProduct(ports[index % ports.length], index)));
+  const productUnexpected = productResults.filter((item) => item.status !== 201);
+  add(productUnexpected.length === 0, "并发商品写入无 500/锁错误", productUnexpected.length === 0 ? "20 个商品提交均成功" : JSON.stringify(productUnexpected.map((item) => ({ status: item.status, message: item.body?.message }))));
+  const dbAfterProducts = new DatabaseSync(dbPath);
+  const products = dbAfterProducts.prepare("SELECT COUNT(*) count FROM products WHERE name LIKE '并发上架商品-%'").get();
+  dbAfterProducts.close();
+  add(Number(products?.count) === 20, "并发商品写入记录完整", `商品记录 ${products?.count}`);
 } catch (error) {
   add(false, "并发回归执行", error instanceof Error ? error.message : String(error));
 } finally {

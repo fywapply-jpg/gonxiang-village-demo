@@ -920,7 +920,7 @@ const processIntegrationWebhook = async (provider, req, res) => {
   const existing = db.prepare("SELECT provider,event_id,status FROM integration_callbacks WHERE (provider=? AND idempotency_key IN (?,?)) OR (provider=? AND event_id=?) LIMIT 1").get(provider, callbackStorageKey, idemKey, provider, eventId);
   if (existing) return json(res, 200, { accepted: true, provider, event_id: existing.event_id, replayed: true, status: existing.status });
   const t = now();
-  db.exec("BEGIN");
+  db.exec("BEGIN IMMEDIATE");
   try {
     db.prepare("INSERT INTO integration_callbacks(provider,event_id,idempotency_key,signature,payload,status,received_at) VALUES (?,?,?,?,?,?,?)").run(provider, eventId, callbackStorageKey, String(req.headers["x-webhook-signature"] || ""), raw, "received", t);
     const orderId = String(payload.order_id || "").trim();
@@ -1332,7 +1332,7 @@ const server = createServer(async (req, res) => {
     if (action !== "submit" && !prior) return error(res, 409, `监管 ${action} 必须关联一条未完成的提交记录`);
     const submissionId = `REG-${randomUUID().replaceAll("-", "").slice(0, 24).toUpperCase()}`;
     const t = now();
-    db.exec("BEGIN");
+    db.exec("BEGIN IMMEDIATE");
     try {
       db.prepare("INSERT INTO regulatory_submissions(id,action,subject_type,subject_id,authority_code,data_minimization_version,evidence_refs,status,receipt_ref,failure_code,failure_message,idempotency_key,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(submissionId, action, subjectType, subjectId, authorityCode, minimizationVersion, JSON.stringify(evidenceRefs), "待机构受理", null, null, null, idemKey || `LOCAL-REG-${submissionId}`, t, t);
       if (productionMode) {
@@ -1546,7 +1546,7 @@ const server = createServer(async (req, res) => {
     if (suppliedCreditCode && db.prepare("SELECT merchant_id FROM merchant_identity WHERE credit_code=? AND merchant_id<>?").get(suppliedCreditCode, merchantId)) return error(res, 409, "统一社会信用代码已绑定其他商户，禁止重复使用");
     const actor = actorFor(req, "主体核验岗");
     const t = now();
-    db.exec("BEGIN");
+    db.exec("BEGIN IMMEDIATE");
     try {
       for (const item of updates) {
         const column = item.type === "license" ? "license_status" : "bank_status";
@@ -1671,7 +1671,7 @@ const server = createServer(async (req, res) => {
       moneyCents(amount, "报价金额");
     }
     const t = now();
-    db.exec("BEGIN");
+    db.exec("BEGIN IMMEDIATE");
     try {
       db.prepare("INSERT INTO demand_quotes(id,demand_id,supplier_id,product_id,qty,unit_price,amount,status,note,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)").run(quoteId, demand.id, supplierId, productId, qty, unitPrice, amount, "submitted", String(payload.note || "").slice(0, 240), t, t);
       db.prepare("UPDATE purchase_demands SET status='quoting',updated_at=? WHERE id=?").run(t, demand.id);
@@ -1699,7 +1699,7 @@ const server = createServer(async (req, res) => {
     const awarded = db.prepare("SELECT id FROM demand_quotes WHERE demand_id=? AND status IN ('accepted','ordered') AND id<>? LIMIT 1").get(quote.demand_id, quote.id);
     if (awarded) return error(res, 409, "同一采购需求只能确认一家供货方报价");
     const t = now();
-    db.exec("BEGIN");
+    db.exec("BEGIN IMMEDIATE");
     try {
       const fresh = db.prepare("SELECT status FROM purchase_demands WHERE id=?").get(quote.demand_id);
       const freshAwarded = db.prepare("SELECT id FROM demand_quotes WHERE demand_id=? AND status IN ('accepted','ordered') AND id<>? LIMIT 1").get(quote.demand_id, quote.id);
@@ -1915,7 +1915,7 @@ const server = createServer(async (req, res) => {
       const payerCreditCode = String(payload.payer_credit_code || ((principal?.merchant_ids || []).includes(order.buyer_id) ? buyerIdentity?.credit_code : "")).trim();
       const payeeCreditCode = String(payload.payee_credit_code || supplierIdentity?.credit_code || "").trim();
       if (!payerCreditCode || !payeeCreditCode) return error(res, 400, "生产托管入金必须提供付款方和收款方统一社会信用代码");
-      db.exec("BEGIN");
+      db.exec("BEGIN IMMEDIATE");
       try {
         // 失败的机构支付尝试保留原始机构交易号和审计证据；重试创建新的支付记录，
         // 不复用旧 Outbox 幂等键，避免把不同的资金尝试误合并为同一笔入金。
@@ -1989,7 +1989,7 @@ const server = createServer(async (req, res) => {
     const payee = merchantParty(order.supplier_id, payeeIdentity.credit_code);
     const refundId = `REF-${id}-${randomUUID().slice(0, 12).toUpperCase()}`;
     const t = now();
-    db.exec("BEGIN");
+    db.exec("BEGIN IMMEDIATE");
     try {
       db.prepare("INSERT INTO payment_refunds(id,order_id,payment_id,amount,reason,status,provider_ref,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)").run(refundId, id, payment.id, amount, reason, "机构待受理", null, t, t);
       const queued = enqueueProductionInstitutionCommand({
@@ -2040,7 +2040,7 @@ const server = createServer(async (req, res) => {
     if (db.prepare("SELECT id FROM acceptances WHERE order_id=? AND result<>'pending' LIMIT 1").get(id)) return error(res, 409, "订单已有最终验收结论，不得直接取消");
     const reason = String(payload.reason || "交易双方取消订单").trim().slice(0, 240);
     const t = now();
-    db.exec("BEGIN");
+    db.exec("BEGIN IMMEDIATE");
     try {
       const released = releaseOrderInventory(id, reason);
       db.prepare("UPDATE orders SET status='已取消',payment_status='未发生扣款',invoice_status='已取消',contract_status='已取消',updated_at=? WHERE id=?").run(t, id);
@@ -2066,7 +2066,7 @@ const server = createServer(async (req, res) => {
     const t = now();
     // 演示重置必须清理所有会阻止再次跑通流程的派生状态；该端点仅在
     // local-demo 可用，生产模式在上方直接拒绝，不会影响真实交易数据。
-    db.exec("BEGIN");
+    db.exec("BEGIN IMMEDIATE");
     try {
       const reservationCount = Number(db.prepare("SELECT COUNT(*) AS n FROM inventory_reservations WHERE order_id=? AND status='reserved'").get(id)?.n || 0);
       if (reservationCount > 0) {
@@ -2157,7 +2157,7 @@ const server = createServer(async (req, res) => {
     }
     const t = now();
     const collectionId = `PFC-${orderId}-${randomUUID().slice(0, 12).toUpperCase()}`;
-    db.exec("BEGIN");
+    db.exec("BEGIN IMMEDIATE");
     try {
       db.prepare("INSERT INTO platform_fee_collections(id,order_id,settlement_id,payer_type,payer_merchant_id,payer_name,payer_credit_code,service_contract_ref,invoice_ref,provider,provider_transaction_id,amount,currency,status,evidence_ref,collected_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(collectionId, orderId, settlement.id, payerType, payerMerchantId, payerName, payerCreditCode, serviceContractRef, invoiceRef, provider, providerTransactionId, amount, "CNY", "collected", evidenceRef, t, t, t);
       db.prepare("UPDATE settlement_records SET platform_fee_collection_status='collected',platform_fee_collection_ref=? WHERE id=?").run(providerTransactionId, settlement.id);
@@ -2200,7 +2200,7 @@ const server = createServer(async (req, res) => {
     if (media.length > 8 || media.some((item) => !item || !["image", "video"].includes(String(item.media_type || "image")) || !String(item.url || "").trim() || String(item.url).length > 2048)) return error(res, 400, "商品媒体最多 8 个，类型和地址不合法");
     // 先完成全部字段校验，再写入商品和媒体，避免无效媒体留下孤立的待审核商品。
     const id = `p-${randomUUID()}`;
-    db.exec("BEGIN");
+    db.exec("BEGIN IMMEDIATE");
     try {
       db.prepare("INSERT INTO products VALUES (?,?,?,?,?,?,?,?,?,?)").run(id, merchant.id, name, category, String(payload.spec || "").slice(0, 240), String(payload.unit || "件").slice(0, 20), price, stock, String(payload.origin || "").slice(0, 120), "pending_review");
       const mediaStmt = db.prepare("INSERT INTO product_media(product_id,media_type,url,sort_no,status) VALUES (?,?,?,?,?)");
@@ -2255,7 +2255,7 @@ const server = createServer(async (req, res) => {
     const t = now();
     if (productionMode) {
       const digest = createHash("sha256").update(`${contract.id}:${orderId}:${contract.hash}`).digest("hex");
-      db.exec("BEGIN");
+      db.exec("BEGIN IMMEDIATE");
       try {
         const queued = enqueueProductionInstitutionCommand({
           provider: "ca",
@@ -2341,7 +2341,7 @@ const server = createServer(async (req, res) => {
       const payerCreditCode = String(payload.payer_credit_code || "").trim();
       const payeeCreditCode = String(payload.payee_credit_code || "").trim();
       if (!payerCreditCode || !payeeCreditCode) return error(res, 400, "生产分账指令必须提供采购方和供货方统一社会信用代码");
-      db.exec("BEGIN");
+      db.exec("BEGIN IMMEDIATE");
       try {
         const queued = enqueueProductionInstitutionCommand({
           provider: "payment",
@@ -2372,7 +2372,7 @@ const server = createServer(async (req, res) => {
         throw cause;
       }
     }
-    db.exec("BEGIN");
+    db.exec("BEGIN IMMEDIATE");
     try {
       db.prepare("INSERT INTO settlement_records(id,order_id,amount,platform_fee,platform_fee_base,status,instruction_ref,settled_at,created_at,platform_fee_collection_status,platform_fee_collection_ref) VALUES (?,?,?,?,?,?,?,?,?,?,?)").run(instructionRef, orderId, amount, platformFee, feeCalc.base, "settled", instructionRef, t, t, feeCalc.collection_status, "");
       db.prepare("UPDATE payments SET status='已分账',paid_at=COALESCE(paid_at,?) WHERE order_id=?").run(t, orderId);
@@ -2423,7 +2423,7 @@ const server = createServer(async (req, res) => {
       const consignorAddress = String(payload.consignor_address || "").trim();
       const consigneeAddress = String(payload.consignee_address || "").trim();
       if (!consignorAddress || !consigneeAddress || consignorAddress.length > 300 || consigneeAddress.length > 300) return error(res, 400, "生产物流指令必须提供不超过 300 字的收发货地址快照");
-      db.exec("BEGIN");
+      db.exec("BEGIN IMMEDIATE");
       try {
         db.prepare("INSERT INTO shipments(id,order_id,provider,tracking_no,carrier_name,vehicle_no,temperature,status,departed_at,arrived_at,evidence,updated_at,consignor_address,consignee_address) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(shipmentId, id, String(payload.provider).trim().slice(0, 80), trackingNo.slice(0, 80), String(payload.carrier_name || "").slice(0, 120), String(payload.vehicle_no || "").slice(0, 40), shipmentTemperature, "待机构受理", null, null, String(payload.evidence || "待第三方物流受理").slice(0, 500), t, consignorAddress, consigneeAddress);
         const queued = enqueueProductionInstitutionCommand({
@@ -2578,7 +2578,7 @@ const server = createServer(async (req, res) => {
     const serviceFee = Math.round((amount - goodsNet) * 100) / 100;
     const adjustmentId = `IADJ-${id}-${randomUUID().slice(0, 12).toUpperCase()}`;
     const t = now();
-    db.exec("BEGIN");
+    db.exec("BEGIN IMMEDIATE");
     try {
       db.prepare("INSERT INTO invoice_adjustments(id,invoice_id,order_id,action,original_invoice_no,amount,reason,financial_review_ref,status,requested_by,idempotency_key,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)").run(adjustmentId, invoice.id, id, action, String(invoice.invoice_no), amount, String(payload.reason || "财务复核后的发票调整").trim().slice(0, 240), reviewRef, "待机构受理", actorFor(req, "财务结算岗"), idemKey || `INVOICE-ADJUST:${adjustmentId}`, t, t);
       const queued = enqueueProductionInstitutionCommand({
@@ -2663,7 +2663,7 @@ const server = createServer(async (req, res) => {
       const goodsNet = Math.round(itemRows.reduce((sum, item) => sum + Number(item.qty) * Number(item.unit_price), 0) * 100) / 100;
       if (!Number.isFinite(goodsNet) || goodsNet <= 0 || goodsNet > Number(invoice.amount)) return error(res, 409, "生产开票商品明细金额超过应开金额，禁止开票");
       const serviceFee = Math.round((Number(invoice.amount) - goodsNet) * 100) / 100;
-      db.exec("BEGIN");
+      db.exec("BEGIN IMMEDIATE");
       try {
         if (invoice.status === "已红冲" || invoice.status === "已作废") db.prepare("UPDATE invoices SET invoice_no=NULL,status='待开具',issued_at=NULL WHERE id=?").run(invoice.id);
         db.prepare("UPDATE invoices SET invoice_type=?,tax_category_code=?,tax_rate=?,seller_credit_code=?,buyer_credit_code=? WHERE id=?").run(invoiceType, taxCategoryCode, taxRate, sellerCreditCode.toUpperCase(), buyerCreditCode.toUpperCase(), invoice.id);
@@ -2769,7 +2769,7 @@ const server = createServer(async (req, res) => {
     if (productionMode && !idemKey) return error(res, 400, "生产死信重放必须提供 Idempotency-Key");
     if (replayIdempotent(req, res, idemKey, payload)) return;
     const actor = actorFor(req, "系统管理岗");
-    db.exec("BEGIN");
+    db.exec("BEGIN IMMEDIATE");
     try {
       const data = requeueDeadInstitutionCommand(db, { id: outboxRetryMatch[1] });
       log(actor, "REQUEUE_INSTITUTION_COMMAND", data.id, `${data.provider} · ${data.aggregate_type}/${data.aggregate_id}`);
